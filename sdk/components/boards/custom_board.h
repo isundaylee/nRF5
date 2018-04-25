@@ -48,7 +48,7 @@ extern "C" {
 
 // LED settings
 #define LEDS_NUMBER    1
-#define LEDS_LIST { 4 }
+#define LEDS_LIST { 10 }
 #define LEDS_ACTIVE_STATE 0
 #define LEDS_INV_MASK  LEDS_MASK
 
