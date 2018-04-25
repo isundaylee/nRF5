@@ -117,6 +117,11 @@ static ble_uuid_t m_adv_uuids[]          =                                      
     {BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}
 };
 
+void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
+{
+    nrf_gpio_pin_set(4);
+    for (;;) {}
+}
 
 /**@brief Function for assert macro callback.
  *
@@ -689,6 +694,8 @@ static void advertising_start(void)
 int main(void)
 {
     bool erase_bonds;
+
+    nrf_gpio_cfg_output(4);
 
     // Initialize.
     uart_init();
