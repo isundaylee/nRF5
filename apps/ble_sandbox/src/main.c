@@ -580,8 +580,8 @@ static void uart_init(void)
     {
         .rx_pin_no    = RX_PIN_NUMBER,
         .tx_pin_no    = TX_PIN_NUMBER,
-        .rts_pin_no   = RTS_PIN_NUMBER,
-        .cts_pin_no   = CTS_PIN_NUMBER,
+        .rts_pin_no   = 0,
+        .cts_pin_no   = 0,
         .flow_control = APP_UART_FLOW_CONTROL_DISABLED,
         .use_parity   = false,
 #if defined (UART_PRESENT)
@@ -711,7 +711,7 @@ int main(void)
     conn_params_init();
 
     // Start execution.
-    printf("\r\nUART started.\r\n");
+    printf("UART started.\n");
     NRF_LOG_INFO("Debug logging for UART over RTT started.");
     advertising_start();
 

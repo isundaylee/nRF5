@@ -53,12 +53,15 @@ extern "C" {
 #define LEDS_INV_MASK  LEDS_MASK
 
 // Button settings
-#define BUTTONS_NUMBER 0
-#define BUTTONS_LIST {}
+#define BUTTONS_NUMBER 1
+#define BUTTONS_LIST {0}
+
+#define BUTTON_PULL    NRF_GPIO_PIN_PULLUP
+#define BUTTONS_ACTIVE_STATE 0
 
 // UART settings
-#define RX_PIN_NUMBER  11
-#define TX_PIN_NUMBER  9
+#define RX_PIN_NUMBER  6
+#define TX_PIN_NUMBER  5
 #define HWFC           false
 
 #ifdef __cplusplus
