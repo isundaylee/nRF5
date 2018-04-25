@@ -120,6 +120,9 @@ static ble_uuid_t m_adv_uuids[]          =                                      
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 {
     nrf_gpio_pin_set(4);
+    
+    NRF_BREAKPOINT_COND;
+    
     for (;;) {}
 }
 
@@ -575,6 +578,8 @@ void uart_event_handle(app_uart_evt_t * p_event)
 /**@snippet [UART Initialization] */
 static void uart_init(void)
 {
+    return;
+    
     uint32_t                     err_code;
     app_uart_comm_params_t const comm_params =
     {
@@ -712,7 +717,7 @@ int main(void)
 
     // Start execution.
     printf("UART started.\n");
-    NRF_LOG_INFO("Debug logging for UART over RTT started.");
+    NRF_LOG_INFO("Debug logging for UART over RTT started. ");
     advertising_start();
 
     // Enter main loop.
