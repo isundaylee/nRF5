@@ -500,6 +500,9 @@ int main(void)
     // Enter main loop.
     for (;;)
     {
+        NRF_LOG_INFO("Heartbeat!");
+        nrf_delay_ms(1000);
+        
         idle_state_handle();
     }
 }
