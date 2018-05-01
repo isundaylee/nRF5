@@ -26,7 +26,13 @@ def processRollingMax(T, Y):
 	
 	return pT, pY
 	
-processData = processRollingMax
+def processRollingMedian(T, Y):
+	pY = pd.Series(Y).rolling(10).median().dropna().tolist();
+	pT = T[len(T)-len(pY):]
+	
+	return pT, pY
+	
+processData = processRollingMedian
 
 ################################################################################
 # Animation plotting

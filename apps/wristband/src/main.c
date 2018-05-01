@@ -261,13 +261,11 @@ static void sleep_mode_enter(void)
 }
 
 static void on_adv_report(ble_gap_evt_adv_report_t const* report) {
-    static float avg_rssi = 0.0; 
-    
     if (ble_advdata_name_find(report->data.p_data, report->data.len, BEACON_NAME)) {
-        float alpha = 1.0;
-        avg_rssi = (1 - alpha) * avg_rssi + alpha * report->rssi;
-        NRF_LOG_INFO("Received advertisement from beacon. RSSI = " NRF_LOG_FLOAT_MARKER, 
-            NRF_LOG_FLOAT(avg_rssi));
+        if (report->ch_index == 37) {
+            NRF_LOG_INFO("Received advertisement from beacon. RSSI = %d", 
+                report->rssi);
+        }
     }
         
     int ret = sd_ble_gap_scan_start(NULL, &scan_buffer);
