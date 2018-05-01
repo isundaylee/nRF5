@@ -1,4 +1,4 @@
-PROJECT_NAME     := ble_sandbox
+PROJECT_NAME     := beacon
 TARGETS          := nrf52832_xxaa
 OUTPUT_DIRECTORY := build
 
