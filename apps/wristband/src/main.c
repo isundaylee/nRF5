@@ -264,8 +264,10 @@ static void on_adv_report(ble_gap_evt_adv_report_t const* report) {
     static float avg_rssi = 0.0; 
     
     if (ble_advdata_name_find(report->data.p_data, report->data.len, BEACON_NAME)) {
-        avg_rssi = 0.9 * avg_rssi + 0.1 * report->rssi;
-        NRF_LOG_INFO("Received advertisement from beacon. RSSI: %d.", (int)avg_rssi);
+        float alpha = 1.0;
+        avg_rssi = (1 - alpha) * avg_rssi + alpha * report->rssi;
+        NRF_LOG_INFO("Received advertisement from beacon. RSSI = " NRF_LOG_FLOAT_MARKER, 
+            NRF_LOG_FLOAT(avg_rssi));
     }
         
     int ret = sd_ble_gap_scan_start(NULL, &scan_buffer);
@@ -500,9 +502,6 @@ int main(void)
     // Enter main loop.
     for (;;)
     {
-        NRF_LOG_INFO("Heartbeat!");
-        nrf_delay_ms(1000);
-        
         idle_state_handle();
     }
 }

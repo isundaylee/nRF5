@@ -1,0 +1,447 @@
+Mon Apr 30 17:38:53 EDT 2018 =====================================================================
+Mon Apr 30 17:38:53 EDT 2018 Starting JLinkExe in the background...
+Mon Apr 30 17:38:53 EDT 2018 =====================================================================
+Mon Apr 30 17:38:53 EDT 2018 SEGGER J-Link Commander V6.30i (Compiled Mar 23 2018 18:15:46)
+Mon Apr 30 17:38:53 EDT 2018 DLL version V6.30i, compiled Mar 23 2018 18:15:37
+Mon Apr 30 17:38:53 EDT 2018 
+Mon Apr 30 17:38:53 EDT 2018 Connecting to J-Link via USB...O.K.
+Mon Apr 30 17:38:53 EDT 2018 Firmware: J-Link EDU Mini V1 compiled Mar  2 2018 17:10:16
+Mon Apr 30 17:38:53 EDT 2018 Hardware version: V1.00
+Mon Apr 30 17:38:53 EDT 2018 S/N: 801001490
+Mon Apr 30 17:38:53 EDT 2018 License(s): GDB, FlashBP
+Mon Apr 30 17:38:53 EDT 2018 VTref = 2.595V
+Mon Apr 30 17:38:54 EDT 2018 Device "NRF52" selected.
+Mon Apr 30 17:38:54 EDT 2018 
+Mon Apr 30 17:38:54 EDT 2018 
+Mon Apr 30 17:38:54 EDT 2018 Connecting to target via SWD
+Mon Apr 30 17:38:54 EDT 2018 Found SW-DP with ID 0x2BA01477
+Mon Apr 30 17:38:54 EDT 2018 Found SW-DP with ID 0x2BA01477
+Mon Apr 30 17:38:54 EDT 2018 Scanning AP map to find all available APs
+Mon Apr 30 17:38:54 EDT 2018 AP[2]: Stopped AP scan as end of AP map has been reached
+Mon Apr 30 17:38:54 EDT 2018 AP[0]: AHB-AP (IDR: 0x24770011)
+Mon Apr 30 17:38:54 EDT 2018 AP[1]: JTAG-AP (IDR: 0x02880000)
+Mon Apr 30 17:38:54 EDT 2018 Iterating through AP map to find AHB-AP to use
+Mon Apr 30 17:38:54 EDT 2018 AP[0]: Core found
+Mon Apr 30 17:38:54 EDT 2018 AP[0]: AHB-AP ROM base: 0xE00FF000
+Mon Apr 30 17:38:54 EDT 2018 CPUID register: 0x410FC241. Implementer code: 0x41 (ARM)
+Mon Apr 30 17:38:54 EDT 2018 Found Cortex-M4 r0p1, Little endian.
+Mon Apr 30 17:38:54 EDT 2018 =====================================================================
+Mon Apr 30 17:38:54 EDT 2018 Starting JLinkRTTClient...
+Mon Apr 30 17:38:54 EDT 2018 =====================================================================
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: ************************************************************ 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: *               SEGGER Microcontroller GmbH                * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: *   Solutions for real time microcontroller applications   * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: ************************************************************ 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: *                                                          * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: *       (c) 2012 - 2016  SEGGER Microcontroller GmbH       * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: *                                                          * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: *     www.segger.com     Support: support@segger.com       * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: *                                                          * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: ************************************************************ 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: *                                                          * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: * SEGGER J-Link RTT Client   Compiled Mar 23 2018 18:15:49 * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: *                                                          * 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: ************************************************************ 
+Mon Apr 30 17:38:54 EDT 2018 
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: -----------------------------------------------
+Mon Apr 30 17:38:54 EDT 2018 ###RTT Client: Connecting to J-Link RTT Server via localhost:19021  Connected.
+Mon Apr 30 17:38:54 EDT 2018 SEGGER J-Link V6.30i - Real time terminal output
+Mon Apr 30 17:38:54 EDT 2018 J-Link EDU Mini V1 compiled Mar  2 2018 17:10:16 V1.0, SN=801001490
+Mon Apr 30 17:38:54 EDT 2018 Process: JLinkExe
+Mon Apr 30 17:38:54 EDT 2018 FPUnit: 6 code (BP) slots and 2 literal slots
+Mon Apr 30 17:38:54 EDT 2018 CoreSight components:
+Mon Apr 30 17:38:54 EDT 2018 ROMTbl[0] @ E00FF000
+Mon Apr 30 17:38:54 EDT 2018 ROMTbl[0][0]: E000E000, CID: B105E00D, PID: 000BB00C SCS-M7
+Mon Apr 30 17:38:54 EDT 2018 ROMTbl[0][1]: E0001000, CID: B105E00D, PID: 003BB002 DWT
+Mon Apr 30 17:38:54 EDT 2018 ROMTbl[0][2]: E0002000, CID: B105E00D, PID: 002BB003 FPB
+Mon Apr 30 17:38:54 EDT 2018 ROMTbl[0][3]: E0000000, CID: B105E00D, PID: 003BB001 ITM
+Mon Apr 30 17:38:54 EDT 2018 ROMTbl[0][4]: E0040000, CID: B105900D, PID: 000BB9A1 TPIU
+Mon Apr 30 17:38:54 EDT 2018 ROMTbl[0][5]: E0041000, CID: B105900D, PID: 000BB925 ETM
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <infCortex-M4 identified.
+Mon Apr 30 17:38:54 EDT 2018 o> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -88.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -88.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -88.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -88.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:54 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:55 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:56 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:57 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:58 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:38:59 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:00 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:01 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:01 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:01 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:01 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:01 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:39:01 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:01 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:01 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:39:01 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -81.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:02 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:03 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:04 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:04 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:04 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:04 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:04 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:04 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:04 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:04 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:39:04 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -87.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:39:05 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -86.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -85.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:06 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -82.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:07 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:08 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -84.
+Mon Apr 30 17:39:08 EDT 2018 <info> app: Received advertisement from beacon. RSSI: -83.
