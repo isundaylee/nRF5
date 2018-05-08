@@ -262,10 +262,8 @@ static void sleep_mode_enter(void)
 
 static void on_adv_report(ble_gap_evt_adv_report_t const* report) {
     if (ble_advdata_name_find(report->data.p_data, report->data.len, BEACON_NAME)) {
-        if (report->ch_index == 37) {
-            NRF_LOG_INFO("Received advertisement from beacon. RSSI = %d", 
-                report->rssi);
-        }
+        NRF_LOG_INFO("Received advertisement from beacon. ch = %d RSSI = %d", 
+            report->ch_index, report->rssi);
     }
         
     int ret = sd_ble_gap_scan_start(NULL, &scan_buffer);
