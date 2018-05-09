@@ -62,10 +62,13 @@ class DataLine:
 		self.T = np.append(self.T, t)
 		self.Y = np.append(self.Y, y)
 
-	def trim(self, count):
-		if len(self.T) > count:
-			self.T = self.T[len(self.T) - count:]
-			self.Y = self.Y[len(self.Y) - count:]
+	def trim(self, t):
+		i = 0
+		while i < len(self.T) and self.T[i] < t - TIME_WIDTH:
+			i += 1
+
+		self.T = self.T[i:]
+		self.Y = self.Y[i:]
 
 	def update(self, t):
 		self.plot.set_data(*self.processFn(self.T, self.Y))
@@ -84,14 +87,29 @@ ax.set_ylabel("Value")
 
 dataMap = {}
 
+def reportFrequencies():
+	global dataMap
+
+	prefix = 'Frequency: '
+	clauses = []
+
+	for tag, line in dataMap.items():
+		clauses.append("%s = %.3lf Hz" % (tag, 1.0 * len(line.T) / (line.T[-1] - line.T[0])))
+
+	print("%s %s" % (prefix, ', '.join(clauses)))
+
 def updateData(self):
 	global dataMap
 	global ax
 
 	while select2.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
 		tokens = input().split()
-		tag = tokens[0]
-		value = float(tokens[1])
+
+		try:
+			tag = tokens[0]
+			value = float(tokens[1])
+		except:
+			print('Encountered invalid data point: ' + str(tokens))
 
 		if tag not in dataMap:
 			color = COLORS[len(dataMap) % len(COLORS)]
@@ -106,9 +124,11 @@ def updateData(self):
 
 		data.append(time.time() - start_time, value)
 
+		reportFrequencies()
+
 	t = time.time() - start_time
 	for data in dataMap.values():
-		data.trim(DATA_KEEP)
+		data.trim(t)
 		data.update(t)
 
 simulation = animation.FuncAnimation(fig, updateData, blit=False, interval=20, repeat=False)

@@ -510,7 +510,7 @@ static void lsm9ds1_test()
 
         NRF_LOG_FLUSH();
 
-        nrf_delay_ms(100);
+        nrf_delay_ms(20);
     }
 }
 

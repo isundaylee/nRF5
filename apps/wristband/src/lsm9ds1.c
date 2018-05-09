@@ -11,7 +11,7 @@ void lsm9ds1_init(lsm9ds1_t *dev, nrf_drv_twi_t const* twi) {
 
     // Initialize accelerometer
     lsm9ds1_write_byte(dev, LSM9DS1_ADDR_GYRO_ACCEL, 0x1F, 0b00111000);
-    lsm9ds1_write_byte(dev, LSM9DS1_ADDR_GYRO_ACCEL, 0x20, 0b10000100);
+    lsm9ds1_write_byte(dev, LSM9DS1_ADDR_GYRO_ACCEL, 0x20, 0b10000000);
 }
 
 void lsm9ds1_read(lsm9ds1_t *dev, uint8_t twi_addr, uint8_t reg_addr, uint8_t *data, uint8_t length)
