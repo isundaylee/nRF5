@@ -71,6 +71,8 @@
 #include "nrf_pwr_mgmt.h"
 #include "nrf_drv_twi.h"
 
+#include "lsm9ds1.h"
+
 #if defined (UART_PRESENT)
 #include "nrf_uart.h"
 #endif
@@ -490,71 +492,26 @@ static void twi_init()
     nrf_drv_twi_enable(&twi);
 }
 
-static void lsm9ds1_read(uint8_t addr, uint8_t reg_addr, uint8_t *data, uint8_t length)
-{
-    int ret;
-    uint8_t tx_data[] = {reg_addr};
-
-    ret = nrf_drv_twi_tx(&twi, addr, tx_data, sizeof(tx_data), true);
-    APP_ERROR_CHECK(ret);
-
-    ret = nrf_drv_twi_rx(&twi, addr, data, length);
-    APP_ERROR_CHECK(ret);
-}
-
-static void lsm9ds1_write(uint8_t addr, uint8_t reg_addr, uint8_t *data, uint8_t length)
-{
-    int ret;
-    uint8_t tx_data[length + 1];
-
-    tx_data[0] = reg_addr;
-    for (int i=0; i<length; i++) {
-        tx_data[i + 1] = data[i];
-    }
-
-    ret = nrf_drv_twi_tx(&twi, addr, tx_data, sizeof(tx_data), true);
-    APP_ERROR_CHECK(ret);
-}
-
-static void lsm9ds1_write_byte(uint8_t addr, uint8_t reg_addr, uint8_t data)
-{
-    uint8_t data_arr[1] = {data};
-    lsm9ds1_write(addr, reg_addr, data_arr, 1);
-}
+lsm9ds1_t imu;
 
 static void lsm9ds1_test()
 {
-    int addr = 107;
-    uint8_t data[2];
-
-    (void) &lsm9ds1_write_byte;
-
-    lsm9ds1_write_byte(addr, 0x1F, 0b00111000);
-    lsm9ds1_write_byte(addr, 0x20, 0b10000100);
+    lsm9ds1_init(&imu, &twi);
 
     while (1)
     {
-        lsm9ds1_read(addr, 0x28, data, 2);
-        NRF_LOG_INFO("Got reading: 37 %d", (int16_t) (data[0] + (data[1] << 8)));
+        int16_t accel_x, accel_y, accel_z;
 
-        lsm9ds1_read(addr, 0x2A, data, 2);
-        NRF_LOG_INFO("Got reading: 38 %d", (int16_t) (data[0] + (data[1] << 8)));
+        lsm9ds1_accel_read_all(&imu, &accel_x, &accel_y, &accel_z);
 
-        lsm9ds1_read(addr, 0x2C, data, 2);
-        NRF_LOG_INFO("Got reading: 39 %d", (int16_t) (data[0] + (data[1] << 8)));
+        NRF_LOG_INFO("Got reading: accel_x %d", accel_x);
+        NRF_LOG_INFO("Got reading: accel_y %d", accel_y);
+        NRF_LOG_INFO("Got reading: accel_z %d", accel_z);
 
         NRF_LOG_FLUSH();
 
         nrf_delay_ms(100);
     }
-
-    // for (int address = 1; address <= 127; address ++) {
-    //     uint8_t data;
-    //
-    //     if (nrf_drv_twi_rx(&twi, address, &data, sizeof(data)) == NRF_SUCCESS) {
-    //         NRF_LOG_INFO("!!!! Device found at address %d", address);
-    //     }
-    // }
 }
 
 /**@brief Application main function.

@@ -33,20 +33,28 @@ def processRollingMedian(T, Y):
 
 	return pT, pY
 
+def processSubtractMean(T, Y):
+	pY = Y - mean(Y);
+	pT = T[len(T)-len(pY):]
+
+	return pT, pY
+
 def processNop(T, Y):
 	return T, Y
 
 # processData = processRollingMedian
-processData = processNop
+processData = processSubtractMean
 
 ################################################################################
 # Animation plotting
 ################################################################################
 
 class DataLine:
-	def __init__(self, ax, style, label):
+	def __init__(self, ax, style, label, processFn):
 		self.T = np.zeros(0)
 		self.Y = np.zeros(0)
+		self.label = label
+		self.processFn = processFn
 		self.ax = ax
 		self.plot, = ax.plot([], [], style, label=label)
 
@@ -60,7 +68,7 @@ class DataLine:
 			self.Y = self.Y[len(self.Y) - count:]
 
 	def update(self, t):
-		self.plot.set_data(self.T, self.Y)
+		self.plot.set_data(*self.processFn(self.T, self.Y))
 		self.plot.axes.set_xlim(t - TIME_WIDTH, t)
 
 fig = plt.figure(num = 0, figsize = (12, 8))
@@ -87,7 +95,13 @@ def updateData(self):
 
 		if tag not in dataMap:
 			color = COLORS[len(dataMap) % len(COLORS)]
-			dataMap[tag] = DataLine(ax, color + '-', 'Raw')
+			dataMap[tag] = DataLine(ax, color + '-', tag, processData)
+
+			lines = list(dataMap.values())
+			ax.legend(
+				[line.plot for line in lines],
+				[line.label for line in lines]
+			)
 		data = dataMap[tag]
 
 		data.append(time.time() - start_time, value)
