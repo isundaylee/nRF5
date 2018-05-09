@@ -69,6 +69,7 @@
 #include "app_util_platform.h"
 #include "bsp_btn_ble.h"
 #include "nrf_pwr_mgmt.h"
+#include "nrf_drv_twi.h"
 
 #if defined (UART_PRESENT)
 #include "nrf_uart.h"
@@ -126,9 +127,9 @@ static uint16_t   m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - 3;        
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 {
     nrf_gpio_pin_set(4);
-    
+
     NRF_BREAKPOINT_COND;
-    
+
     for (;;) {}
 }
 
@@ -262,10 +263,10 @@ static void sleep_mode_enter(void)
 
 static void on_adv_report(ble_gap_evt_adv_report_t const* report) {
     if (ble_advdata_name_find(report->data.p_data, report->data.len, BEACON_NAME)) {
-        NRF_LOG_INFO("Received advertisement from beacon. ch = %d RSSI = %d", 
+        NRF_LOG_INFO("Received advertisement from beacon. ch = %d RSSI = %d",
             report->ch_index, report->rssi);
     }
-        
+
     int ret = sd_ble_gap_scan_start(NULL, &scan_buffer);
     APP_ERROR_CHECK(ret);
 }
@@ -284,7 +285,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_ADV_REPORT:
             on_adv_report(&p_ble_evt->evt.gap_evt.params.adv_report);
             break;
-            
+
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected");
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
@@ -471,6 +472,91 @@ static void idle_state_handle(void)
     nrf_pwr_mgmt_run();
 }
 
+static const nrf_drv_twi_t twi = NRF_DRV_TWI_INSTANCE(0);
+
+static void twi_init()
+{
+    const nrf_drv_twi_config_t config = {
+        .scl                = 6,
+        .sda                = 5,
+        .frequency          = NRF_DRV_TWI_FREQ_100K,
+        .interrupt_priority = APP_IRQ_PRIORITY_HIGH,
+        .clear_bus_init     = false
+    };
+
+    int ret = nrf_drv_twi_init(&twi, &config, NULL, NULL);
+    APP_ERROR_CHECK(ret);
+
+    nrf_drv_twi_enable(&twi);
+}
+
+static void lsm9ds1_read(uint8_t addr, uint8_t reg_addr, uint8_t *data, uint8_t length)
+{
+    int ret;
+    uint8_t tx_data[] = {reg_addr};
+
+    ret = nrf_drv_twi_tx(&twi, addr, tx_data, sizeof(tx_data), true);
+    APP_ERROR_CHECK(ret);
+
+    ret = nrf_drv_twi_rx(&twi, addr, data, length);
+    APP_ERROR_CHECK(ret);
+}
+
+static void lsm9ds1_write(uint8_t addr, uint8_t reg_addr, uint8_t *data, uint8_t length)
+{
+    int ret;
+    uint8_t tx_data[length + 1];
+
+    tx_data[0] = reg_addr;
+    for (int i=0; i<length; i++) {
+        tx_data[i + 1] = data[i];
+    }
+
+    ret = nrf_drv_twi_tx(&twi, addr, tx_data, sizeof(tx_data), true);
+    APP_ERROR_CHECK(ret);
+}
+
+static void lsm9ds1_write_byte(uint8_t addr, uint8_t reg_addr, uint8_t data)
+{
+    uint8_t data_arr[1] = {data};
+    lsm9ds1_write(addr, reg_addr, data_arr, 1);
+}
+
+static void lsm9ds1_test()
+{
+    int addr = 107;
+    uint8_t data[2];
+
+    (void) &lsm9ds1_write_byte;
+
+    lsm9ds1_write_byte(addr, 0x1F, 0b00111000);
+    lsm9ds1_write_byte(addr, 0x20, 0b10000100);
+
+    while (1)
+    {
+        lsm9ds1_read(addr, 0x28, data, 2);
+        NRF_LOG_INFO("Got reading: 37 %d", (int16_t) (data[0] + (data[1] << 8)));
+
+        lsm9ds1_read(addr, 0x2A, data, 2);
+        NRF_LOG_INFO("Got reading: 38 %d", (int16_t) (data[0] + (data[1] << 8)));
+
+        lsm9ds1_read(addr, 0x2C, data, 2);
+        NRF_LOG_INFO("Got reading: 39 %d", (int16_t) (data[0] + (data[1] << 8)));
+
+        NRF_LOG_FLUSH();
+
+        nrf_delay_ms(100);
+    }
+
+    // for (int address = 1; address <= 127; address ++) {
+    //     uint8_t data;
+    //
+    //     if (nrf_drv_twi_rx(&twi, address, &data, sizeof(data)) == NRF_SUCCESS) {
+    //         NRF_LOG_INFO("!!!! Device found at address %d", address);
+    //     }
+    // }
+}
+
 /**@brief Application main function.
  */
 int main(void)
@@ -491,9 +577,14 @@ int main(void)
 
     // Start execution.
     NRF_LOG_INFO("Hello, world!");
-    
+
+    twi_init();
+    NRF_LOG_INFO("TWI successfullly initialized.");
+
+    lsm9ds1_test();
+
     int ret = sd_ble_gap_scan_start(&scan_params, &scan_buffer);
-    APP_ERROR_CHECK(ret);    
+    APP_ERROR_CHECK(ret);
 
     // Enter main loop.
     for (;;)
