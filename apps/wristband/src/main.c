@@ -479,8 +479,8 @@ static const nrf_drv_twi_t twi = NRF_DRV_TWI_INSTANCE(0);
 static void twi_init()
 {
     const nrf_drv_twi_config_t config = {
-        .scl                = 6,
-        .sda                = 5,
+        .scl                = 8,
+        .sda                = 7,
         .frequency          = NRF_DRV_TWI_FREQ_100K,
         .interrupt_priority = APP_IRQ_PRIORITY_HIGH,
         .clear_bus_init     = false
