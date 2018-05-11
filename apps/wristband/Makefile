@@ -5,6 +5,8 @@ OUTPUT_DIRECTORY := build
 PRETTY           := 1
 
 SDK_ROOT := ../../sdk
+MESH_SDK_ROOT := ../../mesh_sdk
+
 PROJ_DIR := .
 SRC_DIR := $(PROJ_DIR)/src
 SUPPORT_DIR := $(PROJ_DIR)/support
@@ -76,6 +78,20 @@ SRC_FILES += \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh.c \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh_ble.c \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh_soc.c \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/core/src/*.c) \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/bearer/src/*.c) \
+  $(filter-out $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov_bearer_gatt.c, \
+    $(wildcard $(MESH_SDK_ROOT)/mesh/prov/src/*.c)) \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/access/src/*.c) \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/dfu/src/*.c) \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/stack/src/*.c) \
+  $(MESH_SDK_ROOT)/models/config/src/config_server.c \
+  $(MESH_SDK_ROOT)/models/config/src/composition_data.c \
+  $(MESH_SDK_ROOT)/models/config/src/packed_index_list.c \
+  $(MESH_SDK_ROOT)/models/health/src/health_server.c \
+  $(MESH_SDK_ROOT)/external/micro-ecc/uECC.c \
+  $(MESH_SDK_ROOT)/examples/common/src/assertion_handler_weak.c \
+  $(MESH_SDK_ROOT)/examples/common/src/mesh_provisionee.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -213,6 +229,21 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/nfc/t2t_lib/hal_t2t \
   $(SDK_ROOT)/components/nfc/ndef/conn_hand_parser/ac_rec_parser \
   $(SDK_ROOT)/components/ble/ble_services/ble_hrs \
+  $(MESH_SDK_ROOT)/mesh/core/api \
+  $(MESH_SDK_ROOT)/mesh/core/include \
+  $(MESH_SDK_ROOT)/mesh/bearer/api \
+  $(MESH_SDK_ROOT)/mesh/bearer/include \
+  $(MESH_SDK_ROOT)/mesh/prov/api \
+  $(MESH_SDK_ROOT)/mesh/prov/include \
+  $(MESH_SDK_ROOT)/mesh/access/api \
+  $(MESH_SDK_ROOT)/mesh/access/include \
+  $(MESH_SDK_ROOT)/mesh/dfu/api \
+  $(MESH_SDK_ROOT)/mesh/dfu/include \
+  $(MESH_SDK_ROOT)/mesh/stack/api \
+  $(MESH_SDK_ROOT)/models/config/include \
+  $(MESH_SDK_ROOT)/models/health/include \
+  $(MESH_SDK_ROOT)/external/micro-ecc \
+  $(MESH_SDK_ROOT)/examples/common/include \
 
 # Libraries common to all targets
 LIB_FILES += \
@@ -228,6 +259,9 @@ CFLAGS += -DBOARD_CUSTOM
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
 CFLAGS += -DFLOAT_ABI_HARD
 CFLAGS += -DNRF52
+CFLAGS += -DNRF52_SERIES
+CFLAGS += -DNRF_MESH_LOG_ENABLE=NRF_LOG_USES_RTT
+CFLAGS += -DCONFIG_APP_IN_CORE
 CFLAGS += -DNRF52832_XXAA
 CFLAGS += -DNRF52_PAN_74
 CFLAGS += -DNRF_SD_BLE_API_VERSION=6
