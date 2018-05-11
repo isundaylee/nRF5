@@ -42,8 +42,6 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/balloc/nrf_balloc.c \
   $(SDK_ROOT)/external/fprintf/nrf_fprintf.c \
   $(SDK_ROOT)/external/fprintf/nrf_fprintf_format.c \
-  $(SDK_ROOT)/components/libraries/fstorage/nrf_fstorage.c \
-  $(SDK_ROOT)/components/libraries/fstorage/nrf_fstorage_sd.c \
   $(SDK_ROOT)/components/libraries/experimental_memobj/nrf_memobj.c \
   $(SDK_ROOT)/components/libraries/pwr_mgmt/nrf_pwr_mgmt.c \
   $(SDK_ROOT)/components/libraries/experimental_section_vars/nrf_section_iter.c \
@@ -51,9 +49,6 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/uart/retarget.c \
   $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52.c \
   $(SDK_ROOT)/components/boards/boards.c \
-  $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_clock.c \
-  $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_twi.c \
-  $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_uart.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_clock.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_gpiote.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_power_clock.c \
@@ -66,18 +61,6 @@ SRC_FILES += \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c \
-  $(SDK_ROOT)/components/ble/common/ble_advdata.c \
-  $(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c \
-  $(SDK_ROOT)/components/ble/common/ble_conn_params.c \
-  $(SDK_ROOT)/components/ble/common/ble_conn_state.c \
-  $(SDK_ROOT)/components/ble/ble_link_ctx_manager/ble_link_ctx_manager.c \
-  $(SDK_ROOT)/components/ble/common/ble_srv_common.c \
-  $(SDK_ROOT)/components/ble/nrf_ble_gatt/nrf_ble_gatt.c \
-  $(SDK_ROOT)/components/ble/nrf_ble_qwr/nrf_ble_qwr.c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c \
-  $(SDK_ROOT)/components/softdevice/common/nrf_sdh.c \
-  $(SDK_ROOT)/components/softdevice/common/nrf_sdh_ble.c \
-  $(SDK_ROOT)/components/softdevice/common/nrf_sdh_soc.c \
   $(wildcard $(MESH_SDK_ROOT)/mesh/core/src/*.c) \
   $(wildcard $(MESH_SDK_ROOT)/mesh/bearer/src/*.c) \
   $(filter-out $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov_bearer_gatt.c, \
@@ -92,6 +75,7 @@ SRC_FILES += \
   $(MESH_SDK_ROOT)/external/micro-ecc/uECC.c \
   $(MESH_SDK_ROOT)/examples/common/src/assertion_handler_weak.c \
   $(MESH_SDK_ROOT)/examples/common/src/mesh_provisionee.c \
+  $(MESH_SDK_ROOT)/examples/common/src/mesh_softdevice_init.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \

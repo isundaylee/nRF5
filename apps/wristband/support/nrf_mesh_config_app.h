@@ -93,7 +93,7 @@
  * @warning If the application is to support multiple _instances_ of the _same_ model, they cannot
  * belong in the same element and a separate element is needed for the new instance.
  */
-#define ACCESS_ELEMENT_COUNT (2)
+#define ACCESS_ELEMENT_COUNT (1)
 
 /**
  * The number of allocated subscription lists for the application.
