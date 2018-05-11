@@ -19,6 +19,7 @@ $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
 SRC_FILES += \
   $(SRC_DIR)/main.c \
   $(SRC_DIR)/lsm9ds1.c \
+  $(SRC_DIR)/custom_log.c \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_serial.c \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_rtt.c \
@@ -244,7 +245,8 @@ CFLAGS += -DCONFIG_GPIO_AS_PINRESET
 CFLAGS += -DFLOAT_ABI_HARD
 CFLAGS += -DNRF52
 CFLAGS += -DNRF52_SERIES
-CFLAGS += -DNRF_MESH_LOG_ENABLE=NRF_LOG_USES_RTT
+CFLAGS += -DNRF_MESH_LOG_ENABLE=1
+CFLAGS += -DLOG_ENABLE_RTT=1
 CFLAGS += -DCONFIG_APP_IN_CORE
 CFLAGS += -DNRF52832_XXAA
 CFLAGS += -DNRF52_PAN_74
@@ -255,6 +257,7 @@ CFLAGS += -DSWI_DISABLE0
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs
 CFLAGS += -Wall -Werror
+CFLAGS += -Wno-format
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in a separate section, this allows linker to discard unused ones
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
