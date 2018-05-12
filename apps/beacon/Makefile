@@ -5,6 +5,8 @@ OUTPUT_DIRECTORY := build
 PRETTY           := 1
 
 SDK_ROOT := ../../sdk
+MESH_SDK_ROOT := ../../mesh_sdk
+
 PROJ_DIR := .
 SRC_DIR := $(PROJ_DIR)/src
 SUPPORT_DIR := $(PROJ_DIR)/support
@@ -16,9 +18,11 @@ $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
 # Source files common to all targets
 SRC_FILES += \
   $(SRC_DIR)/main.c \
+  $(SRC_DIR)/lsm9ds1.c \
+  $(SRC_DIR)/custom_log.c \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
-  $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_uart.c \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_serial.c \
+  $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_rtt.c \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_default_backends.c \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_frontend.c \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_str_formatter.c \
@@ -39,8 +43,6 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/balloc/nrf_balloc.c \
   $(SDK_ROOT)/external/fprintf/nrf_fprintf.c \
   $(SDK_ROOT)/external/fprintf/nrf_fprintf_format.c \
-  $(SDK_ROOT)/components/libraries/fstorage/nrf_fstorage.c \
-  $(SDK_ROOT)/components/libraries/fstorage/nrf_fstorage_sd.c \
   $(SDK_ROOT)/components/libraries/experimental_memobj/nrf_memobj.c \
   $(SDK_ROOT)/components/libraries/pwr_mgmt/nrf_pwr_mgmt.c \
   $(SDK_ROOT)/components/libraries/experimental_section_vars/nrf_section_iter.c \
@@ -48,12 +50,11 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/uart/retarget.c \
   $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52.c \
   $(SDK_ROOT)/components/boards/boards.c \
-  $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_clock.c \
-  $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_uart.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_clock.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_gpiote.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_power_clock.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/prs/nrfx_prs.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_twi.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uart.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uarte.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp.c \
@@ -61,18 +62,21 @@ SRC_FILES += \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c \
-  $(SDK_ROOT)/components/ble/common/ble_advdata.c \
-  $(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c \
-  $(SDK_ROOT)/components/ble/common/ble_conn_params.c \
-  $(SDK_ROOT)/components/ble/common/ble_conn_state.c \
-  $(SDK_ROOT)/components/ble/ble_link_ctx_manager/ble_link_ctx_manager.c \
-  $(SDK_ROOT)/components/ble/common/ble_srv_common.c \
-  $(SDK_ROOT)/components/ble/nrf_ble_gatt/nrf_ble_gatt.c \
-  $(SDK_ROOT)/components/ble/nrf_ble_qwr/nrf_ble_qwr.c \
-  $(SDK_ROOT)/components/ble/ble_services/ble_nus/ble_nus.c \
-  $(SDK_ROOT)/components/softdevice/common/nrf_sdh.c \
-  $(SDK_ROOT)/components/softdevice/common/nrf_sdh_ble.c \
-  $(SDK_ROOT)/components/softdevice/common/nrf_sdh_soc.c \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/core/src/*.c) \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/bearer/src/*.c) \
+  $(filter-out $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov_bearer_gatt.c, \
+    $(wildcard $(MESH_SDK_ROOT)/mesh/prov/src/*.c)) \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/access/src/*.c) \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/dfu/src/*.c) \
+  $(wildcard $(MESH_SDK_ROOT)/mesh/stack/src/*.c) \
+  $(MESH_SDK_ROOT)/models/config/src/config_server.c \
+  $(MESH_SDK_ROOT)/models/config/src/composition_data.c \
+  $(MESH_SDK_ROOT)/models/config/src/packed_index_list.c \
+  $(MESH_SDK_ROOT)/models/health/src/health_server.c \
+  $(MESH_SDK_ROOT)/external/micro-ecc/uECC.c \
+  $(MESH_SDK_ROOT)/examples/common/src/assertion_handler_weak.c \
+  $(MESH_SDK_ROOT)/examples/common/src/mesh_provisionee.c \
+  $(MESH_SDK_ROOT)/examples/common/src/mesh_softdevice_init.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -210,6 +214,21 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/nfc/t2t_lib/hal_t2t \
   $(SDK_ROOT)/components/nfc/ndef/conn_hand_parser/ac_rec_parser \
   $(SDK_ROOT)/components/ble/ble_services/ble_hrs \
+  $(MESH_SDK_ROOT)/mesh/core/api \
+  $(MESH_SDK_ROOT)/mesh/core/include \
+  $(MESH_SDK_ROOT)/mesh/bearer/api \
+  $(MESH_SDK_ROOT)/mesh/bearer/include \
+  $(MESH_SDK_ROOT)/mesh/prov/api \
+  $(MESH_SDK_ROOT)/mesh/prov/include \
+  $(MESH_SDK_ROOT)/mesh/access/api \
+  $(MESH_SDK_ROOT)/mesh/access/include \
+  $(MESH_SDK_ROOT)/mesh/dfu/api \
+  $(MESH_SDK_ROOT)/mesh/dfu/include \
+  $(MESH_SDK_ROOT)/mesh/stack/api \
+  $(MESH_SDK_ROOT)/models/config/include \
+  $(MESH_SDK_ROOT)/models/health/include \
+  $(MESH_SDK_ROOT)/external/micro-ecc \
+  $(MESH_SDK_ROOT)/examples/common/include \
 
 # Libraries common to all targets
 LIB_FILES += \
@@ -225,6 +244,10 @@ CFLAGS += -DBOARD_CUSTOM
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
 CFLAGS += -DFLOAT_ABI_HARD
 CFLAGS += -DNRF52
+CFLAGS += -DNRF52_SERIES
+CFLAGS += -DNRF_MESH_LOG_ENABLE=1
+CFLAGS += -DLOG_ENABLE_RTT=1
+CFLAGS += -DCONFIG_APP_IN_CORE
 CFLAGS += -DNRF52832_XXAA
 CFLAGS += -DNRF52_PAN_74
 CFLAGS += -DNRF_SD_BLE_API_VERSION=6
@@ -234,6 +257,7 @@ CFLAGS += -DSWI_DISABLE0
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs
 CFLAGS += -Wall -Werror
+CFLAGS += -Wno-format
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in a separate section, this allows linker to discard unused ones
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
@@ -314,6 +338,9 @@ flash_softdevice:
 
 erase:
 	../../tools/nrfjprog/nrfjprog -f nrf52 --eraseall
+
+clear_config: erase flash_softdevice flash
+	echo "Config cleared!"
 
 SDK_CONFIG_FILE := $(SUPPORT_DIR)/sdk_config.h
 CMSIS_CONFIG_TOOL := $(SDK_ROOT)/external_tools/cmsisconfig/CMSIS_Configuration_Wizard.jar
