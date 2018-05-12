@@ -21,6 +21,7 @@ SRC_FILES += \
   $(SRC_DIR)/lsm9ds1.c \
   $(SRC_DIR)/custom_log.c \
   $(SRC_DIR)/provisioner.c \
+  $(SRC_DIR)/configurator.c \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_serial.c \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_rtt.c \
@@ -71,6 +72,7 @@ SRC_FILES += \
   $(wildcard $(MESH_SDK_ROOT)/mesh/dfu/src/*.c) \
   $(wildcard $(MESH_SDK_ROOT)/mesh/stack/src/*.c) \
   $(MESH_SDK_ROOT)/models/config/src/config_server.c \
+  $(MESH_SDK_ROOT)/models/config/src/config_client.c \
   $(MESH_SDK_ROOT)/models/config/src/composition_data.c \
   $(MESH_SDK_ROOT)/models/config/src/packed_index_list.c \
   $(MESH_SDK_ROOT)/models/health/src/health_server.c \
@@ -241,6 +243,7 @@ OPT = -O3 -g3
 
 # C flags common to all targets
 CFLAGS += $(OPT)
+CFLAGS += -DDEBUG
 CFLAGS += -DBOARD_CUSTOM
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
 CFLAGS += -DFLOAT_ABI_HARD

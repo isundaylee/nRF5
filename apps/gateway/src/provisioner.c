@@ -9,13 +9,15 @@
 
 #include "rand.h"
 
+#include "configurator.h"
 #include "custom_log.h"
 
 typedef enum {
   PROV_STATE_IDLE,
   PROV_STATE_WAIT,
   PROV_STATE_COMPLETE,
-  PROV_STATE_PROV
+  PROV_STATE_PROV,
+  PROV_STATE_CONFIG,
 } prov_state_t;
 
 typedef struct {
@@ -37,6 +39,8 @@ typedef struct {
 
 prov_t prov;
 
+void prov_config_node(uint16_t addr) {}
+
 uint16_t prov_find_usable_addr() {
   for (int i = 2; i < 16; i++) {
     dsm_handle_t handle;
@@ -51,24 +55,6 @@ uint16_t prov_find_usable_addr() {
   return 0xFFFF;
 }
 
-void prov_start_device(uint8_t const uuid[16]) {
-  uint16_t device_addr = prov_find_usable_addr();
-
-  LOG_INFO("Starting to provision a device. Handing out address %d.",
-           device_addr);
-
-  nrf_mesh_prov_provisioning_data_t prov_data = {.netkey_index = 0,
-                                                 .iv_index = 0,
-                                                 .address = device_addr,
-                                                 .flags.iv_update = false,
-                                                 .flags.key_refresh = false};
-  memcpy(prov_data.netkey, prov.netkey, NRF_MESH_KEY_SIZE);
-
-  APP_ERROR_CHECK(nrf_mesh_prov_provision(&prov.ctx, uuid, &prov_data,
-                                          NRF_MESH_PROV_BEARER_ADV));
-  prov.state = PROV_STATE_PROV;
-}
-
 void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
   switch (evt->type) {
   case NRF_MESH_PROV_EVT_UNPROVISIONED_RECEIVED: // 0
@@ -76,7 +62,23 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
     LOG_INFO("Detected unprovisioned device.");
 
     if (prov.state == PROV_STATE_WAIT) {
-      prov_start_device(evt->params.unprov.device_uuid);
+      uint16_t device_addr = prov_find_usable_addr();
+
+      LOG_INFO("Starting to provision a device. Handing out address %d.",
+               device_addr);
+
+      nrf_mesh_prov_provisioning_data_t prov_data = {.netkey_index = 0,
+                                                     .iv_index = 0,
+                                                     .address = device_addr,
+                                                     .flags.iv_update = false,
+                                                     .flags.key_refresh =
+                                                         false};
+      memcpy(prov_data.netkey, prov.netkey, NRF_MESH_KEY_SIZE);
+
+      APP_ERROR_CHECK(
+          nrf_mesh_prov_provision(&prov.ctx, evt->params.unprov.device_uuid,
+                                  &prov_data, NRF_MESH_PROV_BEARER_ADV));
+      prov.state = PROV_STATE_PROV;
     }
 
     break;
@@ -87,11 +89,15 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
     if (prov.state == PROV_STATE_PROV) {
       LOG_INFO("Provisioning failed. Code: %d.",
                evt->params.link_closed.close_reason);
+      prov.state = PROV_STATE_WAIT;
     } else if (prov.state == PROV_STATE_COMPLETE) {
       LOG_INFO("Provisioning complete. ");
+      prov.state = PROV_STATE_CONFIG;
+
+      conf_start(evt->params.link_closed.p_context->data.address, prov.appkey,
+                 0);
     }
 
-    prov.state = PROV_STATE_WAIT;
     break;
   }
 
@@ -203,6 +209,8 @@ void prov_init() {
   } else {
     prov_self_provision();
   }
+
+  conf_init();
 
   LOG_INFO("Provisioning initialized.");
 }
