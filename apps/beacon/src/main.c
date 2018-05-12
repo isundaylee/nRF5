@@ -4,6 +4,7 @@
 #include "nrf_gpio.h"
 
 #include "mesh_app_utils.h"
+#include "mesh_provisionee.h"
 #include "mesh_softdevice_init.h"
 #include "mesh_stack.h"
 
@@ -49,6 +50,10 @@ static void packet_rx_cb(nrf_mesh_adv_packet_rx_data_t const *packet) {
   // packet->p_metadata->params.scanner.rssi);
 }
 
+static void provision_complete_cb(void) {
+  LOG_INFO("We have been successfully provisioned! ");
+}
+
 static void init_mesh() {
   // Initialize the softdevice
   nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
@@ -74,6 +79,26 @@ static void init_mesh() {
 static void start() {
   APP_ERROR_CHECK(mesh_stack_start());
   LOG_INFO("Mesh stack started.");
+
+  if (!mesh_stack_is_device_provisioned()) {
+    const uint8_t static_data[] = {0x6E, 0x6F, 0x72, 0x64, 0x69, 0x63,
+                                   0x5F, 0x65, 0x78, 0x61, 0x6D, 0x70,
+                                   0x6C, 0x65, 0x5F, 0x31};
+    mesh_provisionee_start_params_t prov_start_params = {
+        .p_static_data = static_data,
+        .prov_complete_cb = provision_complete_cb,
+    };
+    APP_ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
+
+    LOG_INFO("Provisioning initiated. ");
+  } else {
+    LOG_INFO("We have already been provisioned. ");
+    LOG_INFO("Will clear all config and reset in 1s. ");
+
+    mesh_stack_config_clear();
+    nrf_delay_ms(1000);
+    mesh_stack_device_reset();
+  }
 }
 
 int main(void) {
