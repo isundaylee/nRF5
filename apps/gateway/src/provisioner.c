@@ -273,7 +273,8 @@ void prov_init() {
     prov_self_provision();
   }
 
-  conf_init(prov.appkey, prov_conf_success_cb, prov_conf_failure_cb);
+  conf_init(prov.appkey, prov.appkey_handle, prov_conf_success_cb,
+            prov_conf_failure_cb);
 
   LOG_INFO("Provisioning initialized.");
 }

@@ -2,9 +2,11 @@
 
 #include <stdlib.h>
 
+#include "access_config.h"
 #include "access_status.h"
 #include "config_client.h"
 #include "device_state_manager.h"
+#include "health_client.h"
 #include "health_common.h"
 
 #include "custom_log.h"
@@ -40,6 +42,8 @@ typedef struct {
   uint32_t expected_n;
   uint8_t const *expected_list;
 
+  health_client_t health_client;
+
   bool status_checked;
 } conf_t;
 
@@ -55,8 +59,16 @@ void conf_execute_step();
 void conf_evt_handler(config_client_event_type_t evt_type,
                       const config_client_event_t *evt, uint16_t length);
 
-void conf_init(uint8_t const *appkey, conf_success_cb_t success_cb,
-               conf_failure_cb_t failure_cb) {
+void conf_health_client_evt_handler(health_client_t const *client,
+                                    health_client_evt_t const *event) {
+  LOG_INFO("Received health client event of type %d", event->type);
+  LOG_INFO("Active fault count: %d. RSSI: %d. ",
+           event->data.fault_status.fault_array_length,
+           event->p_meta_data->p_core_metadata->params.scanner.rssi);
+}
+
+void conf_init(uint8_t const *appkey, dsm_handle_t appkey_handle,
+               conf_success_cb_t success_cb, conf_failure_cb_t failure_cb) {
   conf.state = CONF_STATE_IDLE;
   memcpy(conf.appkey, appkey, NRF_MESH_KEY_SIZE);
 
@@ -64,6 +76,13 @@ void conf_init(uint8_t const *appkey, conf_success_cb_t success_cb,
   conf.failure_cb = failure_cb;
 
   APP_ERROR_CHECK(config_client_init(conf_evt_handler));
+
+  APP_ERROR_CHECK(health_client_init(&conf.health_client, 0,
+                                     conf_health_client_evt_handler));
+  APP_ERROR_CHECK(access_model_application_bind(conf.health_client.model_handle,
+                                                appkey_handle));
+  APP_ERROR_CHECK(access_model_publish_application_set(
+      conf.health_client.model_handle, appkey_handle));
 }
 
 conf_check_result_t conf_check_status(uint32_t opcode,
