@@ -12,4 +12,6 @@ typedef struct {
   dsm_handle_t netkey_handle;
   dsm_handle_t devkey_handle;
   dsm_handle_t appkey_handle;
+
+  dsm_handle_t beacon_addr_handle;
 } app_state_t;

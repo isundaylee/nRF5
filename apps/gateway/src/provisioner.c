@@ -9,6 +9,7 @@
 
 #include "rand.h"
 
+#include "app_config.h"
 #include "configurator.h"
 #include "custom_log.h"
 
@@ -172,6 +173,9 @@ void prov_self_provision() {
                                  prov.app_state->devkey,
                                  &prov.app_state->devkey_handle));
 
+  APP_ERROR_CHECK(dsm_address_subscription_add(
+      APP_BEACON_PUBLISH_ADDRESS, &prov.app_state->beacon_addr_handle));
+
   LOG_INFO("Self-provisioning finished. ");
   LOG_INFO(
       "prov.app_state->netkey_handle = %d, prov.app_state->appkey_handle = %d, "
@@ -195,6 +199,13 @@ void prov_restore() {
   dsm_local_unicast_addresses_get(&local_addr);
   APP_ERROR_CHECK(dsm_devkey_handle_get(local_addr.address_start,
                                         &prov.app_state->devkey_handle));
+
+  nrf_mesh_address_t addr = {
+      .type = NRF_MESH_ADDRESS_TYPE_GROUP,
+      .value = APP_BEACON_PUBLISH_ADDRESS,
+  };
+  APP_ERROR_CHECK(
+      dsm_address_handle_get(&addr, &prov.app_state->beacon_addr_handle));
 
   LOG_INFO("Restoring finished. ");
   LOG_INFO(
