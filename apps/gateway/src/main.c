@@ -85,14 +85,13 @@ static void init_mesh() {
                                                .p_next = NULL};
   nrf_mesh_evt_handler_add(&evt_handler_params);
 
+  // Print out the device MAC address
   ble_gap_addr_t addr;
   APP_ERROR_CHECK(sd_ble_gap_addr_get(&addr));
 
   LOG_INFO("Device address is %2x:%2x:%2x:%2x:%2x:%2x", addr.addr[0],
            addr.addr[1], addr.addr[2], addr.addr[3], addr.addr[4],
            addr.addr[5]);
-
-  LOG_INFO("IV index is: %d", net_state_tx_iv_index_get());
 }
 
 static void start() {

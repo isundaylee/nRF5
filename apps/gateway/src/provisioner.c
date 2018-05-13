@@ -210,6 +210,16 @@ void prov_restore() {
            prov.netkey_handle, prov.appkey_handle, prov.devkey_handle);
 }
 
+void prov_conf_success_cb() {
+  LOG_INFO("Provisioner is ready for the next device. ");
+  prov.state = PROV_STATE_WAIT;
+}
+
+void prov_conf_failure_cb() {
+  LOG_INFO("Provisioner has failed to config the current device. ");
+  prov.state = PROV_STATE_WAIT;
+}
+
 void prov_init() {
   nrf_mesh_prov_oob_caps_t caps =
       NRF_MESH_PROV_OOB_CAPS_DEFAULT(ACCESS_ELEMENT_COUNT);
@@ -263,7 +273,7 @@ void prov_init() {
     prov_self_provision();
   }
 
-  conf_init(prov.appkey);
+  conf_init(prov.appkey, prov_conf_success_cb, prov_conf_failure_cb);
 
   LOG_INFO("Provisioning initialized.");
 }

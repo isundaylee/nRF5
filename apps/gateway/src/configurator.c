@@ -30,6 +30,9 @@ typedef struct {
 
   uint16_t node_addr;
 
+  conf_success_cb_t success_cb;
+  conf_failure_cb_t failure_cb;
+
   conf_step_t *steps;
   conf_step_t *current_step;
 
@@ -49,10 +52,18 @@ typedef enum {
 conf_t conf;
 
 void conf_execute_step();
+void conf_evt_handler(config_client_event_type_t evt_type,
+                      const config_client_event_t *evt, uint16_t length);
 
-void conf_init(uint8_t const *appkey) {
+void conf_init(uint8_t const *appkey, conf_success_cb_t success_cb,
+               conf_failure_cb_t failure_cb) {
   conf.state = CONF_STATE_IDLE;
   memcpy(conf.appkey, appkey, NRF_MESH_KEY_SIZE);
+
+  conf.success_cb = success_cb;
+  conf.failure_cb = failure_cb;
+
+  APP_ERROR_CHECK(config_client_init(conf_evt_handler));
 }
 
 conf_check_result_t conf_check_status(uint32_t opcode,
@@ -99,9 +110,9 @@ conf_check_result_t conf_check_status(uint32_t opcode,
   return CONF_CHECK_RESULT_FAIL;
 }
 
-void conf_evt_handler(config_client_event_type_t event_type,
-                      const config_client_event_t *p_event, uint16_t length) {
-  switch (event_type) {
+void conf_evt_handler(config_client_event_type_t evt_type,
+                      const config_client_event_t *evt, uint16_t length) {
+  switch (evt_type) {
   case CONFIG_CLIENT_EVENT_TYPE_TIMEOUT: //
   {
     LOG_INFO("Received config timeout message. ");
@@ -114,20 +125,19 @@ void conf_evt_handler(config_client_event_type_t event_type,
       break;
     }
 
-    conf_check_result_t result =
-        conf_check_status(p_event->opcode, p_event->p_msg);
+    conf_check_result_t result = conf_check_status(evt->opcode, evt->p_msg);
 
     if (result == CONF_CHECK_RESULT_PASS) {
       conf.current_step++;
       if (*conf.current_step == CONF_DONE) {
-        LOG_INFO("Configuration succeeded for node %d! ", conf.node_addr);
-        // TODO: callback
+        conf.success_cb();
+        conf.state = CONF_STATE_IDLE;
       } else {
         conf_execute_step();
       }
     } else if (result == CONF_CHECK_RESULT_FAIL) {
-      // TODO: callback
-      APP_ERROR_CHECK(NRF_ERROR_NOT_FOUND);
+      conf.failure_cb();
+      conf.state = CONF_STATE_IDLE;
     }
 
     break;
@@ -136,7 +146,7 @@ void conf_evt_handler(config_client_event_type_t event_type,
   default:
     LOG_INFO(
         "Received unexpected config client event with type %d and length %d",
-        event_type, length);
+        evt_type, length);
 
     break;
   }
@@ -244,8 +254,6 @@ void conf_start(uint16_t node_addr, uint8_t const *appkey,
 
   APP_ERROR_CHECK(dsm_address_handle_get(&addr, &addr_handle));
   APP_ERROR_CHECK(dsm_devkey_handle_get(addr.value, &devkey_handle));
-
-  APP_ERROR_CHECK(config_client_init(conf_evt_handler));
 
   APP_ERROR_CHECK(config_client_server_bind(devkey_handle));
   APP_ERROR_CHECK(config_client_server_set(devkey_handle, addr_handle));
