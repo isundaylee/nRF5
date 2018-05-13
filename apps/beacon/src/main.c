@@ -37,7 +37,9 @@ static void init_logging() {
   LOG_INFO("Hello, world!");
 }
 
-static void config_server_evt_cb(config_server_evt_t const *evt) {}
+static void config_server_evt_cb(config_server_evt_t const *evt) {
+  LOG_INFO("Received config server event. ");
+}
 
 /**
  * The callback function for incoming packets (seems like all Bluetooth Mesh
@@ -74,6 +76,13 @@ static void init_mesh() {
   // Set the packet RX callback
   nrf_mesh_rx_cb_set(packet_rx_cb);
   LOG_INFO("Packet RX callback set.");
+
+  ble_gap_addr_t addr;
+  APP_ERROR_CHECK(sd_ble_gap_addr_get(&addr));
+
+  LOG_INFO("Device address is %2x:%2x:%2x:%2x:%2x:%2x", addr.addr[0],
+           addr.addr[1], addr.addr[2], addr.addr[3], addr.addr[4],
+           addr.addr[5]);
 }
 
 static void start() {

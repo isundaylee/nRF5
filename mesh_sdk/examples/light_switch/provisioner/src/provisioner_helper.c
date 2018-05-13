@@ -338,4 +338,3 @@ uint32_t prov_helper_element_count_get(void)
 {
     return m_prov_ctx.capabilities.num_elements;
 }
-

@@ -7,6 +7,10 @@
 #include "mesh_softdevice_init.h"
 #include "mesh_stack.h"
 
+#include "nrf_mesh_events.h"
+
+#include "net_state.h"
+
 #include "custom_log.h"
 #include "provisioner.h"
 
@@ -50,6 +54,10 @@ static void packet_rx_cb(nrf_mesh_adv_packet_rx_data_t const *packet) {
   // packet->p_metadata->params.scanner.rssi);
 }
 
+static void mesh_evt_cb(nrf_mesh_evt_t const *evt) {
+  // LOG_INFO("Got Mesh event with type: %d", evt->type);
+}
+
 static void init_mesh() {
   // Initialize the softdevice
   nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
@@ -72,6 +80,19 @@ static void init_mesh() {
   // Set the packet RX callback
   nrf_mesh_rx_cb_set(packet_rx_cb);
   LOG_INFO("Packet RX callback set.");
+
+  nrf_mesh_evt_handler_t evt_handler_params = {.evt_cb = mesh_evt_cb,
+                                               .p_next = NULL};
+  nrf_mesh_evt_handler_add(&evt_handler_params);
+
+  ble_gap_addr_t addr;
+  APP_ERROR_CHECK(sd_ble_gap_addr_get(&addr));
+
+  LOG_INFO("Device address is %2x:%2x:%2x:%2x:%2x:%2x", addr.addr[0],
+           addr.addr[1], addr.addr[2], addr.addr[3], addr.addr[4],
+           addr.addr[5]);
+
+  LOG_INFO("IV index is: %d", net_state_tx_iv_index_get());
 }
 
 static void start() {
