@@ -29,13 +29,7 @@ typedef struct {
   uint8_t public_key[NRF_MESH_PROV_PUBKEY_SIZE];
   uint8_t private_key[NRF_MESH_PROV_PRIVKEY_SIZE];
 
-  uint8_t netkey[NRF_MESH_KEY_SIZE];
-  uint8_t appkey[NRF_MESH_KEY_SIZE];
-  uint8_t devkey[NRF_MESH_KEY_SIZE];
-
-  dsm_handle_t netkey_handle;
-  dsm_handle_t devkey_handle;
-  dsm_handle_t appkey_handle;
+  app_state_t *app_state;
 } prov_t;
 
 prov_t prov;
@@ -74,7 +68,7 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
                                                      .flags.iv_update = false,
                                                      .flags.key_refresh =
                                                          false};
-      memcpy(prov_data.netkey, prov.netkey, NRF_MESH_KEY_SIZE);
+      memcpy(prov_data.netkey, prov.app_state->netkey, NRF_MESH_KEY_SIZE);
 
       APP_ERROR_CHECK(
           nrf_mesh_prov_provision(&prov.ctx, evt->params.unprov.device_uuid,
@@ -95,8 +89,8 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
       LOG_INFO("Provisioning complete. ");
       prov.state = PROV_STATE_CONFIG;
 
-      conf_start(evt->params.link_closed.p_context->data.address, prov.appkey,
-                 0);
+      conf_start(evt->params.link_closed.p_context->data.address,
+                 prov.app_state->appkey, 0);
     }
 
     break;
@@ -144,9 +138,10 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
 
     APP_ERROR_CHECK(dsm_address_publish_add(
         evt->params.complete.p_prov_data->address, &addr_handle));
-    APP_ERROR_CHECK(dsm_devkey_add(
-        evt->params.complete.p_prov_data->address, prov.netkey_handle,
-        evt->params.complete.p_devkey, &devkey_handle));
+    APP_ERROR_CHECK(dsm_devkey_add(evt->params.complete.p_prov_data->address,
+                                   prov.app_state->netkey_handle,
+                                   evt->params.complete.p_devkey,
+                                   &devkey_handle));
 
     break;
   }
@@ -164,50 +159,49 @@ void prov_self_provision() {
   dsm_local_unicast_address_t local_address = {0x0001, ACCESS_ELEMENT_COUNT};
   APP_ERROR_CHECK(dsm_local_unicast_addresses_set(&local_address));
 
-  // rand_hw_rng_get(prov.netkey, NRF_MESH_KEY_SIZE);
-  // rand_hw_rng_get(prov.appkey, NRF_MESH_KEY_SIZE);
-  rand_hw_rng_get(prov.devkey, NRF_MESH_KEY_SIZE);
+  // rand_hw_rng_get(prov.app_state->netkey, NRF_MESH_KEY_SIZE);
+  // rand_hw_rng_get(prov.app_state->appkey, NRF_MESH_KEY_SIZE);
+  rand_hw_rng_get(prov.app_state->devkey, NRF_MESH_KEY_SIZE);
 
-  LOG_INFO("App key is: ");
-  LOG_INFO("%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:%"
-           "02x:%02x:%02x",
-           prov.appkey[0], prov.appkey[1], prov.appkey[2], prov.appkey[3],
-           prov.appkey[4], prov.appkey[5], prov.appkey[6], prov.appkey[7],
-           prov.appkey[8], prov.appkey[9], prov.appkey[10], prov.appkey[11],
-           prov.appkey[12], prov.appkey[13], prov.appkey[14], prov.appkey[15]);
-
-  APP_ERROR_CHECK(dsm_subnet_add(0, prov.netkey, &prov.netkey_handle));
-  APP_ERROR_CHECK(
-      dsm_appkey_add(0, prov.netkey_handle, prov.appkey, &prov.appkey_handle));
-  APP_ERROR_CHECK(dsm_devkey_add(0x0001, prov.netkey_handle, prov.devkey,
-                                 &prov.devkey_handle));
+  APP_ERROR_CHECK(dsm_subnet_add(0, prov.app_state->netkey,
+                                 &prov.app_state->netkey_handle));
+  APP_ERROR_CHECK(dsm_appkey_add(0, prov.app_state->netkey_handle,
+                                 prov.app_state->appkey,
+                                 &prov.app_state->appkey_handle));
+  APP_ERROR_CHECK(dsm_devkey_add(0x0001, prov.app_state->netkey_handle,
+                                 prov.app_state->devkey,
+                                 &prov.app_state->devkey_handle));
 
   LOG_INFO("Self-provisioning finished. ");
-  LOG_INFO("prov.netkey_handle = %d, prov.appkey_handle = %d, "
-           "prov.devkey_handle = %d",
-           prov.netkey_handle, prov.appkey_handle, prov.devkey_handle);
+  LOG_INFO(
+      "prov.app_state->netkey_handle = %d, prov.app_state->appkey_handle = %d, "
+      "prov.app_state->devkey_handle = %d",
+      prov.app_state->netkey_handle, prov.app_state->appkey_handle,
+      prov.app_state->devkey_handle);
 }
 
 void prov_restore() {
   LOG_INFO("Restoring handles. ");
 
   uint32_t count = 1;
-  APP_ERROR_CHECK(dsm_subnet_get_all(&prov.netkey_handle, &count));
+  APP_ERROR_CHECK(dsm_subnet_get_all(&prov.app_state->netkey_handle, &count));
   NRF_MESH_ASSERT(count == 1);
 
-  APP_ERROR_CHECK(
-      dsm_appkey_get_all(prov.netkey_handle, &prov.appkey_handle, &count));
+  APP_ERROR_CHECK(dsm_appkey_get_all(prov.app_state->netkey_handle,
+                                     &prov.app_state->appkey_handle, &count));
   NRF_MESH_ASSERT(count == 1);
 
   dsm_local_unicast_address_t local_addr;
   dsm_local_unicast_addresses_get(&local_addr);
-  APP_ERROR_CHECK(
-      dsm_devkey_handle_get(local_addr.address_start, &prov.devkey_handle));
+  APP_ERROR_CHECK(dsm_devkey_handle_get(local_addr.address_start,
+                                        &prov.app_state->devkey_handle));
 
   LOG_INFO("Restoring finished. ");
-  LOG_INFO("prov.netkey_handle = %d, prov.appkey_handle = %d, "
-           "prov.devkey_handle = %d",
-           prov.netkey_handle, prov.appkey_handle, prov.devkey_handle);
+  LOG_INFO(
+      "prov.app_state->netkey_handle = %d, prov.app_state->appkey_handle = %d, "
+      "prov.app_state->devkey_handle = %d",
+      prov.app_state->netkey_handle, prov.app_state->appkey_handle,
+      prov.app_state->devkey_handle);
 }
 
 void prov_conf_success_cb() {
@@ -220,11 +214,12 @@ void prov_conf_failure_cb() {
   prov.state = PROV_STATE_WAIT;
 }
 
-void prov_init() {
+void prov_init(app_state_t *app_state) {
   nrf_mesh_prov_oob_caps_t caps =
       NRF_MESH_PROV_OOB_CAPS_DEFAULT(ACCESS_ELEMENT_COUNT);
 
   prov.state = PROV_STATE_IDLE;
+  prov.app_state = app_state;
 
   APP_ERROR_CHECK(
       nrf_mesh_prov_generate_keys(prov.public_key, prov.private_key));
@@ -233,39 +228,39 @@ void prov_init() {
   APP_ERROR_CHECK(nrf_mesh_prov_bearer_add(
       &prov.ctx, nrf_mesh_prov_bearer_adv_interface_get(&prov.bearer)));
 
-  prov.netkey[0] = 0x30;
-  prov.netkey[1] = 0x6A;
-  prov.netkey[2] = 0xAA;
-  prov.netkey[3] = 0xCB;
-  prov.netkey[4] = 0x4A;
-  prov.netkey[5] = 0x66;
-  prov.netkey[6] = 0xC4;
-  prov.netkey[7] = 0x7A;
-  prov.netkey[8] = 0xAC;
-  prov.netkey[9] = 0x4A;
-  prov.netkey[10] = 0xEC;
-  prov.netkey[11] = 0xEE;
-  prov.netkey[12] = 0xBD;
-  prov.netkey[13] = 0x86;
-  prov.netkey[14] = 0x70;
-  prov.netkey[15] = 0x5F;
+  prov.app_state->netkey[0] = 0x30;
+  prov.app_state->netkey[1] = 0x6A;
+  prov.app_state->netkey[2] = 0xAA;
+  prov.app_state->netkey[3] = 0xCB;
+  prov.app_state->netkey[4] = 0x4A;
+  prov.app_state->netkey[5] = 0x66;
+  prov.app_state->netkey[6] = 0xC4;
+  prov.app_state->netkey[7] = 0x7A;
+  prov.app_state->netkey[8] = 0xAC;
+  prov.app_state->netkey[9] = 0x4A;
+  prov.app_state->netkey[10] = 0xEC;
+  prov.app_state->netkey[11] = 0xEE;
+  prov.app_state->netkey[12] = 0xBD;
+  prov.app_state->netkey[13] = 0x86;
+  prov.app_state->netkey[14] = 0x70;
+  prov.app_state->netkey[15] = 0x5F;
 
-  prov.appkey[0] = 0xA5;
-  prov.appkey[1] = 0x73;
-  prov.appkey[2] = 0x0D;
-  prov.appkey[3] = 0x76;
-  prov.appkey[4] = 0x9B;
-  prov.appkey[5] = 0x28;
-  prov.appkey[6] = 0x1F;
-  prov.appkey[7] = 0x7C;
-  prov.appkey[8] = 0x9C;
-  prov.appkey[9] = 0xDE;
-  prov.appkey[10] = 0x91;
-  prov.appkey[11] = 0x2F;
-  prov.appkey[12] = 0xAC;
-  prov.appkey[13] = 0x79;
-  prov.appkey[14] = 0x6E;
-  prov.appkey[15] = 0xDC;
+  prov.app_state->appkey[0] = 0xA5;
+  prov.app_state->appkey[1] = 0x73;
+  prov.app_state->appkey[2] = 0x0D;
+  prov.app_state->appkey[3] = 0x76;
+  prov.app_state->appkey[4] = 0x9B;
+  prov.app_state->appkey[5] = 0x28;
+  prov.app_state->appkey[6] = 0x1F;
+  prov.app_state->appkey[7] = 0x7C;
+  prov.app_state->appkey[8] = 0x9C;
+  prov.app_state->appkey[9] = 0xDE;
+  prov.app_state->appkey[10] = 0x91;
+  prov.app_state->appkey[11] = 0x2F;
+  prov.app_state->appkey[12] = 0xAC;
+  prov.app_state->appkey[13] = 0x79;
+  prov.app_state->appkey[14] = 0x6E;
+  prov.app_state->appkey[15] = 0xDC;
 
   if (mesh_stack_is_device_provisioned()) {
     prov_restore();
@@ -273,8 +268,7 @@ void prov_init() {
     prov_self_provision();
   }
 
-  conf_init(prov.appkey, prov.appkey_handle, prov_conf_success_cb,
-            prov_conf_failure_cb);
+  conf_init(prov.app_state, prov_conf_success_cb, prov_conf_failure_cb);
 
   LOG_INFO("Provisioning initialized.");
 }

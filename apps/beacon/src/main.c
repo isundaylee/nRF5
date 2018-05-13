@@ -10,8 +10,8 @@
 
 #include "custom_log.h"
 
-#define PIN_LED_ERROR 7
-#define PIN_LED_INDICATION 2
+#define PIN_LED_ERROR 27
+#define PIN_LED_INDICATION 28
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -39,6 +39,8 @@ static void init_logging() {
 
 static void config_server_evt_cb(config_server_evt_t const *evt) {
   LOG_INFO("Received config server event. ");
+
+  nrf_gpio_pin_set(PIN_LED_INDICATION);
 }
 
 /**
@@ -99,9 +101,14 @@ static void start() {
     };
     APP_ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
 
+    nrf_gpio_pin_clear(PIN_LED_INDICATION);
+
     LOG_INFO("Provisioning initiated. ");
   } else {
     LOG_INFO("We have already been provisioned. ");
+
+    nrf_gpio_pin_set(PIN_LED_INDICATION);
+
     LOG_INFO("Will clear all config and reset in 1s. ");
 
     mesh_stack_config_clear();

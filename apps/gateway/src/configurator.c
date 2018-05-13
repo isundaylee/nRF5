@@ -28,6 +28,8 @@ typedef enum {
 typedef struct {
   conf_state_t state;
 
+  app_state_t *app_state;
+
   uint8_t appkey[NRF_MESH_KEY_SIZE];
 
   uint16_t node_addr;
@@ -67,10 +69,11 @@ void conf_health_client_evt_handler(health_client_t const *client,
            event->p_meta_data->p_core_metadata->params.scanner.rssi);
 }
 
-void conf_init(uint8_t const *appkey, dsm_handle_t appkey_handle,
-               conf_success_cb_t success_cb, conf_failure_cb_t failure_cb) {
+void conf_init(app_state_t *app_state, conf_success_cb_t success_cb,
+               conf_failure_cb_t failure_cb) {
   conf.state = CONF_STATE_IDLE;
-  memcpy(conf.appkey, appkey, NRF_MESH_KEY_SIZE);
+  conf.app_state = app_state;
+  memcpy(conf.appkey, app_state->appkey, NRF_MESH_KEY_SIZE);
 
   conf.success_cb = success_cb;
   conf.failure_cb = failure_cb;
@@ -80,9 +83,9 @@ void conf_init(uint8_t const *appkey, dsm_handle_t appkey_handle,
   APP_ERROR_CHECK(health_client_init(&conf.health_client, 0,
                                      conf_health_client_evt_handler));
   APP_ERROR_CHECK(access_model_application_bind(conf.health_client.model_handle,
-                                                appkey_handle));
+                                                app_state->appkey_handle));
   APP_ERROR_CHECK(access_model_publish_application_set(
-      conf.health_client.model_handle, appkey_handle));
+      conf.health_client.model_handle, app_state->appkey_handle));
 }
 
 conf_check_result_t conf_check_status(uint32_t opcode,

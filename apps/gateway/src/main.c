@@ -14,8 +14,10 @@
 #include "custom_log.h"
 #include "provisioner.h"
 
-#define PIN_LED_ERROR 7
-#define PIN_LED_INDICATION 2
+#define PIN_LED_ERROR 27
+#define PIN_LED_INDICATION 28
+
+app_state_t app_state;
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -43,21 +45,6 @@ static void init_logging() {
 
 static void config_server_evt_cb(config_server_evt_t const *evt) {}
 
-/**
- * The callback function for incoming packets (seems like all Bluetooth Mesh
- * packets are in the format of Bluetooth advertisement packets -- hence the
- * parameter type).
- */
-static void packet_rx_cb(nrf_mesh_adv_packet_rx_data_t const *packet) {
-  // LOG_INFO("Received packet on channel %d with RSSI %d",
-  //          packet->p_metadata->params.scanner.channel,
-  // packet->p_metadata->params.scanner.rssi);
-}
-
-static void mesh_evt_cb(nrf_mesh_evt_t const *evt) {
-  // LOG_INFO("Got Mesh event with type: %d", evt->type);
-}
-
 static void init_mesh() {
   // Initialize the softdevice
   nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
@@ -76,14 +63,6 @@ static void init_mesh() {
   APP_ERROR_CHECK(mesh_stack_init(&mesh_init_params, &provisioned));
 
   LOG_INFO("Mesh stack initialized.");
-
-  // Set the packet RX callback
-  nrf_mesh_rx_cb_set(packet_rx_cb);
-  LOG_INFO("Packet RX callback set.");
-
-  nrf_mesh_evt_handler_t evt_handler_params = {.evt_cb = mesh_evt_cb,
-                                               .p_next = NULL};
-  nrf_mesh_evt_handler_add(&evt_handler_params);
 
   // Print out the device MAC address
   ble_gap_addr_t addr;
@@ -106,7 +85,7 @@ int main(void) {
   init_logging();
   init_mesh();
 
-  prov_init();
+  prov_init(&app_state);
 
   execution_start(start);
 
