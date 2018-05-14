@@ -69,6 +69,16 @@ static void provision_complete_cb(void) {
 static void health_client_evt_cb(const health_client_t *client,
                                  const health_client_evt_t *event) {
   LOG_INFO("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+  static bool on = false;
+
+  if (on) {
+    nrf_gpio_pin_clear(PIN_LED_INDICATION);
+  } else {
+    nrf_gpio_pin_set(PIN_LED_INDICATION);
+  }
+
+  on = !on;
 }
 
 static void init_mesh() {

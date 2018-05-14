@@ -37,6 +37,8 @@ typedef struct {
   bool init_completed;
 
   prov_init_complete_cb_t init_complete_cb;
+
+  conf_step_t const *conf_steps;
 } prov_t;
 
 prov_t prov;
@@ -70,8 +72,8 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
     if (prov.state == PROV_STATE_WAIT) {
       uint16_t device_addr = prov_find_usable_addr();
 
-      uint8_t hash_uri_beacon[NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE];
-      uint8_t hash_uri_wristband[NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE];
+      uint8_t hash_uri_beacon[NRF_MESH_KEY_SIZE];
+      uint8_t hash_uri_wristband[NRF_MESH_KEY_SIZE];
 
       enc_s1(PROV_URI_BEACON, sizeof(PROV_URI_BEACON), hash_uri_beacon);
       enc_s1(PROV_URI_WRISTBAND, sizeof(PROV_URI_WRISTBAND),
@@ -81,15 +83,22 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
         LOG_INFO("Ignored unprovisioned device with no URI hash present. ");
         return;
       }
+
       if (memcmp(evt->params.unprov.uri_hash, hash_uri_beacon,
-                 NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE) != 0) {
+                 NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE) == 0) {
         LOG_INFO("Provisioning a new Beacon node. ");
+        prov.conf_steps = CONF_STEPS_BEACON;
       } else if (memcmp(evt->params.unprov.uri_hash, hash_uri_wristband,
-                        NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE) != 0) {
+                        NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE) == 0) {
         LOG_INFO("Provisioning a new Wristband node. ");
+        prov.conf_steps = CONF_STEPS_WRISTBAND;
       } else {
-        LOG_INFO("Ignored unprovisioned device with unknown URI hash: %d",
-                 evt->params.unprov.uri_hash);
+        LOG_INFO("Ignored unprovisioned device with unknown URI hash: %04x "
+                 "%04x %04x %04x",
+                 evt->params.unprov.uri_hash[0], evt->params.unprov.uri_hash[1],
+                 evt->params.unprov.uri_hash[2],
+                 evt->params.unprov.uri_hash[3]);
+        return;
       }
 
       LOG_INFO("Starting to provision a device. Handing out address %d.",
@@ -123,7 +132,7 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
       prov.state = PROV_STATE_CONFIG;
 
       conf_start(evt->params.link_closed.p_context->data.address,
-                 prov.app_state->appkey, APP_APPKEY_IDX);
+                 prov.conf_steps);
     }
 
     break;
@@ -336,7 +345,7 @@ void prov_init(app_state_t *app_state, prov_init_complete_cb_t complete_cb) {
   conf_init(prov.app_state, prov_conf_success_cb, prov_conf_failure_cb);
 
   if (!provisioned) {
-    conf_start(APP_GATEWAY_ADDR, prov.app_state->appkey, APP_APPKEY_IDX);
+    conf_start(APP_GATEWAY_ADDR, CONF_STEPS_GATEWAY);
   } else {
     prov.init_completed = true;
     prov.init_complete_cb();

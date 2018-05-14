@@ -12,19 +12,34 @@
 #include "app_config.h"
 #include "custom_log.h"
 
+const conf_step_t CONF_STEPS_BEACON[] = {
+    CONF_STEP_COMPOSITION_GET,
+    CONF_STEP_APPKEY_ADD,
+    CONF_STEP_APPKEY_BIND_HEALTH,
+    CONF_STEP_PUBLICATION_HEALTH,
+    CONF_DONE,
+};
+
+const conf_step_t CONF_STEPS_WRISTBAND[] = {
+    CONF_STEP_COMPOSITION_GET,
+    CONF_STEP_APPKEY_ADD,
+    CONF_STEP_APPKEY_BIND_HEALTH,
+    CONF_STEP_PUBLICATION_HEALTH,
+    CONF_STEP_APPKEY_BIND_HEALTH_CLIENT,
+    CONF_STEP_APPKEY_SUBSCRIBE_HEALTH_CLIENT,
+    CONF_DONE,
+};
+
+const conf_step_t CONF_STEPS_GATEWAY[] = {
+    CONF_STEP_APPKEY_BIND_HEALTH,
+    CONF_STEP_PUBLICATION_HEALTH,
+    CONF_DONE,
+};
+
 typedef enum {
   CONF_STATE_IDLE,
   CONF_STATE_EXECUTING,
 } conf_state_t;
-
-typedef enum {
-  CONF_IDLE,
-  CONF_STEP_COMPOSITION_GET,
-  CONF_STEP_APPKEY_ADD,
-  CONF_STEP_APPKEY_BIND_HEALTH,
-  CONF_STEP_PUBLICATION_HEALTH,
-  CONF_DONE,
-} conf_step_t;
 
 typedef struct {
   conf_state_t state;
@@ -138,6 +153,8 @@ conf_check_result_t conf_check_status(uint32_t opcode,
     }
   }
 
+  LOG_INFO("Unexpected configuration result status: %d", status);
+
   return CONF_CHECK_RESULT_FAIL;
 }
 
@@ -223,7 +240,8 @@ void conf_execute_step() {
         .company_id = ACCESS_COMPANY_ID_NONE,
         .model_id = HEALTH_SERVER_MODEL_ID,
     };
-    APP_ERROR_CHECK(config_client_model_app_bind(conf.node_addr, 0, model_id));
+    APP_ERROR_CHECK(
+        config_client_model_app_bind(conf.node_addr, APP_APPKEY_IDX, model_id));
     static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
     conf_set_expected_status(CONFIG_OPCODE_MODEL_APP_STATUS,
                              sizeof(expected_statuses), expected_statuses);
@@ -257,28 +275,50 @@ void conf_execute_step() {
     break;
   }
 
+  case CONF_STEP_APPKEY_BIND_HEALTH_CLIENT: //
+  {
+    LOG_INFO("Configurator is adding key binding to the health client. ");
+
+    access_model_id_t model_id = {
+        .company_id = ACCESS_COMPANY_ID_NONE,
+        .model_id = HEALTH_CLIENT_MODEL_ID,
+    };
+    APP_ERROR_CHECK(
+        config_client_model_app_bind(conf.node_addr, APP_APPKEY_IDX, model_id));
+    static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
+    conf_set_expected_status(CONFIG_OPCODE_MODEL_APP_STATUS,
+                             sizeof(expected_statuses), expected_statuses);
+
+    break;
+  }
+
+  case CONF_STEP_APPKEY_SUBSCRIBE_HEALTH_CLIENT: //
+  {
+    LOG_INFO(
+        "Configurator is adding subscription address for the health client. ");
+
+    access_model_id_t model_id = {
+        .company_id = ACCESS_COMPANY_ID_NONE,
+        .model_id = HEALTH_CLIENT_MODEL_ID,
+    };
+    nrf_mesh_address_t address = {.type = NRF_MESH_ADDRESS_TYPE_GROUP,
+                                  .value = APP_BEACON_PUBLISH_ADDRESS};
+    APP_ERROR_CHECK(config_client_model_subscription_add(conf.node_addr,
+                                                         address, model_id));
+    static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
+    conf_set_expected_status(CONFIG_OPCODE_MODEL_SUBSCRIPTION_STATUS,
+                             sizeof(expected_statuses), expected_statuses);
+
+    break;
+  }
+
   default:
     APP_ERROR_CHECK(NRF_ERROR_NOT_FOUND);
     break;
   }
 }
 
-const conf_step_t CONF_STEPS_BEACON[] = {
-    CONF_STEP_COMPOSITION_GET,
-    CONF_STEP_APPKEY_ADD,
-    CONF_STEP_APPKEY_BIND_HEALTH,
-    CONF_STEP_PUBLICATION_HEALTH,
-    CONF_DONE,
-};
-
-const conf_step_t CONF_STEPS_GATEWAY[] = {
-    CONF_STEP_APPKEY_BIND_HEALTH,
-    CONF_STEP_PUBLICATION_HEALTH,
-    CONF_DONE,
-};
-
-void conf_start(uint16_t node_addr, uint8_t const *appkey,
-                uint16_t appkey_idx) {
+void conf_start(uint16_t node_addr, conf_step_t const *steps) {
   LOG_INFO("Starting to configure node at address %d", node_addr);
 
   if (conf.state != CONF_STATE_IDLE) {
@@ -306,8 +346,7 @@ void conf_start(uint16_t node_addr, uint8_t const *appkey,
   LOG_INFO("Config client bound and set. devkey_handle = %d, addr_handle = %d",
            devkey_handle, addr_handle);
 
-  conf.steps =
-      (node_addr == APP_GATEWAY_ADDR ? CONF_STEPS_GATEWAY : CONF_STEPS_BEACON);
+  conf.steps = steps;
   conf.current_step = conf.steps;
 
   LOG_INFO("Configurator successfully set up to talk to node at addr %d. ",
