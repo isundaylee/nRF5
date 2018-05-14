@@ -2,5 +2,7 @@
 
 #include "app_state.h"
 
-void prov_init(app_state_t *app_state);
+typedef void (*prov_init_complete_cb_t)();
+
+void prov_init(app_state_t *app_state, prov_init_complete_cb_t complete_cb);
 void prov_start_scan();

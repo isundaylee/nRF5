@@ -73,11 +73,26 @@ static void init_mesh() {
            addr.addr[5]);
 }
 
+static void prov_init_complete_cb() { prov_start_scan(); }
+
 static void start() {
   APP_ERROR_CHECK(mesh_stack_start());
   LOG_INFO("Mesh stack started.");
 
-  prov_start_scan();
+  if (mesh_stack_is_device_provisioned()) {
+    nrf_gpio_pin_set(PIN_LED_INDICATION);
+
+    LOG_INFO("We have already been provisioned. ");
+    LOG_INFO("Will clear all config and reset in 1s. ");
+
+    mesh_stack_config_clear();
+    nrf_delay_ms(1000);
+    mesh_stack_device_reset();
+    while (1) {
+    }
+  }
+
+  prov_init(&app_state, prov_init_complete_cb);
 }
 
 int main(void) {
@@ -85,10 +100,5 @@ int main(void) {
   init_logging();
   init_mesh();
 
-  prov_init(&app_state);
-
   execution_start(start);
-
-  while (1) {
-  }
 }

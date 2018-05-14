@@ -5,6 +5,7 @@
 #include "nrf_mesh_prov.h"
 #include "nrf_mesh_prov_bearer_adv.h"
 
+#include "config_server.h"
 #include "device_state_manager.h"
 
 #include "rand.h"
@@ -31,6 +32,10 @@ typedef struct {
   uint8_t private_key[NRF_MESH_PROV_PRIVKEY_SIZE];
 
   app_state_t *app_state;
+
+  bool init_completed;
+
+  prov_init_complete_cb_t init_complete_cb;
 } prov_t;
 
 prov_t prov;
@@ -91,7 +96,7 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
       prov.state = PROV_STATE_CONFIG;
 
       conf_start(evt->params.link_closed.p_context->data.address,
-                 prov.app_state->appkey, 0);
+                 prov.app_state->appkey, APP_APPKEY_IDX);
     }
 
     break;
@@ -157,31 +162,36 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
 void prov_self_provision() {
   LOG_INFO("Doing self-provisioning. ");
 
-  dsm_local_unicast_address_t local_address = {0x0001, ACCESS_ELEMENT_COUNT};
+  dsm_local_unicast_address_t local_address = {APP_GATEWAY_ADDR,
+                                               ACCESS_ELEMENT_COUNT};
   APP_ERROR_CHECK(dsm_local_unicast_addresses_set(&local_address));
 
   // rand_hw_rng_get(prov.app_state->netkey, NRF_MESH_KEY_SIZE);
   // rand_hw_rng_get(prov.app_state->appkey, NRF_MESH_KEY_SIZE);
   rand_hw_rng_get(prov.app_state->devkey, NRF_MESH_KEY_SIZE);
 
+  // Add the generated keys
   APP_ERROR_CHECK(dsm_subnet_add(0, prov.app_state->netkey,
                                  &prov.app_state->netkey_handle));
-  APP_ERROR_CHECK(dsm_appkey_add(0, prov.app_state->netkey_handle,
+  APP_ERROR_CHECK(dsm_appkey_add(APP_APPKEY_IDX, prov.app_state->netkey_handle,
                                  prov.app_state->appkey,
                                  &prov.app_state->appkey_handle));
-  APP_ERROR_CHECK(dsm_devkey_add(0x0001, prov.app_state->netkey_handle,
-                                 prov.app_state->devkey,
-                                 &prov.app_state->devkey_handle));
+  APP_ERROR_CHECK(
+      dsm_devkey_add(APP_GATEWAY_ADDR, prov.app_state->netkey_handle,
+                     prov.app_state->devkey, &prov.app_state->devkey_handle));
 
+  // Add the beacon publish address to DSM
   APP_ERROR_CHECK(dsm_address_subscription_add(
       APP_BEACON_PUBLISH_ADDRESS, &prov.app_state->beacon_addr_handle));
 
+  // Add the gateway's address to DSM
+  dsm_handle_t addr_handle;
+  APP_ERROR_CHECK(dsm_address_publish_add(APP_GATEWAY_ADDR, &addr_handle));
+
+  // Bind config server to use the devkey
+  APP_ERROR_CHECK(config_server_bind(prov.app_state->devkey_handle));
+
   LOG_INFO("Self-provisioning finished. ");
-  LOG_INFO(
-      "prov.app_state->netkey_handle = %d, prov.app_state->appkey_handle = %d, "
-      "prov.app_state->devkey_handle = %d",
-      prov.app_state->netkey_handle, prov.app_state->appkey_handle,
-      prov.app_state->devkey_handle);
 }
 
 void prov_restore() {
@@ -215,22 +225,38 @@ void prov_restore() {
       prov.app_state->devkey_handle);
 }
 
-void prov_conf_success_cb() {
+void prov_conf_success_cb(uint16_t node_addr) {
   LOG_INFO("Provisioner is ready for the next device. ");
   prov.state = PROV_STATE_WAIT;
+
+  if (node_addr == APP_GATEWAY_ADDR) {
+    NRF_MESH_ASSERT(!prov.init_completed);
+
+    prov.init_completed = true;
+    prov.init_complete_cb();
+
+    LOG_INFO("Finished configuring the gateway node. ");
+  }
 }
 
-void prov_conf_failure_cb() {
+void prov_conf_failure_cb(uint16_t node_addr) {
   LOG_INFO("Provisioner has failed to config the current device. ");
   prov.state = PROV_STATE_WAIT;
+
+  if (node_addr == APP_GATEWAY_ADDR) {
+    LOG_INFO("Failed to configure the gateway node. ");
+    APP_ERROR_CHECK(NRF_ERROR_NOT_FOUND);
+  }
 }
 
-void prov_init(app_state_t *app_state) {
+void prov_init(app_state_t *app_state, prov_init_complete_cb_t complete_cb) {
   nrf_mesh_prov_oob_caps_t caps =
       NRF_MESH_PROV_OOB_CAPS_DEFAULT(ACCESS_ELEMENT_COUNT);
 
   prov.state = PROV_STATE_IDLE;
   prov.app_state = app_state;
+  prov.init_completed = false;
+  prov.init_complete_cb = complete_cb;
 
   APP_ERROR_CHECK(
       nrf_mesh_prov_generate_keys(prov.public_key, prov.private_key));
@@ -273,13 +299,21 @@ void prov_init(app_state_t *app_state) {
   prov.app_state->appkey[14] = 0x6E;
   prov.app_state->appkey[15] = 0xDC;
 
-  if (mesh_stack_is_device_provisioned()) {
+  bool provisioned = mesh_stack_is_device_provisioned();
+  if (provisioned) {
     prov_restore();
   } else {
     prov_self_provision();
   }
 
   conf_init(prov.app_state, prov_conf_success_cb, prov_conf_failure_cb);
+
+  if (!provisioned) {
+    conf_start(APP_GATEWAY_ADDR, prov.app_state->appkey, APP_APPKEY_IDX);
+  } else {
+    prov.init_completed = true;
+    prov.init_complete_cb();
+  }
 
   LOG_INFO("Provisioning initialized.");
 }

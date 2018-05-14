@@ -38,8 +38,8 @@ typedef struct {
   conf_success_cb_t success_cb;
   conf_failure_cb_t failure_cb;
 
-  conf_step_t *steps;
-  conf_step_t *current_step;
+  conf_step_t const *steps;
+  conf_step_t const *current_step;
 
   uint32_t expected_opcode;
   uint32_t expected_n;
@@ -70,8 +70,7 @@ void conf_health_client_evt_handler(health_client_t const *client,
 }
 
 void conf_self_configure() {
-  LOG_INFO("beacon_addr_handle is %d", conf.app_state->beacon_addr_handle);
-
+  // Subscribe health client to the beacon address
   APP_ERROR_CHECK(access_model_subscription_add(
       conf.health_client.model_handle, conf.app_state->beacon_addr_handle));
 }
@@ -162,13 +161,13 @@ void conf_evt_handler(config_client_event_type_t evt_type,
     if (result == CONF_CHECK_RESULT_PASS) {
       conf.current_step++;
       if (*conf.current_step == CONF_DONE) {
-        conf.success_cb();
+        conf.success_cb(conf.node_addr);
         conf.state = CONF_STATE_IDLE;
       } else {
         conf_execute_step();
       }
     } else if (result == CONF_CHECK_RESULT_FAIL) {
-      conf.failure_cb();
+      conf.failure_cb(conf.node_addr);
       conf.state = CONF_STATE_IDLE;
     }
 
@@ -264,6 +263,20 @@ void conf_execute_step() {
   }
 }
 
+const conf_step_t CONF_STEPS_BEACON[] = {
+    CONF_STEP_COMPOSITION_GET,
+    CONF_STEP_APPKEY_ADD,
+    CONF_STEP_APPKEY_BIND_HEALTH,
+    CONF_STEP_PUBLICATION_HEALTH,
+    CONF_DONE,
+};
+
+const conf_step_t CONF_STEPS_GATEWAY[] = {
+    CONF_STEP_APPKEY_BIND_HEALTH,
+    CONF_STEP_PUBLICATION_HEALTH,
+    CONF_DONE,
+};
+
 void conf_start(uint16_t node_addr, uint8_t const *appkey,
                 uint16_t appkey_idx) {
   LOG_INFO("Starting to configure node at address %d", node_addr);
@@ -293,17 +306,9 @@ void conf_start(uint16_t node_addr, uint8_t const *appkey,
   LOG_INFO("Config client bound and set. devkey_handle = %d, addr_handle = %d",
            devkey_handle, addr_handle);
 
-  // Setting up the steps necessary for configuration
-  const conf_step_t steps[] = {
-      CONF_STEP_COMPOSITION_GET,
-      CONF_STEP_APPKEY_ADD,
-      CONF_STEP_APPKEY_BIND_HEALTH,
-      CONF_STEP_PUBLICATION_HEALTH,
-      CONF_DONE,
-  };
-  conf.steps = (conf_step_t *)malloc(sizeof(steps));
+  conf.steps =
+      (node_addr == APP_GATEWAY_ADDR ? CONF_STEPS_GATEWAY : CONF_STEPS_BEACON);
   conf.current_step = conf.steps;
-  memcpy(conf.steps, steps, sizeof(steps));
 
   LOG_INFO("Configurator successfully set up to talk to node at addr %d. ",
            node_addr);
