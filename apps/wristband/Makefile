@@ -73,6 +73,7 @@ SRC_FILES += \
   $(MESH_SDK_ROOT)/models/config/src/composition_data.c \
   $(MESH_SDK_ROOT)/models/config/src/packed_index_list.c \
   $(MESH_SDK_ROOT)/models/health/src/health_server.c \
+  $(MESH_SDK_ROOT)/models/health/src/health_client.c \
   $(MESH_SDK_ROOT)/external/micro-ecc/uECC.c \
   $(MESH_SDK_ROOT)/examples/common/src/assertion_handler_weak.c \
   $(MESH_SDK_ROOT)/examples/common/src/mesh_provisionee.c \
