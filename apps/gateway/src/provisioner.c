@@ -80,7 +80,7 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
              hash_uri_wristband);
 
       if (!evt->params.unprov.uri_hash_present) {
-        LOG_INFO("Ignored unprovisioned device with no URI hash present. ");
+        LOG_ERROR("Ignored unprovisioned device with no URI hash present. ");
         return;
       }
 
@@ -93,11 +93,11 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
         LOG_INFO("Provisioning a new Wristband node. ");
         prov.conf_steps = CONF_STEPS_WRISTBAND;
       } else {
-        LOG_INFO("Ignored unprovisioned device with unknown URI hash: %04x "
-                 "%04x %04x %04x",
-                 evt->params.unprov.uri_hash[0], evt->params.unprov.uri_hash[1],
-                 evt->params.unprov.uri_hash[2],
-                 evt->params.unprov.uri_hash[3]);
+        LOG_ERROR(
+            "Ignored unprovisioned device with unknown URI hash: %04x "
+            "%04x %04x %04x",
+            evt->params.unprov.uri_hash[0], evt->params.unprov.uri_hash[1],
+            evt->params.unprov.uri_hash[2], evt->params.unprov.uri_hash[3]);
         return;
       }
 
@@ -121,11 +121,17 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
     break;
   }
 
+  case NRF_MESH_PROV_EVT_LINK_ESTABLISHED: // 1
+  {
+    // We don't care
+    break;
+  }
+
   case NRF_MESH_PROV_EVT_LINK_CLOSED: // 2
   {
     if (prov.state == PROV_STATE_PROV) {
-      LOG_INFO("Provisioning failed. Code: %d.",
-               evt->params.link_closed.close_reason);
+      LOG_ERROR("Provisioning failed. Code: %d.",
+                evt->params.link_closed.close_reason);
       prov.state = PROV_STATE_WAIT;
     } else if (prov.state == PROV_STATE_COMPLETE) {
       LOG_INFO("Provisioning complete. ");
@@ -160,8 +166,8 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
         &prov.ctx, NRF_MESH_PROV_OOB_METHOD_STATIC, 0, NRF_MESH_KEY_SIZE);
 
     if (ret != NRF_SUCCESS) {
-      LOG_INFO("Static OOB rejected. ");
-      prov.state = PROV_STATE_IDLE;
+      LOG_ERROR("Static OOB rejected. ");
+      prov.state = PROV_STATE_WAIT;
     } else {
       LOG_INFO("Static OOB chosen successfully. ");
     }
@@ -189,7 +195,7 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
   }
 
   default:
-    LOG_INFO("Received unhandled provisioning event: %d", evt->type);
+    LOG_ERROR("Received unhandled provisioning event: %d", evt->type);
 
     break;
   }
@@ -254,11 +260,6 @@ void prov_restore() {
       dsm_address_handle_get(&addr, &prov.app_state->beacon_addr_handle));
 
   LOG_INFO("Restoring finished. ");
-  LOG_INFO(
-      "prov.app_state->netkey_handle = %d, prov.app_state->appkey_handle = %d, "
-      "prov.app_state->devkey_handle = %d",
-      prov.app_state->netkey_handle, prov.app_state->appkey_handle,
-      prov.app_state->devkey_handle);
 }
 
 void prov_conf_success_cb(uint16_t node_addr) {
@@ -276,7 +277,7 @@ void prov_conf_success_cb(uint16_t node_addr) {
 }
 
 void prov_conf_failure_cb(uint16_t node_addr) {
-  LOG_INFO("Provisioner has failed to config the current device. ");
+  LOG_ERROR("Provisioner has failed to config the current device. ");
   prov.state = PROV_STATE_WAIT;
 
   if (node_addr == APP_GATEWAY_ADDR) {

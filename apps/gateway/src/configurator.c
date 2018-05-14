@@ -115,7 +115,8 @@ void conf_init(app_state_t *app_state, conf_success_cb_t success_cb,
 conf_check_result_t conf_check_status(uint32_t opcode,
                                       config_msg_t const *msg) {
   if (opcode != conf.expected_opcode) {
-    LOG_INFO("Unexpected opcode: %d vs %d", opcode, conf.expected_opcode);
+    LOG_ERROR("Unexpected opcode: %d vs %d. Ignoring the message.", opcode,
+              conf.expected_opcode);
     return CONF_CHECK_RESULT_LATER;
   }
 
@@ -139,7 +140,7 @@ conf_check_result_t conf_check_status(uint32_t opcode,
     break;
 
   default:
-    LOG_INFO("Unexpected opcode: %d", opcode);
+    LOG_ERROR("Unknown opcode: %d", opcode);
     APP_ERROR_CHECK(NRF_ERROR_NOT_FOUND);
   }
 
@@ -163,7 +164,7 @@ void conf_evt_handler(config_client_event_type_t evt_type,
   switch (evt_type) {
   case CONFIG_CLIENT_EVENT_TYPE_TIMEOUT: //
   {
-    LOG_INFO("Received config timeout message. ");
+    LOG_ERROR("Received config timeout message. ");
     break;
   }
 
@@ -322,7 +323,7 @@ void conf_start(uint16_t node_addr, conf_step_t const *steps) {
   LOG_INFO("Starting to configure node at address %d", node_addr);
 
   if (conf.state != CONF_STATE_IDLE) {
-    LOG_INFO("Configurator currently busy. ");
+    LOG_ERROR("Configurator currently busy. ");
     return;
   }
 

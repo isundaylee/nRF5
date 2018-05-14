@@ -7,6 +7,7 @@
 #include <SEGGER_RTT.h>
 
 #define LOG_INFO(...) __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, __VA_ARGS__)
+#define LOG_ERROR(...) __LOG(LOG_SRC_APP, LOG_LEVEL_ERROR, __VA_ARGS__)
 #define LOG_INIT() __LOG_INIT(LOG_SRC_APP, LOG_LEVEL_INFO, log_callback_custom)
 
 /* For some reason, this function, while not static, is not included in the RTT

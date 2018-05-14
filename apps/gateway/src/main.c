@@ -25,8 +25,8 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(PIN_LED_ERROR);
   nrf_gpio_pin_set(PIN_LED_ERROR);
 
-  LOG_INFO("Encountered error %d on line %d in file %s", error_info->err_code,
-           error_info->line_num, error_info->p_file_name);
+  LOG_ERROR("Encountered error %d on line %d in file %s", error_info->err_code,
+            error_info->line_num, error_info->p_file_name);
 
   NRF_BREAKPOINT_COND;
   while (1) {
@@ -82,8 +82,8 @@ static void start() {
   if (mesh_stack_is_device_provisioned()) {
     nrf_gpio_pin_set(PIN_LED_INDICATION);
 
-    LOG_INFO("We have already been provisioned. ");
-    LOG_INFO("Will clear all config and reset in 1s. ");
+    LOG_ERROR("We have already been provisioned. ");
+    LOG_ERROR("Will clear all config and reset in 1s. ");
 
     mesh_stack_config_clear();
     nrf_delay_ms(1000);

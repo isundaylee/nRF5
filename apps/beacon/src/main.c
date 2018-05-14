@@ -19,8 +19,8 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(PIN_LED_ERROR);
   nrf_gpio_pin_set(PIN_LED_ERROR);
 
-  LOG_INFO("Encountered error %d on line %d in file %s", error_info->err_code,
-           error_info->line_num, error_info->p_file_name);
+  LOG_ERROR("Encountered error %d on line %d in file %s", error_info->err_code,
+            error_info->line_num, error_info->p_file_name);
 
   NRF_BREAKPOINT_COND;
   while (1) {
@@ -43,17 +43,6 @@ static void config_server_evt_cb(config_server_evt_t const *evt) {
   nrf_gpio_pin_set(PIN_LED_INDICATION);
 }
 
-/**
- * The callback function for incoming packets (seems like all Bluetooth Mesh
- * packets are in the format of Bluetooth advertisement packets -- hence the
- * parameter type).
- */
-static void packet_rx_cb(nrf_mesh_adv_packet_rx_data_t const *packet) {
-  // LOG_INFO("Received packet on channel %d with RSSI %d",
-  //          packet->p_metadata->params.scanner.channel,
-  // packet->p_metadata->params.scanner.rssi);
-}
-
 static void provision_complete_cb(void) {
   LOG_INFO("We have been successfully provisioned! ");
 }
@@ -74,10 +63,6 @@ static void init_mesh() {
       .models.config_server_cb = config_server_evt_cb};
   APP_ERROR_CHECK(mesh_stack_init(&mesh_init_params, NULL));
   LOG_INFO("Mesh stack initialized.");
-
-  // Set the packet RX callback
-  nrf_mesh_rx_cb_set(packet_rx_cb);
-  LOG_INFO("Packet RX callback set.");
 
   ble_gap_addr_t addr;
   APP_ERROR_CHECK(sd_ble_gap_addr_get(&addr));
@@ -104,9 +89,9 @@ static void start() {
 
     nrf_gpio_pin_clear(PIN_LED_INDICATION);
 
-    LOG_INFO("Provisioning initiated. ");
+    LOG_ERROR("Provisioning initiated. ");
   } else {
-    LOG_INFO("We have already been provisioned. ");
+    LOG_ERROR("We have already been provisioned. ");
 
     nrf_gpio_pin_set(PIN_LED_INDICATION);
 
