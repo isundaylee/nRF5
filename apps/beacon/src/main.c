@@ -98,6 +98,7 @@ static void start() {
     mesh_provisionee_start_params_t prov_start_params = {
         .p_static_data = static_data,
         .prov_complete_cb = provision_complete_cb,
+        .p_device_uri = "beacon",
     };
     APP_ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
 

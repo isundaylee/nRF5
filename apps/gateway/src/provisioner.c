@@ -13,6 +13,7 @@
 #include "app_config.h"
 #include "configurator.h"
 #include "custom_log.h"
+#include "enc.h"
 
 typedef enum {
   PROV_STATE_IDLE,
@@ -56,6 +57,10 @@ uint16_t prov_find_usable_addr() {
   return 0xFFFF;
 }
 
+static uint8_t PROV_URI_BEACON[] = {'b', 'e', 'a', 'c', 'o', 'n'};
+static uint8_t PROV_URI_WRISTBAND[] = {'w', 'r', 'i', 's', 't',
+                                       'b', 'a', 'n', 'd'};
+
 void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
   switch (evt->type) {
   case NRF_MESH_PROV_EVT_UNPROVISIONED_RECEIVED: // 0
@@ -64,6 +69,28 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
 
     if (prov.state == PROV_STATE_WAIT) {
       uint16_t device_addr = prov_find_usable_addr();
+
+      uint8_t hash_uri_beacon[NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE];
+      uint8_t hash_uri_wristband[NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE];
+
+      enc_s1(PROV_URI_BEACON, sizeof(PROV_URI_BEACON), hash_uri_beacon);
+      enc_s1(PROV_URI_WRISTBAND, sizeof(PROV_URI_WRISTBAND),
+             hash_uri_wristband);
+
+      if (!evt->params.unprov.uri_hash_present) {
+        LOG_INFO("Ignored unprovisioned device with no URI hash present. ");
+        return;
+      }
+      if (memcmp(evt->params.unprov.uri_hash, hash_uri_beacon,
+                 NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE) != 0) {
+        LOG_INFO("Provisioning a new Beacon node. ");
+      } else if (memcmp(evt->params.unprov.uri_hash, hash_uri_wristband,
+                        NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE) != 0) {
+        LOG_INFO("Provisioning a new Wristband node. ");
+      } else {
+        LOG_INFO("Ignored unprovisioned device with unknown URI hash: %d",
+                 evt->params.unprov.uri_hash);
+      }
 
       LOG_INFO("Starting to provision a device. Handing out address %d.",
                device_addr);

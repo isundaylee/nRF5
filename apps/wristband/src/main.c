@@ -8,10 +8,18 @@
 #include "mesh_softdevice_init.h"
 #include "mesh_stack.h"
 
+#include "health_client.h"
+
 #include "custom_log.h"
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
+
+typedef struct {
+  health_client_t health_client;
+} app_t;
+
+app_t app;
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -58,6 +66,11 @@ static void provision_complete_cb(void) {
   LOG_INFO("We have been successfully provisioned! ");
 }
 
+static void health_client_evt_cb(const health_client_t *client,
+                                 const health_client_evt_t *event) {
+  LOG_INFO("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+}
+
 static void init_mesh() {
   // Initialize the softdevice
   nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
@@ -79,6 +92,11 @@ static void init_mesh() {
   nrf_mesh_rx_cb_set(packet_rx_cb);
   LOG_INFO("Packet RX callback set.");
 
+  // Set up health client
+  APP_ERROR_CHECK(
+      health_client_init(&app.health_client, 0, health_client_evt_cb));
+
+  // Print out device address
   ble_gap_addr_t addr;
   APP_ERROR_CHECK(sd_ble_gap_addr_get(&addr));
 
@@ -98,6 +116,7 @@ static void start() {
     mesh_provisionee_start_params_t prov_start_params = {
         .p_static_data = static_data,
         .prov_complete_cb = provision_complete_cb,
+        .p_device_uri = "wristband",
     };
     APP_ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
 
