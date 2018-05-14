@@ -128,12 +128,13 @@
  * Sizes for the internal storage of the Device State Manager.
  * @{
  */
+ 
 /** Maximum number of subnetworks. */
 #define DSM_SUBNET_MAX                                  (4)
 /** Maximum number of applications */
 #define DSM_APP_MAX                                     (8)
 /** Maximum number of device keys */
-#define DSM_DEVICE_MAX                                  (1)
+#define DSM_DEVICE_MAX                                  (8)
 /** Maximum number of virtual addresses. */
 #define DSM_VIRTUAL_ADDR_MAX                            (8)
 /** Maximum number of non-virtual addresses. */

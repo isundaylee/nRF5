@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include "log.h"
+
 #include <SEGGER_RTT.h>
 
 #define LOG_INFO(...) __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, __VA_ARGS__)
