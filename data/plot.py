@@ -43,7 +43,7 @@ def processNop(T, Y):
 	return T, Y
 
 # processData = processRollingMedian
-processData = processNop
+processData = processRollingMedian
 
 ################################################################################
 # Animation plotting
@@ -64,7 +64,7 @@ class DataLine:
 
 	def trim(self, t):
 		i = 0
-		while i < len(self.T) and self.T[i] < t - TIME_WIDTH:
+		while i < len(self.T) and self.T[i] < t - 2 * TIME_WIDTH:
 			i += 1
 
 		self.T = self.T[i:]
@@ -85,6 +85,7 @@ ax.grid(True)
 ax.set_xlabel("Time (seconds)")
 ax.set_ylabel("Value")
 
+colorMap = {}
 dataMap = {}
 
 def reportFrequencies():
@@ -99,6 +100,7 @@ def reportFrequencies():
 	print("%s %s" % (prefix, ', '.join(clauses)))
 
 def updateData(self):
+	global colorMap
 	global dataMap
 	global ax
 
@@ -106,13 +108,20 @@ def updateData(self):
 		tokens = input().split()
 
 		try:
-			tag = tokens[0]
-			value = float(tokens[1])
+			primtag = tokens[0]
+			subtag = tokens[1]
+			value = float(tokens[2])
+
+			tag = primtag + '-' + subtag
 		except:
 			print('Encountered invalid data point: ' + str(tokens))
 
 		if tag not in dataMap:
-			color = COLORS[len(dataMap) % len(COLORS)]
+			if primtag in colorMap:
+				color = colorMap[primtag]
+			else:
+				color = COLORS[len(colorMap) % len(COLORS)]
+				colorMap[primtag] = color
 			dataMap[tag] = DataLine(ax, color + '-', tag, processData)
 
 			lines = list(dataMap.values())
