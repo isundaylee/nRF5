@@ -35,14 +35,30 @@ static void handle_set_cb(access_model_handle_t handle,
   ecare_server_t *server = args;
   ecare_state_t state = ((ecare_msg_set_t *)message->p_data)->state;
 
+  NRF_MESH_ASSERT(server->set_cb != NULL);
+
   server->state = state;
   server->set_cb(server, state);
 
   reply_status(server, message);
 }
 
+static void handle_set_unreliable_cb(access_model_handle_t handle,
+                                     const access_message_rx_t *message,
+                                     void *args) {
+  ecare_server_t *server = args;
+  ecare_state_t state = ((ecare_msg_set_unreliable_t *)message->p_data)->state;
+
+  NRF_MESH_ASSERT(server->set_cb != NULL);
+
+  server->state = state;
+  server->set_cb(server, state);
+}
+
 static const access_opcode_handler_t opcode_handlers[] = {
-    {ACCESS_OPCODE_VENDOR(ECARE_OPCODE_SET, ECARE_COMPANY_ID), handle_set_cb}};
+    {ACCESS_OPCODE_VENDOR(ECARE_OPCODE_SET, ECARE_COMPANY_ID), handle_set_cb},
+    {ACCESS_OPCODE_VENDOR(ECARE_OPCODE_SET_UNRELIABLE, ECARE_COMPANY_ID),
+     handle_set_unreliable_cb}};
 
 /*****************************************************************************
  * Public API

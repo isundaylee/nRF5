@@ -80,9 +80,9 @@ static void health_client_evt_cb(const health_client_t *client,
 
   if (event->p_meta_data->p_core_metadata->source !=
       NRF_MESH_RX_SOURCE_LOOPBACK) {
-    uint32_t ret = ecare_client_set(&app.ecare_client, state);
-    if (ret != NRF_ERROR_INVALID_STATE) {
-      APP_ERROR_CHECK(ret);
+    uint32_t ret = ecare_client_set_unreliable(&app.ecare_client, state);
+    if (ret != NRF_SUCCESS) {
+      LOG_ERROR("Ecare client set encountered error %d", ret);
     }
   }
 

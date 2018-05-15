@@ -13,14 +13,20 @@ typedef struct __attribute((packed)) {
 } ecare_state_t;
 
 typedef enum {
-  ECARE_OPCODE_SET = 0xC1,   /**< Simple OnOff Acknowledged Set. */
-  ECARE_OPCODE_STATUS = 0xC2 /**< Simple OnOff Status. */
+  ECARE_OPCODE_SET = 0xC1,
+  ECARE_OPCODE_SET_UNRELIABLE = 0xC2,
+  ECARE_OPCODE_STATUS = 0xC3
 } ecare_opcode_t;
 
 typedef struct __attribute((packed)) {
   ecare_state_t state;
   uint8_t tid;
 } ecare_msg_set_t;
+
+typedef struct __attribute((packed)) {
+  ecare_state_t state;
+  uint8_t tid;
+} ecare_msg_set_unreliable_t;
 
 typedef struct __attribute((packed)) {
   ecare_state_t state;

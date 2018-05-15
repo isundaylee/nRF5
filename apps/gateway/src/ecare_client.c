@@ -155,6 +155,23 @@ uint32_t ecare_client_set(ecare_client_t *client, ecare_state_t state) {
   return status;
 }
 
+uint32_t ecare_client_set_unreliable(ecare_client_t *client,
+                                     ecare_state_t state) {
+  ecare_msg_set_unreliable_t set_unreliable;
+  set_unreliable.state = state;
+  set_unreliable.tid = tid++;
+
+  access_message_tx_t message;
+  message.opcode.opcode = ECARE_OPCODE_SET_UNRELIABLE;
+  message.opcode.company_id = ECARE_COMPANY_ID;
+  message.p_buffer = (const uint8_t *)&set_unreliable;
+  message.length = sizeof(set_unreliable);
+  message.force_segmented = false;
+  message.transmic_size = NRF_MESH_TRANSMIC_SIZE_DEFAULT;
+
+  return access_model_publish(client->model_handle, &message);
+}
+
 void ecare_client_pending_msg_cancel(ecare_client_t *client) {
   (void)access_model_reliable_cancel(client->model_handle);
 }
