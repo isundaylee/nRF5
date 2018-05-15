@@ -10,8 +10,10 @@
 
 #include "ecare_client.h"
 #include "health_client.h"
+#include "localization.h"
 
 #include "custom_log.h"
+#include "localization.h"
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
@@ -57,8 +59,7 @@ static void provision_complete_cb(void) {
   LOG_INFO("We have been successfully provisioned! ");
 }
 
-static void health_client_evt_cb(const health_client_t *client,
-                                 const health_client_evt_t *event) {
+static void toggle_indication_led(void) {
   static bool on = false;
 
   if (on) {
@@ -68,30 +69,60 @@ static void health_client_evt_cb(const health_client_t *client,
   }
 
   on = !on;
+}
 
-  ecare_state_t state = {
-      .fallen = false,
-      .x = event->data.fault_status.p_meta_data->src.value,
-      .y = event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
-               .channel,
-      .z = event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
-               .rssi,
-  };
+static void health_client_evt_cb(const health_client_t *client,
+                                 const health_client_evt_t *event) {
+  static int rssi[4] = {0.0, 0.0, 0.0, 0.0};
+  static bool ready[4] = {false, false, false, false};
 
-  if (event->p_meta_data->p_core_metadata->source !=
+  if (event->p_meta_data->p_core_metadata->source ==
       NRF_MESH_RX_SOURCE_LOOPBACK) {
-    uint32_t ret = ecare_client_set_unreliable(&app.ecare_client, state);
-    if (ret != NRF_SUCCESS) {
-      LOG_ERROR("Ecare client set encountered error %d", ret);
+    return;
+  }
+
+  uint8_t ch = event->p_meta_data->p_core_metadata->params.scanner.channel;
+  uint16_t addr = event->p_meta_data->src.value;
+  int8_t rssi_reading =
+      event->p_meta_data->p_core_metadata->params.scanner.rssi;
+
+  if (ch != 39) {
+    return;
+  }
+
+  toggle_indication_led();
+
+  rssi[addr - 1] = rssi_reading;
+  ready[addr - 1] = true;
+
+  for (int i = 0; i < 4; i++) {
+    if (!ready[i]) {
+      return;
     }
   }
 
-  LOG_INFO("Received health event from address %d with RSSI %d on channel %d. ",
-           event->data.fault_status.p_meta_data->src.value,
-           event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
-               .rssi,
-           event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
-               .channel);
+  float x, y;
+  coordinates_rssi(rssi, &x, &y);
+
+  ecare_state_t state = {
+      .fallen = false,
+      .x = (int)(1024 * x),
+      .y = (int)(1024 * y),
+      .z = addr,
+  };
+
+  uint32_t ret = ecare_client_set_unreliable(&app.ecare_client, state);
+  if (ret != NRF_SUCCESS) {
+    LOG_ERROR("Ecare client set encountered error %d", ret);
+  }
+
+  // LOG_INFO("Received health event from address %d with RSSI %d on channel %d.
+  // ",
+  //          event->data.fault_status.p_meta_data->src.value,
+  //          event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
+  //              .rssi,
+  //          event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
+  //              .channel);
 }
 
 void ecare_status_cb(const ecare_client_t *self, ecare_state_t state) {

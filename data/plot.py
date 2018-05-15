@@ -99,6 +99,17 @@ def reportFrequencies():
 
 	print("%s %s" % (prefix, ', '.join(clauses)))
 
+def reportMeans():
+	global dataMap
+
+	prefix = 'Mean: '
+	clauses = []
+
+	for tag, line in dataMap.items():
+		clauses.append("%s = %.3lf" % (tag, np.mean(line.Y[-10:])))
+
+	print("%s %s" % (prefix, ', '.join(clauses)))
+
 def updateData(self):
 	global colorMap
 	global dataMap
@@ -133,7 +144,8 @@ def updateData(self):
 
 		data.append(time.time() - start_time, value)
 
-		reportFrequencies()
+		# reportFrequencies()
+		reportMeans();
 
 	t = time.time() - start_time
 	for data in dataMap.values():
