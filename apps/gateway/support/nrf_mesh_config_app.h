@@ -38,6 +38,8 @@
 #ifndef NRF_MESH_CONFIG_APP_H__
 #define NRF_MESH_CONFIG_APP_H__
 
+#include "app_config.h"
+
 /**
  * @addtogroup MESH_API_GROUP_APP_CONFIG
  *
@@ -134,7 +136,7 @@
 /** Maximum number of applications */
 #define DSM_APP_MAX                                     (8)
 /** Maximum number of device keys */
-#define DSM_DEVICE_MAX                                  (8)
+#define DSM_DEVICE_MAX                                  (APP_MAX_PROVISIONEES)
 /** Maximum number of virtual addresses. */
 #define DSM_VIRTUAL_ADDR_MAX                            (8)
 /** Maximum number of non-virtual addresses. */

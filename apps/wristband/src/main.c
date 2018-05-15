@@ -28,7 +28,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_pin_set(PIN_LED_ERROR);
 
   LOG_ERROR("Encountered error %d on line %d in file %s", error_info->err_code,
-           error_info->line_num, error_info->p_file_name);
+            error_info->line_num, error_info->p_file_name);
 
   NRF_BREAKPOINT_COND;
   while (1) {
@@ -57,8 +57,6 @@ static void provision_complete_cb(void) {
 
 static void health_client_evt_cb(const health_client_t *client,
                                  const health_client_evt_t *event) {
-  LOG_INFO("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
   static bool on = false;
 
   if (on) {
@@ -68,6 +66,13 @@ static void health_client_evt_cb(const health_client_t *client,
   }
 
   on = !on;
+
+  LOG_INFO("Received health event from address %d with RSSI %d on channel %d. ",
+           event->data.fault_status.p_meta_data->src.value,
+           event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
+               .rssi,
+           event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
+               .channel);
 }
 
 static void init_mesh() {

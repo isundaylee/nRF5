@@ -2,6 +2,7 @@
 
 #include "mesh_stack.h"
 
+#include "nrf_mesh_configure.h"
 #include "nrf_mesh_prov.h"
 #include "nrf_mesh_prov_bearer_adv.h"
 
@@ -45,8 +46,30 @@ prov_t prov;
 
 void prov_config_node(uint16_t addr) {}
 
-uint16_t prov_find_usable_addr() {
-  for (int i = 2; i < 16; i++) {
+uint16_t prov_find_usable_addr(uint8_t const *uuid) {
+  // First see if we can reuse an existing address
+  for (int i = APP_GATEWAY_ADDR + 1; i <= APP_MAX_PROVISIONEES; i++) {
+    if (memcmp(uuid, prov.app_state->provisioned_uuids[i],
+               NRF_MESH_UUID_SIZE) == 0) {
+      // We need to remove the previous devkey and publish address from DSM.
+      dsm_handle_t address_handle;
+      nrf_mesh_address_t address = {.type = NRF_MESH_ADDRESS_TYPE_UNICAST,
+                                    .value = i};
+      APP_ERROR_CHECK(dsm_address_handle_get(&address, &address_handle));
+      APP_ERROR_CHECK(dsm_address_publish_remove(address_handle));
+
+      dsm_handle_t devkey_handle;
+      APP_ERROR_CHECK(dsm_devkey_handle_get(i, &devkey_handle));
+      APP_ERROR_CHECK(dsm_devkey_delete(devkey_handle));
+
+      LOG_INFO("Reusing previous address %d. ", i);
+
+      return i;
+    }
+  }
+
+  // If not, go through the list to find a new address
+  for (int i = APP_GATEWAY_ADDR + 1; i <= APP_MAX_PROVISIONEES; i++) {
     dsm_handle_t handle;
     uint32_t ret = dsm_devkey_handle_get(i, &handle);
     if (ret == NRF_ERROR_NOT_FOUND) {
@@ -56,7 +79,7 @@ uint16_t prov_find_usable_addr() {
     }
   }
 
-  return 0xFFFF;
+  return NRF_MESH_ADDR_UNASSIGNED;
 }
 
 static uint8_t PROV_URI_BEACON[] = {'b', 'e', 'a', 'c', 'o', 'n'};
@@ -70,7 +93,13 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
     LOG_INFO("Detected unprovisioned device.");
 
     if (prov.state == PROV_STATE_WAIT) {
-      uint16_t device_addr = prov_find_usable_addr();
+      uint16_t device_addr =
+          prov_find_usable_addr(evt->params.unprov.device_uuid);
+
+      NRF_MESH_ASSERT(device_addr != NRF_MESH_ADDR_UNASSIGNED);
+
+      memcpy(prov.app_state->provisioned_uuids[device_addr],
+             evt->params.unprov.device_uuid, NRF_MESH_UUID_SIZE);
 
       uint8_t hash_uri_beacon[NRF_MESH_KEY_SIZE];
       uint8_t hash_uri_wristband[NRF_MESH_KEY_SIZE];
@@ -233,6 +262,9 @@ void prov_self_provision() {
   // Bind config server to use the devkey
   APP_ERROR_CHECK(config_server_bind(prov.app_state->devkey_handle));
 
+  // Record the UUID of the gateway device
+  memcpy(prov.app_state->provisioned_uuids[APP_GATEWAY_ADDR],
+         nrf_mesh_configure_device_uuid_get(), NRF_MESH_UUID_SIZE);
   LOG_INFO("Self-provisioning finished. ");
 }
 

@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include "app_config.h"
 #include "mesh_stack.h"
 
 typedef struct {
@@ -14,4 +15,6 @@ typedef struct {
   dsm_handle_t appkey_handle;
 
   dsm_handle_t beacon_addr_handle;
+
+  uint8_t provisioned_uuids[APP_MAX_PROVISIONEES + 1][NRF_MESH_UUID_SIZE];
 } app_state_t;

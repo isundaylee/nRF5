@@ -15,8 +15,8 @@ TIME_WIDTH = 30
 DATA_KEEP = 20 * TIME_WIDTH
 COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
-Y_MIN = -10000
-Y_MAX = 10000
+Y_MIN = -100
+Y_MAX = -30
 
 ################################################################################
 # Different data post-processing methods
@@ -43,7 +43,7 @@ def processNop(T, Y):
 	return T, Y
 
 # processData = processRollingMedian
-processData = processSubtractMean
+processData = processNop
 
 ################################################################################
 # Animation plotting

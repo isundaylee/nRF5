@@ -74,14 +74,15 @@ typedef enum {
 conf_t conf;
 
 void conf_execute_step();
-void conf_evt_handler(config_client_event_type_t evt_type,
-                      const config_client_event_t *evt, uint16_t length);
+void conf_config_client_evt_cb(config_client_event_type_t evt_type,
+                               const config_client_event_t *evt,
+                               uint16_t length);
 
-void conf_health_client_evt_handler(health_client_t const *client,
-                                    health_client_evt_t const *event) {
-  LOG_INFO("Received health client event from %04x to %04x with RSSI: %d. ",
-           event->p_meta_data->src.value, event->p_meta_data->dst.value,
-           event->p_meta_data->p_core_metadata->params.scanner.rssi);
+void conf_health_client_evt_cb(health_client_t const *client,
+                               health_client_evt_t const *event) {
+  // LOG_INFO("Received health client event from %04x to %04x with RSSI: %d. ",
+  //          event->p_meta_data->src.value, event->p_meta_data->dst.value,
+  //          event->p_meta_data->p_core_metadata->params.scanner.rssi);
 }
 
 void conf_self_configure() {
@@ -99,10 +100,10 @@ void conf_init(app_state_t *app_state, conf_success_cb_t success_cb,
   conf.success_cb = success_cb;
   conf.failure_cb = failure_cb;
 
-  APP_ERROR_CHECK(config_client_init(conf_evt_handler));
+  APP_ERROR_CHECK(config_client_init(conf_config_client_evt_cb));
 
-  APP_ERROR_CHECK(health_client_init(&conf.health_client, 0,
-                                     conf_health_client_evt_handler));
+  APP_ERROR_CHECK(
+      health_client_init(&conf.health_client, 0, conf_health_client_evt_cb));
 
   APP_ERROR_CHECK(access_model_application_bind(conf.health_client.model_handle,
                                                 app_state->appkey_handle));
@@ -159,18 +160,39 @@ conf_check_result_t conf_check_status(uint32_t opcode,
   return CONF_CHECK_RESULT_FAIL;
 }
 
-void conf_evt_handler(config_client_event_type_t evt_type,
-                      const config_client_event_t *evt, uint16_t length) {
+void conf_succeed() {
+  conf.state = CONF_STATE_IDLE;
+  conf.success_cb(conf.node_addr);
+}
+
+void conf_fail() {
+  conf.state = CONF_STATE_IDLE;
+  conf.failure_cb(conf.node_addr);
+}
+
+void conf_config_client_evt_cb(config_client_event_type_t evt_type,
+                               const config_client_event_t *evt,
+                               uint16_t length) {
   switch (evt_type) {
   case CONFIG_CLIENT_EVENT_TYPE_TIMEOUT: //
   {
     LOG_ERROR("Received config timeout message. ");
+    conf_fail();
+
     break;
   }
 
   case CONFIG_CLIENT_EVENT_TYPE_MSG: //
   {
+    if (conf.state != CONF_STATE_EXECUTING) {
+      LOG_ERROR("Config client message received while the configurator is not "
+                "executing. ");
+      break;
+    }
+
     if (conf.status_checked || *conf.current_step == CONF_DONE) {
+      LOG_ERROR(
+          "Config client message received when it has already been checked");
       break;
     }
 
@@ -179,21 +201,19 @@ void conf_evt_handler(config_client_event_type_t evt_type,
     if (result == CONF_CHECK_RESULT_PASS) {
       conf.current_step++;
       if (*conf.current_step == CONF_DONE) {
-        conf.success_cb(conf.node_addr);
-        conf.state = CONF_STATE_IDLE;
+        conf_succeed();
       } else {
         conf_execute_step();
       }
     } else if (result == CONF_CHECK_RESULT_FAIL) {
-      conf.failure_cb(conf.node_addr);
-      conf.state = CONF_STATE_IDLE;
+      conf_fail();
     }
 
     break;
   }
 
   default:
-    LOG_INFO(
+    LOG_ERROR(
         "Received unexpected config client event with type %d and length %d",
         evt_type, length);
 
