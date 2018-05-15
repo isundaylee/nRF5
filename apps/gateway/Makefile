@@ -22,6 +22,8 @@ SRC_FILES += \
   $(SRC_DIR)/custom_log.c \
   $(SRC_DIR)/provisioner.c \
   $(SRC_DIR)/configurator.c \
+  $(SRC_DIR)/ecare_server.c \
+  $(SRC_DIR)/ecare_client.c \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_serial.c \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_rtt.c \

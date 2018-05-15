@@ -3,6 +3,8 @@
 #include "nrf_delay.h"
 #include "nrf_gpio.h"
 
+#include "access_config.h"
+
 #include "mesh_app_utils.h"
 #include "mesh_softdevice_init.h"
 #include "mesh_stack.h"
@@ -14,10 +16,14 @@
 #include "custom_log.h"
 #include "provisioner.h"
 
+#include "ecare_server.h"
+
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
 
 app_state_t app_state;
+
+ecare_server_t ecare_server;
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -73,7 +79,25 @@ static void init_mesh() {
            addr.addr[5]);
 }
 
-static void prov_init_complete_cb() { prov_start_scan(); }
+static void ecare_server_cb(ecare_server_t const *server, ecare_state_t state) {
+  LOG_INFO("Received new Ecare state: fallen = %d, x = %d, y = %d, z = %d",
+           state.fallen, state.x, state.y, state.z);
+}
+
+static void prov_init_complete_cb() {
+  // Initializes ecare server
+  ecare_server.set_cb = ecare_server_cb;
+  APP_ERROR_CHECK(ecare_server_init(&ecare_server, 0));
+  LOG_INFO("Ecare server initialized. ");
+
+  APP_ERROR_CHECK(access_model_application_bind(ecare_server.model_handle,
+                                                app_state.appkey_handle));
+  APP_ERROR_CHECK(access_model_publish_application_set(
+      ecare_server.model_handle, app_state.appkey_handle));
+  LOG_INFO("Ecare server appkey bound successfully. ");
+
+  prov_start_scan();
+}
 
 static void start() {
   APP_ERROR_CHECK(mesh_stack_start());

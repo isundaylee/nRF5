@@ -43,7 +43,7 @@ def processNop(T, Y):
 	return T, Y
 
 # processData = processRollingMedian
-processData = processRollingMedian
+processData = processNop
 
 ################################################################################
 # Animation plotting

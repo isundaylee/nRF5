@@ -12,6 +12,8 @@
 #include "app_config.h"
 #include "custom_log.h"
 
+#include "ecare_client.h"
+
 const conf_step_t CONF_STEPS_BEACON[] = {
     CONF_STEP_COMPOSITION_GET,
     CONF_STEP_APPKEY_ADD,
@@ -27,6 +29,8 @@ const conf_step_t CONF_STEPS_WRISTBAND[] = {
     CONF_STEP_PUBLICATION_HEALTH,
     CONF_STEP_APPKEY_BIND_HEALTH_CLIENT,
     CONF_STEP_APPKEY_SUBSCRIBE_HEALTH_CLIENT,
+    CONF_STEP_APPKEY_BIND_ECARE_CLIENT,
+    CONF_STEP_APPKEY_SUBSCRIBE_ECARE_CLIENT,
     CONF_DONE,
 };
 
@@ -281,7 +285,7 @@ void conf_execute_step() {
         .appkey_index = 0,
         .frendship_credential_flag = false,
         .publish_ttl = 1,
-        .publish_period.step_num = 2,
+        .publish_period.step_num = 5,
         .publish_period.step_res = ACCESS_PUBLISH_RESOLUTION_100MS,
         .retransmit_count = 1,
         .retransmit_interval = 0,
@@ -328,6 +332,51 @@ void conf_execute_step() {
                                                          address, model_id));
     static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
     conf_set_expected_status(CONFIG_OPCODE_MODEL_SUBSCRIPTION_STATUS,
+                             sizeof(expected_statuses), expected_statuses);
+
+    break;
+  }
+
+  case CONF_STEP_APPKEY_BIND_ECARE_CLIENT: //
+  {
+    LOG_INFO("Configurator is adding key binding to the health client. ");
+
+    access_model_id_t model_id = {
+        .company_id = ECARE_COMPANY_ID,
+        .model_id = ECARE_CLIENT_MODEL_ID,
+    };
+    APP_ERROR_CHECK(
+        config_client_model_app_bind(conf.node_addr, APP_APPKEY_IDX, model_id));
+    static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
+    conf_set_expected_status(CONFIG_OPCODE_MODEL_APP_STATUS,
+                             sizeof(expected_statuses), expected_statuses);
+
+    break;
+  }
+
+  case CONF_STEP_APPKEY_SUBSCRIBE_ECARE_CLIENT: //
+  {
+    LOG_INFO(
+        "Configurator is adding subscription address for the health client. ");
+
+    config_publication_state_t pub_state = {
+        .element_address = conf.node_addr,
+        .publish_address.type = NRF_MESH_ADDRESS_TYPE_UNICAST,
+        .publish_address.value = APP_GATEWAY_ADDR,
+        .appkey_index = 0,
+        .frendship_credential_flag = false,
+        .publish_ttl = 1,
+        .publish_period.step_num = 0,
+        .publish_period.step_res = ACCESS_PUBLISH_RESOLUTION_100MS,
+        .retransmit_count = 1,
+        .retransmit_interval = 0,
+        .model_id.company_id = ECARE_COMPANY_ID,
+        .model_id.model_id = ECARE_CLIENT_MODEL_ID,
+    };
+
+    APP_ERROR_CHECK(config_client_model_publication_set(&pub_state));
+    static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
+    conf_set_expected_status(CONFIG_OPCODE_MODEL_PUBLICATION_STATUS,
                              sizeof(expected_statuses), expected_statuses);
 
     break;

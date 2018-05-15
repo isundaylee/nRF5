@@ -8,6 +8,7 @@
 #include "mesh_softdevice_init.h"
 #include "mesh_stack.h"
 
+#include "ecare_client.h"
 #include "health_client.h"
 
 #include "custom_log.h"
@@ -17,6 +18,7 @@
 
 typedef struct {
   health_client_t health_client;
+  ecare_client_t ecare_client;
 } app_t;
 
 app_t app;
@@ -67,12 +69,38 @@ static void health_client_evt_cb(const health_client_t *client,
 
   on = !on;
 
+  ecare_state_t state = {
+      .fallen = false,
+      .x = event->data.fault_status.p_meta_data->src.value,
+      .y = event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
+               .channel,
+      .z = event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
+               .rssi,
+  };
+
+  if (event->p_meta_data->p_core_metadata->source !=
+      NRF_MESH_RX_SOURCE_LOOPBACK) {
+    uint32_t ret = ecare_client_set(&app.ecare_client, state);
+    if (ret != NRF_ERROR_INVALID_STATE) {
+      APP_ERROR_CHECK(ret);
+    }
+  }
+
   LOG_INFO("Received health event from address %d with RSSI %d on channel %d. ",
            event->data.fault_status.p_meta_data->src.value,
            event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
                .rssi,
            event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
                .channel);
+}
+
+void ecare_status_cb(const ecare_client_t *self, ecare_state_t state) {
+  LOG_INFO("Received new Ecare state: fallen = %d, x = %d, y = %d, z = %d",
+           state.fallen, state.x, state.y, state.z);
+}
+
+void ecare_timeout_cb(access_model_handle_t handle, void *self) {
+  LOG_ERROR("Received timeout on Ecare client. ");
 }
 
 static void init_mesh() {
@@ -95,6 +123,13 @@ static void init_mesh() {
   // Set up health client
   APP_ERROR_CHECK(
       health_client_init(&app.health_client, 0, health_client_evt_cb));
+  LOG_INFO("Health client initialized. ");
+
+  // Set up ecare client
+  app.ecare_client.status_cb = ecare_status_cb;
+  app.ecare_client.timeout_cb = ecare_timeout_cb;
+  APP_ERROR_CHECK(ecare_client_init(&app.ecare_client, 0));
+  LOG_INFO("Ecare client initialized. ");
 
   // Print out device address
   ble_gap_addr_t addr;

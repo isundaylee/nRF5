@@ -11,6 +11,8 @@ PROJ_DIR := .
 SRC_DIR := $(PROJ_DIR)/src
 SUPPORT_DIR := $(PROJ_DIR)/support
 INCLUDE_DIR := $(PROJ_DIR)/include
+GATEWAY_INCLUDE_DIR := $(PROJ_DIR)/../gateway/include
+GATEWAY_SRC_DIR := $(PROJ_DIR)/../gateway/src
 
 $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
   LINKER_SCRIPT  := $(SUPPORT_DIR)/ble_app_uart_gcc_nrf52.ld
@@ -20,6 +22,7 @@ SRC_FILES += \
   $(SRC_DIR)/main.c \
   $(SRC_DIR)/lsm9ds1.c \
   $(SRC_DIR)/custom_log.c \
+  $(GATEWAY_SRC_DIR)/ecare_client.c \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_serial.c \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_rtt.c \
@@ -83,6 +86,8 @@ SRC_FILES += \
 INC_FOLDERS += \
   $(SUPPORT_DIR) \
   $(INCLUDE_DIR) \
+  $(INCLUDE_DIR) \
+  $(GATEWAY_INCLUDE_DIR) \
   $(SDK_ROOT)/components/nfc/ndef/generic/message \
   $(SDK_ROOT)/components/nfc/t2t_lib \
   $(SDK_ROOT)/components/nfc/t4t_parser/hl_detection_procedure \
