@@ -23,6 +23,8 @@ SRC_FILES += \
   $(SRC_DIR)/lsm9ds1.c \
   $(SRC_DIR)/custom_log.c \
   $(SRC_DIR)/localization.c \
+  $(SRC_DIR)/fall_detection.c \
+  $(SRC_DIR)/madgwick.c \
   $(GATEWAY_SRC_DIR)/ecare_client.c \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_serial.c \
