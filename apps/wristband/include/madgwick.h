@@ -14,47 +14,41 @@
 // 02/10/2011	SOH Madgwick	Optimised for reduced CPU load
 //
 //=============================================================================================
-#ifndef MadgwickAHRS_h
-#define MadgwickAHRS_h
+#pragma once
 
 #include <math.h>
 
+#include <stdbool.h>
+
 typedef struct {
-    float beta;             // algorithm gain
-    float q0;
-    float q1;
-    float q2;
-    float q3;   // quaternion of sensor frame relative to auxiliary frame
-    float invSampleFreq;
-    float roll;
-    float pitch;
-    float yaw;
-    char anglesComputed;
+  float beta;
+
+  float q0;
+  float q1;
+  float q2;
+  float q3;
+
+  float inv_sample_freq;
+
+  float roll;
+  float pitch;
+  float yaw;
+
+  bool angles_computed;
 } madgwick_t;
 
-//--------------------------------------------------------------------------------------------
-// Variable declaration
-// void Madgwick {
-// private:
-//     static float invSqrt(float x);
-
-//-------------------------------------------------------------------------------------------
-// Function declarations
-// public:
-void madgwick_init(madgwick_t *mad); //{ invSampleFreq = 1.0f / sampleFrequency; }
-void madgwick_update(madgwick_t *mad, float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz);
-void madgwick_updateIMU(madgwick_t *mad, float gx, float gy, float gz, float ax, float ay, float az);
 float invSqrt(float x);
-void madgwick_computeAngles(madgwick_t *mad, float *roll, float *pitch, float *yaw);
-//float getPitch(){return atan2f(2.0f * q2 * q3 - 2.0f * q0 * q1, 2.0f * q0 * q0 + 2.0f * q3 * q3 - 1.0f);};
-//float getRoll(){return -1.0f * asinf(2.0f * q1 * q3 + 2.0f * q0 * q2);};
-//float getYaw(){return atan2f(2.0f * q1 * q2 - 2.0f * q0 * q3, 2.0f * q0 * q0 + 2.0f * q1 * q1 - 1.0f);};
-float getRoll(void); 
-float getPitch(void); 
-float getYaw(void); 
-float getRollRadians(void);
-float getPitchRadians(void);
-float getYawRadians(void);
 
-#endif
+void madgwick_init(madgwick_t *mad);
+void madgwick_update(madgwick_t *mad, float gx, float gy, float gz, float ax,
+                     float ay, float az, float mx, float my, float mz);
+void madgwick_update_imu(madgwick_t *mad, float gx, float gy, float gz,
+                         float ax, float ay, float az);
+void madgwick_compute_angles(madgwick_t *mad);
 
+float madgwick_get_roll(madgwick_t *mad);
+float madgwick_get_pitch(madgwick_t *mad);
+float madgwick_get_yaw(madgwick_t *mad);
+float madgwick_get_roll_radians(madgwick_t *mad);
+float madgwick_get_pitch_radians(madgwick_t *mad);
+float madgwick_get_yaw_radians(madgwick_t *mad);
