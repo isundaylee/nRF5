@@ -93,9 +93,19 @@ def reportFrequencies():
 
 	prefix = 'Frequency: '
 	clauses = []
+	earliest = None
+	latest = None
+	total = 0
 
 	for tag, line in dataMap.items():
 		clauses.append("%s = %.3lf Hz" % (tag, 1.0 * len(line.T) / (line.T[-1] - line.T[0])))
+		total += len(line.T)
+		if latest is None or line.T[-1] > latest:
+			latest = line.T[-1]
+		if earliest is None or line.T[0] < earliest:
+			earliest = line.T[0]
+
+	clauses.append("total = %.3lf Hz" % (total / (1.0 * (latest - earliest))))
 
 	print("%s %s" % (prefix, ', '.join(clauses)))
 
@@ -144,8 +154,8 @@ def updateData(self):
 
 		data.append(time.time() - start_time, value)
 
-		# reportFrequencies()
-		reportMeans();
+		reportFrequencies()
+		# reportMeans();
 
 	t = time.time() - start_time
 	for data in dataMap.values():

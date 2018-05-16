@@ -143,6 +143,7 @@
 #define DSM_FLASH_PAGE_COUNT                            (1)
 /** @} end of DSM_CONFIG */
 
+#define TRANSPORT_SAR_SESSIONS_MAX                      (8)
 
 /** @} */
 

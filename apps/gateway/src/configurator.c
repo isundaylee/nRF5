@@ -285,7 +285,7 @@ void conf_execute_step() {
         .appkey_index = 0,
         .frendship_credential_flag = false,
         .publish_ttl = 1,
-        .publish_period.step_num = 5,
+        .publish_period.step_num = 1,
         .publish_period.step_res = ACCESS_PUBLISH_RESOLUTION_100MS,
         .retransmit_count = 1,
         .retransmit_interval = 0,

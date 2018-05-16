@@ -15,6 +15,8 @@
 #include "custom_log.h"
 #include "localization.h"
 
+#include "debug_pins.h"
+
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
 
@@ -90,8 +92,6 @@ static void health_client_evt_cb(const health_client_t *client,
     return;
   }
 
-  toggle_indication_led();
-
   rssi[addr - 1] = rssi_reading;
   ready[addr - 1] = true;
 
@@ -100,6 +100,8 @@ static void health_client_evt_cb(const health_client_t *client,
       return;
     }
   }
+
+  toggle_indication_led();
 
   float x, y;
   coordinates_rssi(rssi, &x, &y);
@@ -115,14 +117,6 @@ static void health_client_evt_cb(const health_client_t *client,
   if (ret != NRF_SUCCESS) {
     LOG_ERROR("Ecare client set encountered error %d", ret);
   }
-
-  // LOG_INFO("Received health event from address %d with RSSI %d on channel %d.
-  // ",
-  //          event->data.fault_status.p_meta_data->src.value,
-  //          event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
-  //              .rssi,
-  //          event->data.fault_status.p_meta_data->p_core_metadata->params.scanner
-  //              .channel);
 }
 
 void ecare_status_cb(const ecare_client_t *self, ecare_state_t state) {
@@ -203,6 +197,8 @@ static void start() {
 }
 
 int main(void) {
+  DEBUG_PINS_INIT();
+
   init_leds();
   init_logging();
   init_mesh();

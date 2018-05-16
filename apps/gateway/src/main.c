@@ -18,6 +18,8 @@
 
 #include "ecare_server.h"
 
+#include "debug_pins.h"
+
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
 
@@ -120,6 +122,8 @@ static void start() {
 }
 
 int main(void) {
+  DEBUG_PINS_INIT();
+
   init_leds();
   init_logging();
   init_mesh();

@@ -132,7 +132,13 @@ uint32_t ecare_client_init(ecare_client_t *client, uint16_t element_index) {
   init_params.p_args = client;
   init_params.publish_timeout_cb = handle_publish_timeout;
 
-  return access_model_add(&init_params, &client->model_handle);
+  uint32_t ret = access_model_add(&init_params, &client->model_handle);
+  if (ret != NRF_SUCCESS) {
+    return ret;
+  }
+
+  ret = access_model_publish_ttl_set(client->model_handle, 2);
+  return ret;
 }
 
 uint32_t ecare_client_set(ecare_client_t *client, ecare_state_t state) {

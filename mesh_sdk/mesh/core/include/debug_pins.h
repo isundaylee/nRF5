@@ -80,14 +80,9 @@
 #define DEBUG_PINS_INIT()               \
     do                                  \
     {                                   \
-        DEBUG_PIN_INIT(DEBUG_PIN0);     \
-        DEBUG_PIN_INIT(DEBUG_PIN1);     \
-        DEBUG_PIN_INIT(DEBUG_PIN2);     \
-        DEBUG_PIN_INIT(DEBUG_PIN3);     \
-        DEBUG_PIN_INIT(DEBUG_PIN4);     \
-        DEBUG_PIN_INIT(DEBUG_PIN5);     \
-        DEBUG_PIN_INIT(DEBUG_PIN6);     \
-        DEBUG_PIN_INIT(DEBUG_PIN7);     \
+        DEBUG_PIN_INIT(4);              \
+        DEBUG_PIN_INIT(3);              \
+        DEBUG_PIN_INIT(2);              \
     } while (0)
 
 #define DEBUG_PIN_ON(p)               do { NRF_GPIO->OUTSET = (1UL << (p)); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); __NOP(); } while (0)
@@ -185,23 +180,23 @@ DEBUG_PIN_MODULE(BEARER_HANDLER, false)
 #define DEBUG_PIN_BEARER_HANDLER_SCANNER        DEBUG_PIN1
 #define DEBUG_PIN_BEARER_HANDLER_SCANNER_STOP   DEBUG_PIN2
 
-DEBUG_PIN_MODULE(SCANNER, false)
-#define DEBUG_PIN_SCANNER_RADIO_IN_RX       DEBUG_PIN0
-//#define DEBUG_PIN_SCANNER_                  DEBUG_PIN1
-//#define DEBUG_PIN_SCANNER_                  DEBUG_PIN2
-#define DEBUG_PIN_SCANNER_END_EVENT         DEBUG_PIN3
-#define DEBUG_PIN_SCANNER_IN_ACTION         DEBUG_PIN4
-#define DEBUG_PIN_SCANNER_START             DEBUG_PIN5
-#define DEBUG_PIN_SCANNER_STOP              DEBUG_PIN6
-#define DEBUG_PIN_SCANNER_RADIO_IRQ         DEBUG_PIN7
+DEBUG_PIN_MODULE(SCANNER, true)
+#define DEBUG_PIN_SCANNER_RADIO_IN_RX     3
+//#define DEBUG_PIN_SCANNER_                0
+//#define DEBUG_PIN_SCANNER_                0
+#define DEBUG_PIN_SCANNER_END_EVENT       0
+#define DEBUG_PIN_SCANNER_IN_ACTION       0
+#define DEBUG_PIN_SCANNER_START           0
+#define DEBUG_PIN_SCANNER_STOP            0
+#define DEBUG_PIN_SCANNER_RADIO_IRQ       0
 
-DEBUG_PIN_MODULE(BROADCAST, false)
-#define DEBUG_PIN_BROADCAST_START           DEBUG_PIN0
-#define DEBUG_PIN_BROADCAST_RADIO_EVT       DEBUG_PIN1
-#define DEBUG_PIN_BROADCAST_RADIO_EVT_END   DEBUG_PIN2
-#define DEBUG_PIN_BROADCAST_RADIO_EVT_READY DEBUG_PIN3
-#define DEBUG_PIN_BROADCAST_ADV_CB          DEBUG_PIN4
-#define DEBUG_PIN_BROADCAST_ACTIVE          DEBUG_PIN5
+DEBUG_PIN_MODULE(BROADCAST, true)
+#define DEBUG_PIN_BROADCAST_START           0
+#define DEBUG_PIN_BROADCAST_RADIO_EVT       0
+#define DEBUG_PIN_BROADCAST_RADIO_EVT_END   0
+#define DEBUG_PIN_BROADCAST_RADIO_EVT_READY 0
+#define DEBUG_PIN_BROADCAST_ADV_CB          0
+#define DEBUG_PIN_BROADCAST_ACTIVE          4
 
 
 DEBUG_PIN_MODULE(INSTABURST, false)
