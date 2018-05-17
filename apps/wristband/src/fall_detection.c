@@ -1,7 +1,7 @@
 // fall detection algorithm
 #include "fall_detection.h"
 
-#include <madgwick.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,15 +29,13 @@ typedef struct {
   int falling_count;
 
   vector_t falling_direction;
-
-  madgwick_t madgwick_filter;
 } fall_detector_t;
 
 fall_detector_t fall_detector;
 
 float t_threshold = 1000;
 
-void fall_detection_init() { madgwick_init(&fall_detector.madgwick_filter); }
+void fall_detection_init() {}
 
 vector_t fall_detection_get_direction(float yaw, float pitch) {
   return vector_make(cos(yaw) * cos(pitch), sin(yaw) * cos(pitch), sin(pitch));
@@ -49,57 +47,34 @@ float sq(float b) {
   return z;
 }
 
-bool fall_detection_update(float imu_ax, float imu_ay, float imu_az,
-                           float imu_gx, float imu_gy, float imu_gz,
-                           float imu_mx, float imu_my, float imu_mz) {
-  float ax = (imu_ax)*FALL_DETECTION_AX_SCALE;
-  float ay = (imu_ay)*FALL_DETECTION_AY_SCALE;
-  float az = (imu_az)*FALL_DETECTION_AZ_SCALE;
-  float gx = (imu_gx)*FALL_DETECTION_GX_SCALE;
-  float gy = (imu_gy)*FALL_DETECTION_GY_SCALE;
-  float gz = (imu_gz)*FALL_DETECTION_GZ_SCALE;
-
-  madgwick_update(&fall_detector.madgwick_filter, gx, gy, gz, ax, ay, az,
-                  imu_mx, imu_my, imu_mz);
-
-  float acc_value = sqrt(sq(ax) + sq(ay) + sq(az));
-  // LOG_INFO("READING acc_value " NRF_LOG_FLOAT_MARKER,
-  // NRF_LOG_FLOAT(acc_value));
-
-  static vector_t initial_direction;
-
+bool fall_detection_update(float ax, float ay, float az) {
   static int t = 0;
-  static bool inited = false;
-  t += 1;
-  if (inited) {
-    float yaw = madgwick_get_yaw(&fall_detector.madgwick_filter);
-    float pitch = madgwick_get_pitch(&fall_detector.madgwick_filter);
-    vector_t direction = fall_detection_get_direction(yaw, pitch);
-    float angle = vector_angle_between(initial_direction, direction);
-    if (t % 10 == 0) {
-      LOG_INFO("READING angle " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(angle));
+  static float avg_ax = 0.0, avg_ay = 0.0, avg_az = 0.0;
+  static float past_avg_ax[APP_IMU_LOOKBACK_WINDOW],
+      past_avg_ay[APP_IMU_LOOKBACK_WINDOW],
+      past_avg_az[APP_IMU_LOOKBACK_WINDOW];
 
-      LOG_READING_FLOAT("yaw", yaw);
-      LOG_READING_FLOAT("pitch", pitch);
-    }
-  } else {
-    float yaw = madgwick_get_yaw(&fall_detector.madgwick_filter);
-    float pitch = madgwick_get_pitch(&fall_detector.madgwick_filter);
-    initial_direction = fall_detection_get_direction(yaw, pitch);
-    inited = true;
-  }
+  t += 1;
+  float acc_value =
+      vector_norm(vector_make(ax - avg_ax, ay - avg_ay, az - avg_az));
+
+  avg_ax = 0.95 * avg_ax + 0.05 * ax;
+  avg_ay = 0.95 * avg_ay + 0.05 * ay;
+  avg_az = 0.95 * avg_az + 0.05 * az;
+
+  int past_avg_index = t % APP_IMU_LOOKBACK_WINDOW;
 
   switch (fall_detector.state) {
   case FALL_DETECTION_STATE_NORMAL: //
   {
-    if (acc_value > 2.0) {
+    if (t >= APP_IMU_LOOKBACK_WINDOW && acc_value > 2.0) {
+      LOG_READING_FLOAT("acc_value", acc_value);
+
       fall_detector.state = FALL_DETECTION_STATE_FALLING;
       fall_detector.falling_count = 0;
-
-      float yaw = madgwick_get_yaw(&fall_detector.madgwick_filter);
-      float pitch = madgwick_get_pitch(&fall_detector.madgwick_filter);
       fall_detector.falling_direction =
-          fall_detection_get_direction(yaw, pitch);
+          vector_make(past_avg_ax[past_avg_index], past_avg_ay[past_avg_index],
+                      past_avg_az[past_avg_index]);
     }
 
     break;
@@ -108,23 +83,20 @@ bool fall_detection_update(float imu_ax, float imu_ay, float imu_az,
   case FALL_DETECTION_STATE_FALLING: //
   {
     if (fall_detector.falling_count >= FALL_DETECTION_FALLING_THRESHOLD) {
-      ax = imu_ax * FALL_DETECTION_AX_SCALE;
-      ay = (imu_ay)*FALL_DETECTION_AY_SCALE;
-      az = (imu_az)*FALL_DETECTION_AZ_SCALE;
-      gx = (imu_gx)*FALL_DETECTION_GX_SCALE;
-      gy = (imu_gy)*FALL_DETECTION_GY_SCALE;
-      gz = (imu_gz)*FALL_DETECTION_GZ_SCALE;
-
-      float pitch = madgwick_get_pitch(&fall_detector.madgwick_filter); // y
-      float yaw = madgwick_get_yaw(&fall_detector.madgwick_filter);     // z
-
-      vector_t direction = fall_detection_get_direction(yaw, pitch);
+      vector_t direction = vector_make(avg_ax, avg_ay, avg_az);
       float angle =
           vector_angle_between(fall_detector.falling_direction, direction);
       float abs_angle_deg = fabs(angle) * 57.295;
 
-      LOG_INFO("abs_angle_deg: " NRF_LOG_FLOAT_MARKER,
-               NRF_LOG_FLOAT(abs_angle_deg));
+      LOG_READING_FLOAT("fx", fall_detector.falling_direction.x);
+      LOG_READING_FLOAT("fy", fall_detector.falling_direction.y);
+      LOG_READING_FLOAT("fz", fall_detector.falling_direction.z);
+
+      LOG_READING_FLOAT("x", direction.x);
+      LOG_READING_FLOAT("y", direction.y);
+      LOG_READING_FLOAT("z", direction.z);
+
+      LOG_READING_FLOAT("angle", abs_angle_deg);
 
       if (abs_angle_deg > 60 && abs_angle_deg < 120) {
         fall_detector.state = FALL_DETECTION_STATE_LYING;
@@ -143,6 +115,10 @@ bool fall_detection_update(float imu_ax, float imu_ay, float imu_az,
     break;
   }
   }
+
+  past_avg_ax[past_avg_index] = avg_ax;
+  past_avg_ay[past_avg_index] = avg_ay;
+  past_avg_az[past_avg_index] = avg_az;
 
   return (fall_detector.state == FALL_DETECTION_STATE_LYING);
 }

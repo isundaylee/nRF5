@@ -33,9 +33,13 @@ typedef struct {
 
 app_t app;
 
+APP_TIMER_DEF(imu_timer_id);
+APP_TIMER_DEF(fallen_led_timer_id);
+
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
 
+  app_timer_stop(fallen_led_timer_id);
   nrf_gpio_cfg_output(PIN_LED_ERROR);
   nrf_gpio_pin_set(PIN_LED_ERROR);
 
@@ -194,11 +198,13 @@ static void start() {
 
     nrf_gpio_pin_set(PIN_LED_INDICATION);
 
-    LOG_ERROR("Will clear all config and reset in 1s. ");
+    if (APP_RESET_NETWORK_ON_START) {
+      LOG_ERROR("Will clear all config and reset in 1s. ");
 
-    mesh_stack_config_clear();
-    nrf_delay_ms(1000);
-    mesh_stack_device_reset();
+      mesh_stack_config_clear();
+      nrf_delay_ms(1000);
+      mesh_stack_device_reset();
+    }
   }
 }
 
@@ -223,73 +229,36 @@ static void init_imu() {
   fall_detection_init();
 }
 
-static bool imu_read_calibrated_accel(float *x, float *y, float *z) {
-  static int t = 0;
-  static float avg_x = 0, avg_y = 0, avg_z = 0;
-
-  t += 1;
-  lsm9ds1_accel_read_all(&imu, x, y, z);
-
-  avg_x = (1 - APP_IMU_AVG_ALPHA) * avg_x + APP_IMU_AVG_ALPHA * *x;
-  avg_y = (1 - APP_IMU_AVG_ALPHA) * avg_y + APP_IMU_AVG_ALPHA * *y;
-  avg_z = (1 - APP_IMU_AVG_ALPHA) * avg_z + APP_IMU_AVG_ALPHA * *z;
-
-  *x -= avg_x;
-  *y -= avg_y;
-  *z -= avg_z;
-
-  return (t >= 200);
-}
-
-static bool imu_read_calibrated_gyro(float *x, float *y, float *z) {
-  static int t = 0;
-  static float avg_x = 0, avg_y = 0, avg_z = 0;
-
-  t += 1;
-  lsm9ds1_gyro_read_all(&imu, x, y, z);
-
-  if (t < 100) {
-    return false;
-  } else if (t < 200) {
-    avg_x += *x;
-    avg_y += *y;
-    avg_z += *z;
-
-    return false;
-  }
-
-  if (t == 200) {
-    avg_x /= 100;
-    avg_y /= 100;
-    avg_z /= 100;
-  }
-
-  *x -= avg_x;
-  *y -= avg_y;
-  *z -= avg_z;
-
-  return true;
-}
-
+bool fallen = false;
 static void imu_timer_handler(void *context) {
   float ax, ay, az;
-  float gx, gy, gz;
-  float mx, my, mz;
 
-  bool accel_ready = imu_read_calibrated_accel(&ax, &ay, &az);
-  bool gyro_ready = imu_read_calibrated_gyro(&gx, &gy, &gz);
+  lsm9ds1_accel_read_all(&imu, &ax, &ay, &az);
 
-  if (!accel_ready || !gyro_ready) {
-    return;
+  bool lying = fall_detection_update(ax, ay, az);
+
+  if (lying != fallen) {
+    ecare_state_t state = {
+        .fallen = lying,
+        .x = 0,
+        .y = 0,
+        .z = 0,
+    };
+
+    ecare_client_set(&app.ecare_client, state);
+    fallen = lying;
   }
-
-  lsm9ds1_mag_read_all(&imu, &mx, &my, &mz);
-
-  bool lying = fall_detection_update(ax, ay, az, gx, gy, gz, mx, my, mz);
-  nrf_gpio_pin_write(PIN_LED_INDICATION, lying ? 1 : 0);
 }
 
-APP_TIMER_DEF(imu_timer_id);
+static void fallen_led_timer_handler(void *context) {
+  if (fallen) {
+    nrf_gpio_pin_clear(PIN_LED_INDICATION);
+    nrf_gpio_pin_toggle(PIN_LED_ERROR);
+  } else {
+    nrf_gpio_pin_clear(PIN_LED_ERROR);
+  }
+}
+
 static void init_timer() {
   APP_ERROR_CHECK(app_timer_init());
   LOG_INFO("Timer successfully initialized. ");
@@ -299,6 +268,11 @@ static void init_timer() {
   APP_ERROR_CHECK(app_timer_start(imu_timer_id,
                                   APP_TIMER_TICKS(APP_IMU_INTERVAL_MS), NULL));
   LOG_INFO("IMU timer successfully configured. ");
+
+  APP_ERROR_CHECK(app_timer_create(
+      &fallen_led_timer_id, APP_TIMER_MODE_REPEATED, fallen_led_timer_handler));
+  APP_ERROR_CHECK(app_timer_start(
+      fallen_led_timer_id, APP_TIMER_TICKS(APP_FALLEN_LED_INTERVAL_MS), NULL));
 }
 
 int main(void) {
@@ -308,10 +282,8 @@ int main(void) {
   init_logging();
   init_mesh();
 
-  (void) &init_timer;
-  (void) &init_imu;
-  // init_timer();
-  // init_imu();
+  init_timer();
+  init_imu();
 
   execution_start(start);
 

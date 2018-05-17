@@ -29,7 +29,7 @@
 // Definitions
 
 #define MADGWICK_SAMPLE_FREQUENCY_HZ APP_IMU_FREQUENCY // sample frequency in Hz
-#define MADGWICK_BETA_REF 0.01f                         // 2 * proportional gain
+#define MADGWICK_BETA_REF 0.05f                          // 2 * proportional gain
 
 //============================================================================================
 // Functions
@@ -77,13 +77,13 @@ void madgwick_update(madgwick_t *mad, float gx, float gy, float gz, float ax,
   if (!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
 
     // Normalise accelerometer measurement
-    recipNorm = invSqrt(ax * ax + ay * ay + az * az);
+    recipNorm = inv_sqrt(ax * ax + ay * ay + az * az);
     ax *= recipNorm;
     ay *= recipNorm;
     az *= recipNorm;
 
     // Normalise magnetometer measurement
-    recipNorm = invSqrt(mx * mx + my * my + mz * mz);
+    recipNorm = inv_sqrt(mx * mx + my * my + mz * mz);
     mx *= recipNorm;
     my *= recipNorm;
     mz *= recipNorm;
@@ -156,8 +156,8 @@ void madgwick_update(madgwick_t *mad, float gx, float gy, float gz, float ax,
              (_2bx * (q1q2 - q0q3) + _2bz * (q0q1 + q2q3) - my) +
          _2bx * mad->q1 *
              (_2bx * (q0q2 + q1q3) + _2bz * (0.5f - q1q1 - q2q2) - mz);
-    recipNorm = invSqrt(s0 * s0 + s1 * s1 + s2 * s2 +
-                        s3 * s3); // normalise step magnitude
+    recipNorm = inv_sqrt(s0 * s0 + s1 * s1 + s2 * s2 +
+                         s3 * s3); // normalise step magnitude
     s0 *= recipNorm;
     s1 *= recipNorm;
     s2 *= recipNorm;
@@ -177,8 +177,8 @@ void madgwick_update(madgwick_t *mad, float gx, float gy, float gz, float ax,
   mad->q3 += qDot4 * mad->inv_sample_freq;
 
   // Normalise quaternion
-  recipNorm = invSqrt(mad->q0 * mad->q0 + mad->q1 * mad->q1 +
-                      mad->q2 * mad->q2 + mad->q3 * mad->q3);
+  recipNorm = inv_sqrt(mad->q0 * mad->q0 + mad->q1 * mad->q1 +
+                       mad->q2 * mad->q2 + mad->q3 * mad->q3);
   mad->q0 *= recipNorm;
   mad->q1 *= recipNorm;
   mad->q2 *= recipNorm;
@@ -209,7 +209,7 @@ void madgwick_update_imu(madgwick_t *mad, float gx, float gy, float gz,
   if (!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
 
     // Normalise accelerometer measurement
-    recipNorm = invSqrt(ax * ax + ay * ay + az * az);
+    recipNorm = inv_sqrt(ax * ax + ay * ay + az * az);
     ax *= recipNorm;
     ay *= recipNorm;
     az *= recipNorm;
@@ -236,8 +236,8 @@ void madgwick_update_imu(madgwick_t *mad, float gx, float gy, float gz,
     s2 = 4.0f * q0q0 * mad->q2 + _2q0 * ax + _4q2 * q3q3 - _2q3 * ay - _4q2 +
          _8q2 * q1q1 + _8q2 * q2q2 + _4q2 * az;
     s3 = 4.0f * q1q1 * mad->q3 - _2q1 * ax + 4.0f * q2q2 * mad->q3 - _2q2 * ay;
-    recipNorm = invSqrt(s0 * s0 + s1 * s1 + s2 * s2 +
-                        s3 * s3); // normalise step magnitude
+    recipNorm = inv_sqrt(s0 * s0 + s1 * s1 + s2 * s2 +
+                         s3 * s3); // normalise step magnitude
     s0 *= recipNorm;
     s1 *= recipNorm;
     s2 *= recipNorm;
@@ -257,8 +257,8 @@ void madgwick_update_imu(madgwick_t *mad, float gx, float gy, float gz,
   mad->q3 += qDot4 * mad->inv_sample_freq;
 
   // Normalise quaternion
-  recipNorm = invSqrt(mad->q0 * mad->q0 + mad->q1 * mad->q1 +
-                      mad->q2 * mad->q2 + mad->q3 * mad->q3);
+  recipNorm = inv_sqrt(mad->q0 * mad->q0 + mad->q1 * mad->q1 +
+                       mad->q2 * mad->q2 + mad->q3 * mad->q3);
   mad->q0 *= recipNorm;
   mad->q1 *= recipNorm;
   mad->q2 *= recipNorm;
@@ -271,15 +271,16 @@ void madgwick_update_imu(madgwick_t *mad, float gx, float gy, float gz,
 // Fast inverse square-root
 // See: http://en.wikipedia.org/wiki/Fast_inverse_square_root
 
-float invSqrt(float x) {
-  float halfx = 0.5f * x;
-  float y = x;
-  long i = *(long *)&y;
-  i = 0x5f3759df - (i >> 1);
-  y = *(float *)&i;
-  y = y * (1.5f - (halfx * y * y));
-  y = y * (1.5f - (halfx * y * y));
-  return y;
+float inv_sqrt(float x) {
+  //   float halfx = 0.5f * x;
+  //   float y = x;
+  //   long i = *(long *)&y;
+  //   i = 0x5f3759df - (i >> 1);
+  //   y = *(float *)&i;
+  //   y = y * (1.5f - (halfx * y * y));
+  //   y = y * (1.5f - (halfx * y * y));
+  //   return y;
+  return 1.0 / sqrtf(x);
 }
 
 //-------------------------------------------------------------------------------------------

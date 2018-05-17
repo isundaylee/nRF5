@@ -37,7 +37,7 @@ typedef struct {
   bool angles_computed;
 } madgwick_t;
 
-float invSqrt(float x);
+float inv_sqrt(float x);
 
 void madgwick_init(madgwick_t *mad);
 void madgwick_update(madgwick_t *mad, float gx, float gy, float gz, float ax,
