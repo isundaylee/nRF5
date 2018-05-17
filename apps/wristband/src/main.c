@@ -221,9 +221,11 @@ static void init_imu() {
 
 static void imu_timer_handler(void *context) {
   int16_t x, y, z;
+  int16_t gx, gy, gz;
 
   lsm9ds1_accel_read_all(&imu, &x, &y, &z);
-  LOG_INFO("IMU reading: %d %d %d", x, y, z);
+  lsm9ds1_gyro_read_all(&imu, &gx, &gy, &gz);
+  LOG_INFO("IMU reading: %6d %6d %6d + %6d %6d %6d", x, y, z, gx, gy, gz);
 }
 
 APP_TIMER_DEF(imu_timer_id);
