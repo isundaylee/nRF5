@@ -25,6 +25,7 @@
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
+#define PIN_RESET_NETWORK_CONFIG 4
 
 typedef struct {
   health_client_t health_client;
@@ -71,62 +72,29 @@ static void provision_complete_cb(void) {
   LOG_INFO("We have been successfully provisioned! ");
 }
 
-static void toggle_indication_led(void) {
-  static bool on = false;
-
-  if (on) {
-    nrf_gpio_pin_clear(PIN_LED_INDICATION);
-  } else {
-    nrf_gpio_pin_set(PIN_LED_INDICATION);
-  }
-
-  on = !on;
-}
+// static void toggle_indication_led(void) {
+//   static bool on = false;
+//
+//   if (on) {
+//     nrf_gpio_pin_clear(PIN_LED_INDICATION);
+//   } else {
+//     nrf_gpio_pin_set(PIN_LED_INDICATION);
+//   }
+//
+//   on = !on;
+// }
 
 static void health_client_evt_cb(const health_client_t *client,
                                  const health_client_evt_t *event) {
-  static int rssi[4] = {0.0, 0.0, 0.0, 0.0};
-  static bool ready[4] = {false, false, false, false};
-
   if (event->p_meta_data->p_core_metadata->source ==
       NRF_MESH_RX_SOURCE_LOOPBACK) {
     return;
   }
 
-  uint8_t ch = event->p_meta_data->p_core_metadata->params.scanner.channel;
-  uint16_t addr = event->p_meta_data->src.value;
-  int8_t rssi_reading =
-      event->p_meta_data->p_core_metadata->params.scanner.rssi;
-
-  if (ch != 39) {
-    return;
-  }
-
-  rssi[addr - 1] = rssi_reading;
-  ready[addr - 1] = true;
-
-  for (int i = 0; i < 4; i++) {
-    if (!ready[i]) {
-      return;
-    }
-  }
-
-  toggle_indication_led();
-
-  float x, y;
-  coordinates_rssi(rssi, &x, &y);
-
-  ecare_state_t state = {
-      .fallen = false,
-      .x = (int)(1024 * x),
-      .y = (int)(1024 * y),
-      .z = addr,
-  };
-
-  uint32_t ret = ecare_client_set_unreliable(&app.ecare_client, state);
-  if (ret != NRF_SUCCESS) {
-    LOG_ERROR("Ecare client set encountered error %d", ret);
-  }
+  // uint8_t ch = event->p_meta_data->p_core_metadata->params.scanner.channel;
+  // uint16_t addr = event->p_meta_data->src.value;
+  // int8_t rssi_reading =
+  //     event->p_meta_data->p_core_metadata->params.scanner.rssi;
 }
 
 void ecare_status_cb(const ecare_client_t *self, ecare_state_t state) {
@@ -158,22 +126,18 @@ static void init_mesh() {
   // Set up health client
   APP_ERROR_CHECK(
       health_client_init(&app.health_client, 0, health_client_evt_cb));
-  LOG_INFO("Health client initialized. ");
 
   // Set up ecare client
   app.ecare_client.status_cb = ecare_status_cb;
   app.ecare_client.timeout_cb = ecare_timeout_cb;
   APP_ERROR_CHECK(ecare_client_init(&app.ecare_client, 0));
-  LOG_INFO("Ecare client initialized. ");
 
   // Print out device address
   ble_gap_addr_t addr;
   APP_ERROR_CHECK(sd_ble_gap_addr_get(&addr));
-
-  LOG_INFO("Device address is %2x:%2x:%2x:%2x:%2x:%2x", addr.addr[0],
-           addr.addr[1], addr.addr[2], addr.addr[3], addr.addr[4],
-           addr.addr[5]);
 }
+
+static void send_fallen_state_update();
 
 static void start() {
   APP_ERROR_CHECK(mesh_stack_start());
@@ -197,13 +161,18 @@ static void start() {
     LOG_ERROR("We have already been provisioned. ");
 
     nrf_gpio_pin_set(PIN_LED_INDICATION);
+    nrf_gpio_cfg_input(PIN_RESET_NETWORK_CONFIG, NRF_GPIO_PIN_PULLDOWN);
+    bool should_reset = (nrf_gpio_pin_read(PIN_RESET_NETWORK_CONFIG) != 0);
 
-    if (APP_RESET_NETWORK_ON_START) {
+    if (should_reset) {
       LOG_ERROR("Will clear all config and reset in 1s. ");
 
       mesh_stack_config_clear();
       nrf_delay_ms(1000);
       mesh_stack_device_reset();
+    } else {
+      LOG_ERROR("Will reuse the existing network config. ");
+      send_fallen_state_update();
     }
   }
 }
@@ -230,6 +199,17 @@ static void init_imu() {
 }
 
 bool fallen = false;
+static void send_fallen_state_update() {
+  ecare_state_t state = {
+      .fallen = fallen,
+      .x = 0,
+      .y = 0,
+      .z = 0,
+  };
+
+  ecare_client_set(&app.ecare_client, state);
+}
+
 static void imu_timer_handler(void *context) {
   float ax, ay, az;
 
@@ -238,15 +218,8 @@ static void imu_timer_handler(void *context) {
   bool lying = fall_detection_update(ax, ay, az);
 
   if (lying != fallen) {
-    ecare_state_t state = {
-        .fallen = lying,
-        .x = 0,
-        .y = 0,
-        .z = 0,
-    };
-
-    ecare_client_set(&app.ecare_client, state);
     fallen = lying;
+    send_fallen_state_update();
   }
 }
 
@@ -261,13 +234,11 @@ static void fallen_led_timer_handler(void *context) {
 
 static void init_timer() {
   APP_ERROR_CHECK(app_timer_init());
-  LOG_INFO("Timer successfully initialized. ");
 
   APP_ERROR_CHECK(app_timer_create(&imu_timer_id, APP_TIMER_MODE_REPEATED,
                                    imu_timer_handler));
   APP_ERROR_CHECK(app_timer_start(imu_timer_id,
                                   APP_TIMER_TICKS(APP_IMU_INTERVAL_MS), NULL));
-  LOG_INFO("IMU timer successfully configured. ");
 
   APP_ERROR_CHECK(app_timer_create(
       &fallen_led_timer_id, APP_TIMER_MODE_REPEATED, fallen_led_timer_handler));

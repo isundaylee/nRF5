@@ -22,6 +22,7 @@
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
+#define PIN_RESET_NETWORK_CONFIG 3
 
 app_state_t app_state;
 
@@ -82,8 +83,14 @@ static void init_mesh() {
 }
 
 static void ecare_server_cb(ecare_server_t const *server, ecare_state_t state) {
-  LOG_INFO("Received new Ecare state: fallen = %d, x = %d, y = %d, z = %d",
-           state.fallen, state.x, state.y, state.z);
+  if (state.fallen) {
+    LOG_INFO("A fall event has been detected. ");
+  } else {
+    LOG_INFO("Everything is well :) ");
+  }
+
+  // LOG_INFO("Received new Ecare state: fallen = %d, x = %d, y = %d, z = %d",
+  //          state.fallen, state.x, state.y, state.z);
 }
 
 static void prov_init_complete_cb() {
@@ -109,12 +116,21 @@ static void start() {
     nrf_gpio_pin_set(PIN_LED_INDICATION);
 
     LOG_ERROR("We have already been provisioned. ");
-    LOG_ERROR("Will clear all config and reset in 1s. ");
 
-    mesh_stack_config_clear();
-    nrf_delay_ms(1000);
-    mesh_stack_device_reset();
-    while (1) {
+    nrf_gpio_pin_set(PIN_LED_INDICATION);
+    nrf_gpio_cfg_input(PIN_RESET_NETWORK_CONFIG, NRF_GPIO_PIN_PULLDOWN);
+    bool should_reset = (nrf_gpio_pin_read(PIN_RESET_NETWORK_CONFIG) != 0);
+
+    if (should_reset) {
+      LOG_ERROR("Will clear all config and reset in 1s. ");
+
+      mesh_stack_config_clear();
+      nrf_delay_ms(1000);
+      mesh_stack_device_reset();
+      while (1) {
+      }
+    } else {
+      LOG_ERROR("Will reuse the existing network config. ");
     }
   }
 
