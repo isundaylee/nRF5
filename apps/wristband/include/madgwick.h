@@ -49,6 +49,3 @@ void madgwick_compute_angles(madgwick_t *mad);
 float madgwick_get_roll(madgwick_t *mad);
 float madgwick_get_pitch(madgwick_t *mad);
 float madgwick_get_yaw(madgwick_t *mad);
-float madgwick_get_roll_radians(madgwick_t *mad);
-float madgwick_get_pitch_radians(madgwick_t *mad);
-float madgwick_get_yaw_radians(madgwick_t *mad);

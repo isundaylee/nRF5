@@ -22,11 +22,14 @@
 #include "madgwick.h"
 #include <math.h>
 
+#include "app_config.h"
+#include "custom_log.h"
+
 //-------------------------------------------------------------------------------------------
 // Definitions
 
-#define sampleFreqDef 512.0f // sample frequency in Hz
-#define betaDef 0.1f         // 2 * proportional gain
+#define MADGWICK_SAMPLE_FREQUENCY_HZ APP_IMU_FREQUENCY // sample frequency in Hz
+#define MADGWICK_BETA_REF 0.1f                         // 2 * proportional gain
 
 //============================================================================================
 // Functions
@@ -35,14 +38,14 @@
 // AHRS algorithm update
 
 void madgwick_init(madgwick_t *mad) {
-  mad->beta = betaDef;
+  mad->beta = MADGWICK_BETA_REF;
 
   mad->q0 = 1.0f;
   mad->q1 = 0.0f;
   mad->q2 = 0.0f;
   mad->q3 = 0.0f;
 
-  mad->inv_sample_freq = 1.0f / sampleFreqDef;
+  mad->inv_sample_freq = 1.0f / MADGWICK_SAMPLE_FREQUENCY_HZ;
   mad->angles_computed = false;
 }
 
@@ -62,11 +65,6 @@ void madgwick_update(madgwick_t *mad, float gx, float gy, float gz, float ax,
     madgwick_update_imu(mad, gx, gy, gz, ax, ay, az);
     return;
   }
-
-  // Convert gyroscope degrees/sec to radians/sec
-  gx *= 0.0174533f;
-  gy *= 0.0174533f;
-  gz *= 0.0174533f;
 
   // Rate of change of quaternion from gyroscope
   qDot1 = 0.5f * (-mad->q1 * gx - mad->q2 * gy - mad->q3 * gz);
@@ -200,11 +198,6 @@ void madgwick_update_imu(madgwick_t *mad, float gx, float gy, float gz,
   float _2q0, _2q1, _2q2, _2q3, _4q0, _4q1, _4q2, _8q1, _8q2, q0q0, q1q1, q2q2,
       q3q3;
 
-  // Convert gyroscope degrees/sec to radians/sec
-  gx *= 0.0174533f;
-  gy *= 0.0174533f;
-  gz *= 0.0174533f;
-
   // Rate of change of quaternion from gyroscope
   qDot1 = 0.5f * (-mad->q1 * gx - mad->q2 * gy - mad->q3 * gz);
   qDot2 = 0.5f * (mad->q0 * gx + mad->q2 * gz - mad->q3 * gy);
@@ -301,34 +294,22 @@ void madgwick_compute_angles(madgwick_t *mad) {
 }
 
 float madgwick_get_roll(madgwick_t *mad) {
-  return madgwick_get_roll_radians(mad) * 57.29578f;
-}
-
-float madgwick_get_pitch(madgwick_t *mad) {
-  return madgwick_get_pitch_radians(mad) * 57.29578f;
-}
-
-float madgwick_get_yaw(madgwick_t *mad) {
-  return madgwick_get_yaw_radians(mad) * 57.29578f + 180.0f;
-}
-
-float madgwick_get_roll_radians(madgwick_t *mad) {
   if (!mad->angles_computed) {
     madgwick_compute_angles(mad);
   }
   return mad->roll;
 }
 
-float madgwick_get_pitch_radians(madgwick_t *mad) {
+float madgwick_get_pitch(madgwick_t *mad) {
   if (!mad->angles_computed) {
     madgwick_compute_angles(mad);
   }
   return mad->pitch;
 }
 
-float madgwick_get_yaw_radians(madgwick_t *mad) {
+float madgwick_get_yaw(madgwick_t *mad) {
   if (!mad->angles_computed) {
     madgwick_compute_angles(mad);
   }
-  return mad->yaw;
+  return mad->yaw + M_PI;
 }

@@ -14,12 +14,13 @@
 #include "health_client.h"
 #include "localization.h"
 
+#include "app_config.h"
 #include "custom_log.h"
+#include "fall_detection.h"
 #include "localization.h"
+#include "lsm9ds1.h"
 
 #include "debug_pins.h"
-
-#include "lsm9ds1.h"
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
@@ -209,7 +210,7 @@ static void init_imu() {
                                        .frequency = NRF_DRV_TWI_FREQ_100K,
                                        .interrupt_priority =
                                            APP_IRQ_PRIORITY_HIGH,
-                                       .clear_bus_init = false};
+                                       .clear_bus_init = true};
 
   APP_ERROR_CHECK(nrf_drv_twi_init(&twi, &config, NULL, NULL));
   nrf_drv_twi_enable(&twi);
@@ -217,45 +218,71 @@ static void init_imu() {
 
   lsm9ds1_init(&imu, &twi);
   LOG_INFO("IMU successfully initialized. ");
+
+  fall_detection_init();
 }
 
-#define APP_IMU_INTERVAL_MS 10
-#define APP_IMU_CALIBRATION_HOLDOFF 200
-#define APP_IMU_CALIBRATION_POINTS 100
+static bool imu_read_calibrated_accel(float *x, float *y, float *z) {
+  static int t = 0;
+  static float avg_x = 0, avg_y = 0, avg_z = 0;
+
+  t += 1;
+  lsm9ds1_accel_read_all(&imu, x, y, z);
+
+  avg_x = (1 - APP_IMU_AVG_ALPHA) * avg_x + APP_IMU_AVG_ALPHA * *x;
+  avg_y = (1 - APP_IMU_AVG_ALPHA) * avg_y + APP_IMU_AVG_ALPHA * *y;
+  avg_z = (1 - APP_IMU_AVG_ALPHA) * avg_z + APP_IMU_AVG_ALPHA * *z;
+
+  *x -= avg_x;
+  *y -= avg_y;
+  *z -= avg_z;
+
+  return (t >= 200);
+}
+
+static bool imu_read_calibrated_gyro(float *x, float *y, float *z) {
+  static int t = 0;
+  static float avg_x = 0, avg_y = 0, avg_z = 0;
+
+  t += 1;
+  lsm9ds1_gyro_read_all(&imu, x, y, z);
+
+  if (t < 100) {
+    return false;
+  } else if (t < 200) {
+    avg_x += *x;
+    avg_y += *y;
+    avg_z += *z;
+
+    return false;
+  }
+
+  if (t == 200) {
+    avg_x /= 100;
+    avg_y /= 100;
+    avg_z /= 100;
+  }
+
+  *x -= avg_x;
+  *y -= avg_y;
+  *z -= avg_z;
+
+  return true;
+}
 
 static void imu_timer_handler(void *context) {
-  static size_t t = 0;
-  static int32_t calib_x = 0, calib_y = 0, calib_z = 0;
+  float x, y, z;
+  float gx, gy, gz;
 
-  int16_t x, y, z;
-  int16_t gx, gy, gz;
+  bool accel_ready = imu_read_calibrated_accel(&x, &y, &z);
+  bool gyro_ready = imu_read_calibrated_gyro(&gx, &gy, &gz);
 
-  lsm9ds1_accel_read_all(&imu, &x, &y, &z);
-  lsm9ds1_gyro_read_all(&imu, &gx, &gy, &gz);
-
-  t++;
-  if (t < APP_IMU_CALIBRATION_HOLDOFF) {
-    return;
-  } else if (t < APP_IMU_CALIBRATION_HOLDOFF + APP_IMU_CALIBRATION_POINTS) {
-    calib_x += x;
-    calib_y += y;
-    calib_z += z;
+  if (!accel_ready || !gyro_ready) {
     return;
   }
 
-  if (t == APP_IMU_CALIBRATION_HOLDOFF + APP_IMU_CALIBRATION_POINTS) {
-    calib_x /= APP_IMU_CALIBRATION_POINTS;
-    calib_y /= APP_IMU_CALIBRATION_POINTS;
-    calib_z /= APP_IMU_CALIBRATION_POINTS;
-
-    LOG_INFO("IMU calibration process finished: %d %d %d", x, y, z);
-  }
-
-  x -= calib_x;
-  y -= calib_y;
-  z -= calib_z;
-
-  LOG_INFO("IMU reading: %6d %6d %6d + %6d %6d %6d", x, y, z, gx, gy, gz);
+  bool lying = fall_detection_update(x, y, z, gx, gy, gz);
+  nrf_gpio_pin_write(PIN_LED_INDICATION, lying ? 1 : 0);
 }
 
 APP_TIMER_DEF(imu_timer_id);
