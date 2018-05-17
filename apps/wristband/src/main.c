@@ -8,6 +8,8 @@
 #include "mesh_softdevice_init.h"
 #include "mesh_stack.h"
 
+#include "app_timer.h"
+
 #include "ecare_client.h"
 #include "health_client.h"
 #include "localization.h"
@@ -16,6 +18,8 @@
 #include "localization.h"
 
 #include "debug_pins.h"
+
+#include "lsm9ds1.h"
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
@@ -196,15 +200,55 @@ static void start() {
   }
 }
 
+static const nrf_drv_twi_t twi = NRF_DRV_TWI_INSTANCE(0);
+lsm9ds1_t imu;
+
+static void init_imu() {
+  const nrf_drv_twi_config_t config = {.scl = 8,
+                                       .sda = 7,
+                                       .frequency = NRF_DRV_TWI_FREQ_100K,
+                                       .interrupt_priority =
+                                           APP_IRQ_PRIORITY_HIGH,
+                                       .clear_bus_init = false};
+
+  APP_ERROR_CHECK(nrf_drv_twi_init(&twi, &config, NULL, NULL));
+  nrf_drv_twi_enable(&twi);
+  LOG_INFO("TWI successfully initialized. ");
+
+  lsm9ds1_init(&imu, &twi);
+  LOG_INFO("IMU successfully initialized. ");
+}
+
+void test_stuff() {
+  while (1) {
+    int16_t x, y, z;
+    lsm9ds1_accel_read_all(&imu, &x, &y, &z);
+    LOG_INFO("%d %d %d", x, y, z);
+
+    nrf_delay_ms(1000);
+  }
+}
+
+static void init_timer() {
+  APP_ERROR_CHECK(app_timer_init());
+  LOG_INFO("Timer successfully initialized. ");
+}
+
 int main(void) {
   DEBUG_PINS_INIT();
 
   init_leds();
   init_logging();
+  init_timer();
+  init_imu();
+
+  test_stuff();
+
   init_mesh();
 
   execution_start(start);
 
   while (1) {
+    (void)sd_app_evt_wait();
   }
 }
