@@ -1,5 +1,7 @@
 #include "lsm9ds1.h"
 
+#include "custom_log.h"
+
 const uint8_t LSM9DS1_ADDR_GYRO_ACCEL = 107;
 
 void lsm9ds1_read(lsm9ds1_t *dev, uint8_t twi_addr, uint8_t reg_addr,

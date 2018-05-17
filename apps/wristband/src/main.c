@@ -219,12 +219,42 @@ static void init_imu() {
   LOG_INFO("IMU successfully initialized. ");
 }
 
+#define APP_IMU_INTERVAL_MS 10
+#define APP_IMU_CALIBRATION_HOLDOFF 200
+#define APP_IMU_CALIBRATION_POINTS 100
+
 static void imu_timer_handler(void *context) {
+  static size_t t = 0;
+  static int32_t calib_x = 0, calib_y = 0, calib_z = 0;
+
   int16_t x, y, z;
   int16_t gx, gy, gz;
 
   lsm9ds1_accel_read_all(&imu, &x, &y, &z);
   lsm9ds1_gyro_read_all(&imu, &gx, &gy, &gz);
+
+  t++;
+  if (t < APP_IMU_CALIBRATION_HOLDOFF) {
+    return;
+  } else if (t < APP_IMU_CALIBRATION_HOLDOFF + APP_IMU_CALIBRATION_POINTS) {
+    calib_x += x;
+    calib_y += y;
+    calib_z += z;
+    return;
+  }
+
+  if (t == APP_IMU_CALIBRATION_HOLDOFF + APP_IMU_CALIBRATION_POINTS) {
+    calib_x /= APP_IMU_CALIBRATION_POINTS;
+    calib_y /= APP_IMU_CALIBRATION_POINTS;
+    calib_z /= APP_IMU_CALIBRATION_POINTS;
+
+    LOG_INFO("IMU calibration process finished: %d %d %d", x, y, z);
+  }
+
+  x -= calib_x;
+  y -= calib_y;
+  z -= calib_z;
+
   LOG_INFO("IMU reading: %6d %6d %6d + %6d %6d %6d", x, y, z, gx, gy, gz);
 }
 
@@ -235,7 +265,8 @@ static void init_timer() {
 
   APP_ERROR_CHECK(app_timer_create(&imu_timer_id, APP_TIMER_MODE_REPEATED,
                                    imu_timer_handler));
-  APP_ERROR_CHECK(app_timer_start(imu_timer_id, APP_TIMER_TICKS(100), NULL));
+  APP_ERROR_CHECK(app_timer_start(imu_timer_id,
+                                  APP_TIMER_TICKS(APP_IMU_INTERVAL_MS), NULL));
   LOG_INFO("IMU timer successfully configured. ");
 }
 

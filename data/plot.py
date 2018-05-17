@@ -16,7 +16,7 @@ DATA_KEEP = 20 * TIME_WIDTH
 COLORS = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
 
 Y_MIN = -10000
-Y_MAX =  10000
+Y_MAX =  30000
 
 ################################################################################
 # Different data post-processing methods
