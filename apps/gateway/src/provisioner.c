@@ -223,6 +223,11 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
     break;
   }
 
+  case NRF_MESH_PROV_EVT_FAILED: // 10
+  {
+    LOG_ERROR("Provisioning failed: %d", evt->params.failed.failure_code);
+  }
+
   default:
     LOG_ERROR("Received unhandled provisioning event: %d", evt->type);
 

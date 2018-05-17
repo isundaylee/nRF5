@@ -7,8 +7,10 @@
 #define LSM9DS1_FULL_SCALE_LIMIT (1 << 15)
 #define LSM9DS1_FULL_SCALE_ACCEL_G 4.0
 #define LSM9DS1_FULL_SCALE_GYRO_DPS (500.0 * M_PI / 180.0)
+#define LSM9DS1_FULL_SCALE_MAG_GS 8.0
 
 #define LSM9DS1_ADDR_GYRO_ACCEL 107
+#define LSM9DS1_ADDR_MAG 30
 
 void lsm9ds1_read(lsm9ds1_t *dev, uint8_t twi_addr, uint8_t reg_addr,
                   uint8_t *data, uint8_t length);
@@ -27,6 +29,10 @@ void lsm9ds1_init(lsm9ds1_t *dev, nrf_drv_twi_t const *twi) {
   // Initialize gyroscope
   lsm9ds1_write_byte(dev, LSM9DS1_ADDR_GYRO_ACCEL, 0x10, 0b10101000);
   lsm9ds1_write_byte(dev, LSM9DS1_ADDR_GYRO_ACCEL, 0x1E, 0b00111000);
+
+  // Initialize mag
+  lsm9ds1_write_byte(dev, LSM9DS1_ADDR_MAG, 0x21, 0b00100000);
+  lsm9ds1_write_byte(dev, LSM9DS1_ADDR_MAG, 0x22, 0b00000000);
 }
 
 void lsm9ds1_read(lsm9ds1_t *dev, uint8_t twi_addr, uint8_t reg_addr,
@@ -84,5 +90,18 @@ void lsm9ds1_gyro_read_all(lsm9ds1_t *dev, float *x, float *y, float *z) {
   *y = LSM9DS1_FULL_SCALE_GYRO_DPS * (int16_t)(data[2] + (data[3] << 8)) /
        LSM9DS1_FULL_SCALE_LIMIT;
   *z = LSM9DS1_FULL_SCALE_GYRO_DPS * (int16_t)(data[4] + (data[5] << 8)) /
+       LSM9DS1_FULL_SCALE_LIMIT;
+}
+
+void lsm9ds1_mag_read_all(lsm9ds1_t *dev, float *x, float *y, float *z) {
+  uint8_t data[6];
+
+  lsm9ds1_read(dev, LSM9DS1_ADDR_MAG, 0x28, data, 6);
+
+  *x = LSM9DS1_FULL_SCALE_MAG_GS * (int16_t)(data[0] + (data[1] << 8)) /
+       LSM9DS1_FULL_SCALE_LIMIT;
+  *y = LSM9DS1_FULL_SCALE_MAG_GS * (int16_t)(data[2] + (data[3] << 8)) /
+       LSM9DS1_FULL_SCALE_LIMIT;
+  *z = LSM9DS1_FULL_SCALE_MAG_GS * (int16_t)(data[4] + (data[5] << 8)) /
        LSM9DS1_FULL_SCALE_LIMIT;
 }

@@ -19,6 +19,7 @@
 #include "fall_detection.h"
 #include "localization.h"
 #include "lsm9ds1.h"
+#include "vector.h"
 
 #include "debug_pins.h"
 
@@ -271,17 +272,20 @@ static bool imu_read_calibrated_gyro(float *x, float *y, float *z) {
 }
 
 static void imu_timer_handler(void *context) {
-  float x, y, z;
+  float ax, ay, az;
   float gx, gy, gz;
+  float mx, my, mz;
 
-  bool accel_ready = imu_read_calibrated_accel(&x, &y, &z);
+  bool accel_ready = imu_read_calibrated_accel(&ax, &ay, &az);
   bool gyro_ready = imu_read_calibrated_gyro(&gx, &gy, &gz);
 
   if (!accel_ready || !gyro_ready) {
     return;
   }
 
-  bool lying = fall_detection_update(x, y, z, gx, gy, gz);
+  lsm9ds1_mag_read_all(&imu, &mx, &my, &mz);
+
+  bool lying = fall_detection_update(ax, ay, az, gx, gy, gz, mx, my, mz);
   nrf_gpio_pin_write(PIN_LED_INDICATION, lying ? 1 : 0);
 }
 
@@ -303,8 +307,11 @@ int main(void) {
   init_leds();
   init_logging();
   init_mesh();
-  init_timer();
-  init_imu();
+
+  (void) &init_timer;
+  (void) &init_imu;
+  // init_timer();
+  // init_imu();
 
   execution_start(start);
 

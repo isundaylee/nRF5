@@ -29,7 +29,7 @@
 // Definitions
 
 #define MADGWICK_SAMPLE_FREQUENCY_HZ APP_IMU_FREQUENCY // sample frequency in Hz
-#define MADGWICK_BETA_REF 0.1f                         // 2 * proportional gain
+#define MADGWICK_BETA_REF 0.01f                         // 2 * proportional gain
 
 //============================================================================================
 // Functions
