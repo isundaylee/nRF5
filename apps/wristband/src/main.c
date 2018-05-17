@@ -91,10 +91,69 @@ static void health_client_evt_cb(const health_client_t *client,
     return;
   }
 
-  // uint8_t ch = event->p_meta_data->p_core_metadata->params.scanner.channel;
-  // uint16_t addr = event->p_meta_data->src.value;
-  // int8_t rssi_reading =
-  //     event->p_meta_data->p_core_metadata->params.scanner.rssi;
+  static int t = 0;
+  static int8_t rssi_by_channel[3][APP_MAX_PROVISIONEES] = {0};
+  static int reading_timestamp[3][APP_MAX_PROVISIONEES] = {0};
+
+  uint8_t ch = event->p_meta_data->p_core_metadata->params.scanner.channel;
+  uint16_t addr = event->p_meta_data->src.value;
+  int8_t rssi = event->p_meta_data->p_core_metadata->params.scanner.rssi;
+
+  if (addr == 1) {
+    return;
+  }
+
+  ++t;
+  rssi_by_channel[ch - 37][addr] = rssi;
+  reading_timestamp[ch - 37][addr] = t;
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < APP_MAX_PROVISIONEES; j++) {
+      if (reading_timestamp[i][j] < t - 50) {
+        reading_timestamp[i][j] = 0;
+        rssi_by_channel[i][j] = 0;
+      }
+    }
+  }
+
+  bool best = true;
+  for (int i = 2; i < APP_MAX_PROVISIONEES; i++) {
+    if (rssi_by_channel[ch - 37][i] != 0 &&
+        rssi_by_channel[ch - 37][i] > rssi) {
+      best = false;
+      break;
+    }
+  }
+
+  static int best_history[10] = {0};
+  static int best_history_index = 0;
+  static int published_best = -1;
+
+  if (best) {
+    best_history[best_history_index] = addr;
+    best_history_index++;
+    best_history_index %= 10;
+
+    int best_count = 0;
+    for (int i = 0; i < sizeof(best_history) / sizeof(best_history[0]); i++) {
+      if (best_history[i] == addr) {
+        best_count++;
+      }
+    }
+
+    if (best_count >= 8) {
+      if (addr != published_best) {
+        published_best = addr;
+
+        ecare_state_t state = {
+            .fallen = false, .x = 1, .y = published_best, .z = 0};
+
+        ecare_client_set(&app.ecare_client, state);
+
+        LOG_INFO("Published %d", published_best);
+      }
+    }
+  }
 }
 
 void ecare_status_cb(const ecare_client_t *self, ecare_state_t state) {
@@ -163,6 +222,9 @@ static void start() {
     nrf_gpio_pin_set(PIN_LED_INDICATION);
     nrf_gpio_cfg_input(PIN_RESET_NETWORK_CONFIG, NRF_GPIO_PIN_PULLDOWN);
     bool should_reset = (nrf_gpio_pin_read(PIN_RESET_NETWORK_CONFIG) != 0);
+
+    LOG_INFO("should_reset is read as %d", should_reset);
+    LOG_INFO("should_reset is read as %d", should_reset);
 
     if (should_reset) {
       LOG_ERROR("Will clear all config and reset in 1s. ");

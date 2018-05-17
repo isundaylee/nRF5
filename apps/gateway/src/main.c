@@ -22,7 +22,7 @@
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
-#define PIN_RESET_NETWORK_CONFIG 3
+#define PIN_RESET_NETWORK_CONFIG 4
 
 app_state_t app_state;
 
@@ -83,10 +83,29 @@ static void init_mesh() {
 }
 
 static void ecare_server_cb(ecare_server_t const *server, ecare_state_t state) {
-  if (state.fallen) {
-    LOG_INFO("A fall event has been detected. ");
+  if (state.x == 0) {
+    if (state.fallen) {
+      LOG_INFO("A fall event has been detected. ");
+    } else {
+      LOG_INFO("Everything is well :) ");
+    }
+  } else if (state.x == 1) {
+    switch (state.y) {
+    case 2:
+      LOG_INFO("Location update: Bedroom");
+      break;
+    case 3:
+      LOG_INFO("Location update: Closet");
+      break;
+    case 4:
+      LOG_INFO("Location update: Athena Cluster");
+      break;
+    default:
+      LOG_INFO("Location update: Unknown");
+      break;
+    }
   } else {
-    LOG_INFO("Everything is well :) ");
+    LOG_INFO("Unknown opcode %d.", state.x);
   }
 
   // LOG_INFO("Received new Ecare state: fallen = %d, x = %d, y = %d, z = %d",
