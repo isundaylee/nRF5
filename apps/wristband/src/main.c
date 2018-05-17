@@ -219,19 +219,22 @@ static void init_imu() {
   LOG_INFO("IMU successfully initialized. ");
 }
 
-void test_stuff() {
-  while (1) {
-    int16_t x, y, z;
-    lsm9ds1_accel_read_all(&imu, &x, &y, &z);
-    LOG_INFO("%d %d %d", x, y, z);
+static void imu_timer_handler(void *context) {
+  int16_t x, y, z;
 
-    nrf_delay_ms(1000);
-  }
+  lsm9ds1_accel_read_all(&imu, &x, &y, &z);
+  LOG_INFO("IMU reading: %d %d %d", x, y, z);
 }
 
+APP_TIMER_DEF(imu_timer_id);
 static void init_timer() {
   APP_ERROR_CHECK(app_timer_init());
   LOG_INFO("Timer successfully initialized. ");
+
+  APP_ERROR_CHECK(app_timer_create(&imu_timer_id, APP_TIMER_MODE_REPEATED,
+                                   imu_timer_handler));
+  APP_ERROR_CHECK(app_timer_start(imu_timer_id, APP_TIMER_TICKS(100), NULL));
+  LOG_INFO("IMU timer successfully configured. ");
 }
 
 int main(void) {
@@ -239,16 +242,13 @@ int main(void) {
 
   init_leds();
   init_logging();
+  init_mesh();
   init_timer();
   init_imu();
 
-  test_stuff();
-
-  init_mesh();
-
   execution_start(start);
 
-  while (1) {
+  while (true) {
     (void)sd_app_evt_wait();
   }
 }
