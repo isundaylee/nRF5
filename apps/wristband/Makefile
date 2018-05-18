@@ -4,6 +4,7 @@ OUTPUT_DIRECTORY := build
 
 PRETTY           := 1
 
+LIB_ROOT := ../../lib
 SDK_ROOT := ../../sdk
 MESH_SDK_ROOT := ../../mesh_sdk
 
@@ -21,11 +22,11 @@ $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
 SRC_FILES += \
   $(SRC_DIR)/main.c \
   $(SRC_DIR)/lsm9ds1.c \
-  $(SRC_DIR)/custom_log.c \
   $(SRC_DIR)/localization.c \
   $(SRC_DIR)/fall_detection.c \
   $(SRC_DIR)/madgwick.c \
   $(SRC_DIR)/vector.c \
+  $(LIB_ROOT)/custom_log/src/custom_log.c \
   $(GATEWAY_SRC_DIR)/ecare_client.c \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
   $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_serial.c \
@@ -91,7 +92,7 @@ SRC_FILES += \
 INC_FOLDERS += \
   $(SUPPORT_DIR) \
   $(INCLUDE_DIR) \
-  $(INCLUDE_DIR) \
+  $(LIB_ROOT)/custom_log/include \
   $(GATEWAY_INCLUDE_DIR) \
   $(SDK_ROOT)/components/nfc/ndef/generic/message \
   $(SDK_ROOT)/components/nfc/t2t_lib \
