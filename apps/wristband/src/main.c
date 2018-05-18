@@ -25,7 +25,6 @@
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
-#define PIN_RESET_NETWORK_CONFIG 4
 
 typedef struct {
   health_client_t health_client;
@@ -34,13 +33,9 @@ typedef struct {
 
 app_t app;
 
-APP_TIMER_DEF(imu_timer_id);
-APP_TIMER_DEF(fallen_led_timer_id);
-
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
 
-  app_timer_stop(fallen_led_timer_id);
   nrf_gpio_cfg_output(PIN_LED_ERROR);
   nrf_gpio_pin_set(PIN_LED_ERROR);
 
@@ -72,18 +67,6 @@ static void provision_complete_cb(void) {
   LOG_INFO("We have been successfully provisioned! ");
 }
 
-// static void toggle_indication_led(void) {
-//   static bool on = false;
-//
-//   if (on) {
-//     nrf_gpio_pin_clear(PIN_LED_INDICATION);
-//   } else {
-//     nrf_gpio_pin_set(PIN_LED_INDICATION);
-//   }
-//
-//   on = !on;
-// }
-
 static void health_client_evt_cb(const health_client_t *client,
                                  const health_client_evt_t *event) {
   if (event->p_meta_data->p_core_metadata->source ==
@@ -91,69 +74,8 @@ static void health_client_evt_cb(const health_client_t *client,
     return;
   }
 
-  static int t = 0;
-  static int8_t rssi_by_channel[3][APP_MAX_PROVISIONEES] = {0};
-  static int reading_timestamp[3][APP_MAX_PROVISIONEES] = {0};
-
-  uint8_t ch = event->p_meta_data->p_core_metadata->params.scanner.channel;
-  uint16_t addr = event->p_meta_data->src.value;
-  int8_t rssi = event->p_meta_data->p_core_metadata->params.scanner.rssi;
-
-  if (addr == 1) {
-    return;
-  }
-
-  ++t;
-  rssi_by_channel[ch - 37][addr] = rssi;
-  reading_timestamp[ch - 37][addr] = t;
-
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < APP_MAX_PROVISIONEES; j++) {
-      if (reading_timestamp[i][j] < t - 50) {
-        reading_timestamp[i][j] = 0;
-        rssi_by_channel[i][j] = 0;
-      }
-    }
-  }
-
-  bool best = true;
-  for (int i = 2; i < APP_MAX_PROVISIONEES; i++) {
-    if (rssi_by_channel[ch - 37][i] != 0 &&
-        rssi_by_channel[ch - 37][i] > rssi) {
-      best = false;
-      break;
-    }
-  }
-
-  static int best_history[10] = {0};
-  static int best_history_index = 0;
-  static int published_best = -1;
-
-  if (best) {
-    best_history[best_history_index] = addr;
-    best_history_index++;
-    best_history_index %= 10;
-
-    int best_count = 0;
-    for (int i = 0; i < sizeof(best_history) / sizeof(best_history[0]); i++) {
-      if (best_history[i] == addr) {
-        best_count++;
-      }
-    }
-
-    if (best_count >= 8) {
-      if (addr != published_best) {
-        published_best = addr;
-
-        ecare_state_t state = {
-            .fallen = false, .x = 1, .y = published_best, .z = 0};
-
-        ecare_client_set(&app.ecare_client, state);
-
-        LOG_INFO("Published %d", published_best);
-      }
-    }
-  }
+  LOG_INFO("Received health client event from %d. ",
+           event->p_meta_data->src.value);
 }
 
 void ecare_status_cb(const ecare_client_t *self, ecare_state_t state) {
@@ -196,8 +118,6 @@ static void init_mesh() {
   APP_ERROR_CHECK(sd_ble_gap_addr_get(&addr));
 }
 
-static void send_fallen_state_update();
-
 static void start() {
   APP_ERROR_CHECK(mesh_stack_start());
   LOG_INFO("Mesh stack started.");
@@ -220,11 +140,7 @@ static void start() {
     LOG_ERROR("We have already been provisioned. ");
 
     nrf_gpio_pin_set(PIN_LED_INDICATION);
-    nrf_gpio_cfg_input(PIN_RESET_NETWORK_CONFIG, NRF_GPIO_PIN_PULLDOWN);
-    bool should_reset = (nrf_gpio_pin_read(PIN_RESET_NETWORK_CONFIG) != 0);
-
-    LOG_INFO("should_reset is read as %d", should_reset);
-    LOG_INFO("should_reset is read as %d", should_reset);
+    bool should_reset = true;
 
     if (should_reset) {
       LOG_ERROR("Will clear all config and reset in 1s. ");
@@ -234,79 +150,11 @@ static void start() {
       mesh_stack_device_reset();
     } else {
       LOG_ERROR("Will reuse the existing network config. ");
-      send_fallen_state_update();
     }
   }
 }
 
-static const nrf_drv_twi_t twi = NRF_DRV_TWI_INSTANCE(0);
-lsm9ds1_t imu;
-
-static void init_imu() {
-  const nrf_drv_twi_config_t config = {.scl = 8,
-                                       .sda = 7,
-                                       .frequency = NRF_DRV_TWI_FREQ_100K,
-                                       .interrupt_priority =
-                                           APP_IRQ_PRIORITY_HIGH,
-                                       .clear_bus_init = true};
-
-  APP_ERROR_CHECK(nrf_drv_twi_init(&twi, &config, NULL, NULL));
-  nrf_drv_twi_enable(&twi);
-  LOG_INFO("TWI successfully initialized. ");
-
-  lsm9ds1_init(&imu, &twi);
-  LOG_INFO("IMU successfully initialized. ");
-
-  fall_detection_init();
-}
-
-bool fallen = false;
-static void send_fallen_state_update() {
-  ecare_state_t state = {
-      .fallen = fallen,
-      .x = 0,
-      .y = 0,
-      .z = 0,
-  };
-
-  ecare_client_set(&app.ecare_client, state);
-}
-
-static void imu_timer_handler(void *context) {
-  float ax, ay, az;
-
-  lsm9ds1_accel_read_all(&imu, &ax, &ay, &az);
-
-  bool lying = fall_detection_update(ax, ay, az);
-
-  if (lying != fallen) {
-    fallen = lying;
-    send_fallen_state_update();
-  }
-}
-
-static void fallen_led_timer_handler(void *context) {
-  if (fallen) {
-    nrf_gpio_pin_clear(PIN_LED_INDICATION);
-    nrf_gpio_pin_toggle(PIN_LED_ERROR);
-  } else {
-    nrf_gpio_pin_clear(PIN_LED_ERROR);
-  }
-}
-
-static void init_timer() {
-  APP_ERROR_CHECK(app_timer_init());
-
-  APP_ERROR_CHECK(app_timer_create(&imu_timer_id, APP_TIMER_MODE_REPEATED,
-                                   imu_timer_handler));
-  APP_ERROR_CHECK(app_timer_start(imu_timer_id,
-                                  APP_TIMER_TICKS(APP_IMU_INTERVAL_MS), NULL));
-
-  APP_ERROR_CHECK(app_timer_create(
-      &fallen_led_timer_id, APP_TIMER_MODE_REPEATED, fallen_led_timer_handler));
-  APP_ERROR_CHECK(app_timer_start(
-      fallen_led_timer_id, APP_TIMER_TICKS(APP_FALLEN_LED_INTERVAL_MS), NULL));
-}
+static void init_timer() { APP_ERROR_CHECK(app_timer_init()); }
 
 int main(void) {
   DEBUG_PINS_INIT();
@@ -314,9 +162,7 @@ int main(void) {
   init_leds();
   init_logging();
   init_mesh();
-
   init_timer();
-  init_imu();
 
   execution_start(start);
 

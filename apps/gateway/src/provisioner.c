@@ -46,40 +46,43 @@ prov_t prov;
 
 void prov_config_node(uint16_t addr) {}
 
-uint16_t prov_find_usable_addr(uint8_t const *uuid) {
-  // First see if we can reuse an existing address
-  for (int i = APP_GATEWAY_ADDR + 1; i <= APP_MAX_PROVISIONEES; i++) {
+void prov_remove_provisioned_device_if_exists(uint8_t const *uuid) {
+  // Remove the device from DSM if we have previously provisioned it to free up
+  // space.
+  for (int i = 0; i < APP_MAX_PROVISIONEES; i++) {
     if (memcmp(uuid, prov.app_state->provisioned_uuids[i],
                NRF_MESH_UUID_SIZE) == 0) {
+      uint16_t addr = prov.app_state->provisioned_addrs[i];
+
       // We need to remove the previous devkey and publish address from DSM.
       dsm_handle_t address_handle;
       nrf_mesh_address_t address = {.type = NRF_MESH_ADDRESS_TYPE_UNICAST,
-                                    .value = i};
+                                    .value = addr};
       APP_ERROR_CHECK(dsm_address_handle_get(&address, &address_handle));
       APP_ERROR_CHECK(dsm_address_publish_remove(address_handle));
 
       dsm_handle_t devkey_handle;
-      APP_ERROR_CHECK(dsm_devkey_handle_get(i, &devkey_handle));
+      APP_ERROR_CHECK(dsm_devkey_handle_get(addr, &devkey_handle));
       APP_ERROR_CHECK(dsm_devkey_delete(devkey_handle));
 
-      LOG_INFO("Reusing previous address %d. ", i);
+      prov.app_state->provisioned_addrs[i] = 0;
+      LOG_INFO("Removing previous device with address %d. ", i);
 
-      return i;
+      return;
     }
   }
+}
 
-  // If not, go through the list to find a new address
-  for (int i = APP_GATEWAY_ADDR + 1; i <= APP_MAX_PROVISIONEES; i++) {
-    dsm_handle_t handle;
-    uint32_t ret = dsm_devkey_handle_get(i, &handle);
-    if (ret == NRF_ERROR_NOT_FOUND) {
-      return i;
-    } else {
-      APP_ERROR_CHECK(ret);
+void prov_add_provisioned_device(uint16_t addr, uint8_t const *uuid) {
+  for (int i = 0; i < APP_MAX_PROVISIONEES; i++) {
+    if (prov.app_state->provisioned_addrs[i] != 0) {
+      continue;
     }
-  }
 
-  return NRF_MESH_ADDR_UNASSIGNED;
+    prov.app_state->provisioned_addrs[i] = addr;
+    memcpy(prov.app_state->provisioned_uuids[i], uuid, NRF_MESH_UUID_SIZE);
+    return;
+  }
 }
 
 static uint8_t PROV_URI_BEACON[] = {'b', 'e', 'a', 'c', 'o', 'n'};
@@ -93,13 +96,9 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
     LOG_INFO("Detected unprovisioned device.");
 
     if (prov.state == PROV_STATE_WAIT) {
-      uint16_t device_addr =
-          prov_find_usable_addr(evt->params.unprov.device_uuid);
-
-      NRF_MESH_ASSERT(device_addr != NRF_MESH_ADDR_UNASSIGNED);
-
-      memcpy(prov.app_state->provisioned_uuids[device_addr],
-             evt->params.unprov.device_uuid, NRF_MESH_UUID_SIZE);
+      uint16_t device_addr = prov.app_state->next_addr++;
+      prov_remove_provisioned_device_if_exists(evt->params.unprov.device_uuid);
+      prov_add_provisioned_device(device_addr, evt->params.unprov.device_uuid);
 
       uint8_t hash_uri_beacon[NRF_MESH_KEY_SIZE];
       uint8_t hash_uri_wristband[NRF_MESH_KEY_SIZE];
@@ -329,6 +328,9 @@ void prov_init(app_state_t *app_state, prov_init_complete_cb_t complete_cb) {
 
   prov.state = PROV_STATE_IDLE;
   prov.app_state = app_state;
+  prov.app_state->next_addr = 2;
+  memset(prov.app_state->provisioned_addrs, 0,
+         sizeof(prov.app_state->provisioned_addrs));
   prov.init_completed = false;
   prov.init_complete_cb = complete_cb;
 

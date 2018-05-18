@@ -16,5 +16,7 @@ typedef struct {
 
   dsm_handle_t beacon_addr_handle;
 
-  uint8_t provisioned_uuids[APP_MAX_PROVISIONEES + 1][NRF_MESH_UUID_SIZE];
+  uint16_t next_addr;
+  uint16_t provisioned_addrs[APP_MAX_PROVISIONEES];
+  uint8_t provisioned_uuids[APP_MAX_PROVISIONEES][NRF_MESH_UUID_SIZE];
 } app_state_t;

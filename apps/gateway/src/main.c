@@ -22,7 +22,6 @@
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
-#define PIN_RESET_NETWORK_CONFIG 4
 
 app_state_t app_state;
 
@@ -137,8 +136,7 @@ static void start() {
     LOG_ERROR("We have already been provisioned. ");
 
     nrf_gpio_pin_set(PIN_LED_INDICATION);
-    nrf_gpio_cfg_input(PIN_RESET_NETWORK_CONFIG, NRF_GPIO_PIN_PULLDOWN);
-    bool should_reset = (nrf_gpio_pin_read(PIN_RESET_NETWORK_CONFIG) != 0);
+    bool should_reset = true;
 
     if (should_reset) {
       LOG_ERROR("Will clear all config and reset in 1s. ");

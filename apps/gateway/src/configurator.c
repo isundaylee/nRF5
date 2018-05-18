@@ -2,6 +2,8 @@
 
 #include <stdlib.h>
 
+#include "nrf_gpio.h"
+
 #include "access_config.h"
 #include "access_status.h"
 #include "config_client.h"
@@ -242,6 +244,8 @@ void conf_execute_step() {
   case CONF_STEP_COMPOSITION_GET: //
   {
     LOG_INFO("Configurator is getting composition data. ");
+    nrf_gpio_pin_set(2);
+
     APP_ERROR_CHECK(config_client_composition_data_get(0x00));
     conf_set_expected_status(CONFIG_OPCODE_COMPOSITION_DATA_STATUS, 0, NULL);
     break;
@@ -249,6 +253,8 @@ void conf_execute_step() {
 
   case CONF_STEP_APPKEY_ADD: //
   {
+    nrf_gpio_pin_clear(2);
+
     LOG_INFO("Configurator is adding app key. ");
     APP_ERROR_CHECK(config_client_appkey_add(0, 0, conf.appkey));
     static const uint8_t expected_statuses[] = {
@@ -286,7 +292,7 @@ void conf_execute_step() {
         .frendship_credential_flag = false,
         .publish_ttl = 1,
         .publish_period.step_num = 1,
-        .publish_period.step_res = ACCESS_PUBLISH_RESOLUTION_100MS,
+        .publish_period.step_res = ACCESS_PUBLISH_RESOLUTION_1S,
         .retransmit_count = 1,
         .retransmit_interval = 0,
         .model_id.company_id = ACCESS_COMPANY_ID_NONE,
