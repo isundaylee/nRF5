@@ -13,10 +13,9 @@
 
 #include "net_state.h"
 
+#include "configurator.h"
 #include "custom_log.h"
 #include "provisioner.h"
-
-#include "ecare_server.h"
 
 #include "debug_pins.h"
 
@@ -24,8 +23,6 @@
 #define PIN_LED_INDICATION 28
 
 app_state_t app_state;
-
-ecare_server_t ecare_server;
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -81,50 +78,13 @@ static void init_mesh() {
            addr.addr[5]);
 }
 
-static void ecare_server_cb(ecare_server_t const *server, ecare_state_t state) {
-  if (state.x == 0) {
-    if (state.fallen) {
-      LOG_INFO("A fall event has been detected. ");
-    } else {
-      LOG_INFO("Everything is well :) ");
-    }
-  } else if (state.x == 1) {
-    switch (state.y) {
-    case 2:
-      LOG_INFO("Location update: Bedroom");
-      break;
-    case 3:
-      LOG_INFO("Location update: Closet");
-      break;
-    case 4:
-      LOG_INFO("Location update: Athena Cluster");
-      break;
-    default:
-      LOG_INFO("Location update: Unknown");
-      break;
-    }
-  } else {
-    LOG_INFO("Unknown opcode %d.", state.x);
-  }
+static void prov_success_cb(uint16_t addr) { prov_start_scan(); }
 
-  // LOG_INFO("Received new Ecare state: fallen = %d, x = %d, y = %d, z = %d",
-  //          state.fallen, state.x, state.y, state.z);
-}
+static void prov_failure_cb() { prov_start_scan(); }
 
-static void prov_init_complete_cb() {
-  // Initializes ecare server
-  ecare_server.set_cb = ecare_server_cb;
-  APP_ERROR_CHECK(ecare_server_init(&ecare_server, 0));
-  LOG_INFO("Ecare server initialized. ");
+static void conf_success_cb(uint16_t addr) {}
 
-  APP_ERROR_CHECK(access_model_application_bind(ecare_server.model_handle,
-                                                app_state.appkey_handle));
-  APP_ERROR_CHECK(access_model_publish_application_set(
-      ecare_server.model_handle, app_state.appkey_handle));
-  LOG_INFO("Ecare server appkey bound successfully. ");
-
-  prov_start_scan();
-}
+static void conf_failure_cb(uint16_t addr) {}
 
 static void start() {
   APP_ERROR_CHECK(mesh_stack_start());
@@ -136,7 +96,8 @@ static void start() {
     LOG_ERROR("We have already been provisioned. ");
 
     nrf_gpio_pin_set(PIN_LED_INDICATION);
-    bool should_reset = true;
+    nrf_gpio_cfg_input(8, NRF_GPIO_PIN_PULLDOWN);
+    bool should_reset = (nrf_gpio_pin_read(8) != 0);
 
     if (should_reset) {
       LOG_ERROR("Will clear all config and reset in 1s. ");
@@ -151,7 +112,10 @@ static void start() {
     }
   }
 
-  prov_init(&app_state, prov_init_complete_cb);
+  prov_init(&app_state, prov_success_cb, prov_failure_cb);
+  conf_init(&app_state, conf_success_cb, conf_failure_cb);
+
+  prov_start_scan();
 }
 
 int main(void) {

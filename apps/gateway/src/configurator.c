@@ -14,8 +14,6 @@
 #include "app_config.h"
 #include "custom_log.h"
 
-#include "ecare_client.h"
-
 const conf_step_t CONF_STEPS_BEACON[] = {
     CONF_STEP_COMPOSITION_GET,
     CONF_STEP_APPKEY_ADD,
@@ -91,17 +89,13 @@ void conf_health_client_evt_cb(health_client_t const *client,
   //          event->p_meta_data->p_core_metadata->params.scanner.rssi);
 }
 
-void conf_self_configure() {
-  // Subscribe health client to the beacon address
-  APP_ERROR_CHECK(access_model_subscription_add(
-      conf.health_client.model_handle, conf.app_state->beacon_addr_handle));
-}
+void conf_self_configure() {}
 
 void conf_init(app_state_t *app_state, conf_success_cb_t success_cb,
                conf_failure_cb_t failure_cb) {
   conf.state = CONF_STATE_IDLE;
   conf.app_state = app_state;
-  memcpy(conf.appkey, app_state->appkey, NRF_MESH_KEY_SIZE);
+  memcpy(conf.appkey, app_state->persistent.network.appkey, NRF_MESH_KEY_SIZE);
 
   conf.success_cb = success_cb;
   conf.failure_cb = failure_cb;
@@ -111,10 +105,12 @@ void conf_init(app_state_t *app_state, conf_success_cb_t success_cb,
   APP_ERROR_CHECK(
       health_client_init(&conf.health_client, 0, conf_health_client_evt_cb));
 
-  APP_ERROR_CHECK(access_model_application_bind(conf.health_client.model_handle,
-                                                app_state->appkey_handle));
+  APP_ERROR_CHECK(access_model_application_bind(
+      conf.health_client.model_handle,
+      app_state->ephemeral.network.appkey_handle));
   APP_ERROR_CHECK(access_model_publish_application_set(
-      conf.health_client.model_handle, app_state->appkey_handle));
+      conf.health_client.model_handle,
+      app_state->ephemeral.network.appkey_handle));
 
   conf_self_configure();
 }
@@ -287,7 +283,7 @@ void conf_execute_step() {
     config_publication_state_t pub_state = {
         .element_address = conf.node_addr,
         .publish_address.type = NRF_MESH_ADDRESS_TYPE_GROUP,
-        .publish_address.value = APP_BEACON_PUBLISH_ADDRESS,
+        .publish_address.value = 0,
         .appkey_index = 0,
         .frendship_credential_flag = false,
         .publish_ttl = 1,
@@ -333,56 +329,11 @@ void conf_execute_step() {
         .model_id = HEALTH_CLIENT_MODEL_ID,
     };
     nrf_mesh_address_t address = {.type = NRF_MESH_ADDRESS_TYPE_GROUP,
-                                  .value = APP_BEACON_PUBLISH_ADDRESS};
+                                  .value = 0};
     APP_ERROR_CHECK(config_client_model_subscription_add(conf.node_addr,
                                                          address, model_id));
     static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
     conf_set_expected_status(CONFIG_OPCODE_MODEL_SUBSCRIPTION_STATUS,
-                             sizeof(expected_statuses), expected_statuses);
-
-    break;
-  }
-
-  case CONF_STEP_APPKEY_BIND_ECARE_CLIENT: //
-  {
-    LOG_INFO("Configurator is adding key binding to the health client. ");
-
-    access_model_id_t model_id = {
-        .company_id = ECARE_COMPANY_ID,
-        .model_id = ECARE_CLIENT_MODEL_ID,
-    };
-    APP_ERROR_CHECK(
-        config_client_model_app_bind(conf.node_addr, APP_APPKEY_IDX, model_id));
-    static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
-    conf_set_expected_status(CONFIG_OPCODE_MODEL_APP_STATUS,
-                             sizeof(expected_statuses), expected_statuses);
-
-    break;
-  }
-
-  case CONF_STEP_APPKEY_SUBSCRIBE_ECARE_CLIENT: //
-  {
-    LOG_INFO(
-        "Configurator is adding subscription address for the health client. ");
-
-    config_publication_state_t pub_state = {
-        .element_address = conf.node_addr,
-        .publish_address.type = NRF_MESH_ADDRESS_TYPE_UNICAST,
-        .publish_address.value = APP_GATEWAY_ADDR,
-        .appkey_index = 0,
-        .frendship_credential_flag = false,
-        .publish_ttl = 1,
-        .publish_period.step_num = 0,
-        .publish_period.step_res = ACCESS_PUBLISH_RESOLUTION_100MS,
-        .retransmit_count = 1,
-        .retransmit_interval = 0,
-        .model_id.company_id = ECARE_COMPANY_ID,
-        .model_id.model_id = ECARE_CLIENT_MODEL_ID,
-    };
-
-    APP_ERROR_CHECK(config_client_model_publication_set(&pub_state));
-    static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
-    conf_set_expected_status(CONFIG_OPCODE_MODEL_PUBLICATION_STATUS,
                              sizeof(expected_statuses), expected_statuses);
 
     break;

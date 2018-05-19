@@ -11,17 +11,15 @@
 
 #include "rand.h"
 
+#include "address_book.h"
 #include "app_config.h"
-#include "configurator.h"
 #include "custom_log.h"
-#include "enc.h"
 
 typedef enum {
   PROV_STATE_IDLE,
-  PROV_STATE_WAIT,
-  PROV_STATE_COMPLETE,
+  PROV_STATE_SCANNING,
   PROV_STATE_PROV,
-  PROV_STATE_CONFIG,
+  PROV_STATE_COMPLETE,
 } prov_state_t;
 
 typedef struct {
@@ -29,116 +27,46 @@ typedef struct {
   nrf_mesh_prov_bearer_adv_t bearer;
 
   prov_state_t state;
+  uint16_t device_addr;
 
   uint8_t public_key[NRF_MESH_PROV_PUBKEY_SIZE];
   uint8_t private_key[NRF_MESH_PROV_PRIVKEY_SIZE];
 
+  prov_success_cb_t success_cb;
+  prov_failure_cb_t failure_cb;
+
   app_state_t *app_state;
-
-  bool init_completed;
-
-  prov_init_complete_cb_t init_complete_cb;
-
-  conf_step_t const *conf_steps;
 } prov_t;
 
 prov_t prov;
 
-void prov_config_node(uint16_t addr) {}
-
-void prov_remove_provisioned_device_if_exists(uint8_t const *uuid) {
-  // Remove the device from DSM if we have previously provisioned it to free up
-  // space.
-  for (int i = 0; i < APP_MAX_PROVISIONEES; i++) {
-    if (memcmp(uuid, prov.app_state->provisioned_uuids[i],
-               NRF_MESH_UUID_SIZE) == 0) {
-      uint16_t addr = prov.app_state->provisioned_addrs[i];
-
-      // We need to remove the previous devkey and publish address from DSM.
-      dsm_handle_t address_handle;
-      nrf_mesh_address_t address = {.type = NRF_MESH_ADDRESS_TYPE_UNICAST,
-                                    .value = addr};
-      APP_ERROR_CHECK(dsm_address_handle_get(&address, &address_handle));
-      APP_ERROR_CHECK(dsm_address_publish_remove(address_handle));
-
-      dsm_handle_t devkey_handle;
-      APP_ERROR_CHECK(dsm_devkey_handle_get(addr, &devkey_handle));
-      APP_ERROR_CHECK(dsm_devkey_delete(devkey_handle));
-
-      prov.app_state->provisioned_addrs[i] = 0;
-      LOG_INFO("Removing previous device with address %d. ", i);
-
-      return;
-    }
-  }
+void prov_reset_state() {
+  prov.device_addr = 0;
+  prov.state = PROV_STATE_IDLE;
 }
-
-void prov_add_provisioned_device(uint16_t addr, uint8_t const *uuid) {
-  for (int i = 0; i < APP_MAX_PROVISIONEES; i++) {
-    if (prov.app_state->provisioned_addrs[i] != 0) {
-      continue;
-    }
-
-    prov.app_state->provisioned_addrs[i] = addr;
-    memcpy(prov.app_state->provisioned_uuids[i], uuid, NRF_MESH_UUID_SIZE);
-    return;
-  }
-}
-
-static uint8_t PROV_URI_BEACON[] = {'b', 'e', 'a', 'c', 'o', 'n'};
-static uint8_t PROV_URI_WRISTBAND[] = {'w', 'r', 'i', 's', 't',
-                                       'b', 'a', 'n', 'd'};
 
 void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
   switch (evt->type) {
   case NRF_MESH_PROV_EVT_UNPROVISIONED_RECEIVED: // 0
   {
-    LOG_INFO("Detected unprovisioned device.");
+    LOG_INFO("Provisioner: Detected unprovisioned device.");
 
-    if (prov.state == PROV_STATE_WAIT) {
-      uint16_t device_addr = prov.app_state->next_addr++;
-      prov_remove_provisioned_device_if_exists(evt->params.unprov.device_uuid);
-      prov_add_provisioned_device(device_addr, evt->params.unprov.device_uuid);
+    if (prov.state == PROV_STATE_SCANNING) {
+      prov.device_addr =
+          prov.app_state->persistent.network.next_provisionee_addr++;
+      address_book_remove(evt->params.unprov.device_uuid);
 
-      uint8_t hash_uri_beacon[NRF_MESH_KEY_SIZE];
-      uint8_t hash_uri_wristband[NRF_MESH_KEY_SIZE];
+      LOG_INFO("Provisioner: Starting to provision a device to address %d.",
+               prov.device_addr);
 
-      enc_s1(PROV_URI_BEACON, sizeof(PROV_URI_BEACON), hash_uri_beacon);
-      enc_s1(PROV_URI_WRISTBAND, sizeof(PROV_URI_WRISTBAND),
-             hash_uri_wristband);
-
-      if (!evt->params.unprov.uri_hash_present) {
-        LOG_ERROR("Ignored unprovisioned device with no URI hash present. ");
-        return;
-      }
-
-      if (memcmp(evt->params.unprov.uri_hash, hash_uri_beacon,
-                 NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE) == 0) {
-        LOG_INFO("Provisioning a new Beacon node. ");
-        prov.conf_steps = CONF_STEPS_BEACON;
-      } else if (memcmp(evt->params.unprov.uri_hash, hash_uri_wristband,
-                        NRF_MESH_BEACON_UNPROV_URI_HASH_SIZE) == 0) {
-        LOG_INFO("Provisioning a new Wristband node. ");
-        prov.conf_steps = CONF_STEPS_WRISTBAND;
-      } else {
-        LOG_ERROR(
-            "Ignored unprovisioned device with unknown URI hash: %04x "
-            "%04x %04x %04x",
-            evt->params.unprov.uri_hash[0], evt->params.unprov.uri_hash[1],
-            evt->params.unprov.uri_hash[2], evt->params.unprov.uri_hash[3]);
-        return;
-      }
-
-      LOG_INFO("Starting to provision a device. Handing out address %d.",
-               device_addr);
-
-      nrf_mesh_prov_provisioning_data_t prov_data = {.netkey_index = 0,
-                                                     .iv_index = 0,
-                                                     .address = device_addr,
-                                                     .flags.iv_update = false,
-                                                     .flags.key_refresh =
-                                                         false};
-      memcpy(prov_data.netkey, prov.app_state->netkey, NRF_MESH_KEY_SIZE);
+      nrf_mesh_prov_provisioning_data_t prov_data = {
+          .netkey_index = APP_NETKEY_IDX,
+          .iv_index = 0,
+          .address = prov.device_addr,
+          .flags.iv_update = false,
+          .flags.key_refresh = false};
+      memcpy(prov_data.netkey, prov.app_state->persistent.network.netkey,
+             NRF_MESH_KEY_SIZE);
 
       APP_ERROR_CHECK(
           nrf_mesh_prov_provision(&prov.ctx, evt->params.unprov.device_uuid,
@@ -158,15 +86,16 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
   case NRF_MESH_PROV_EVT_LINK_CLOSED: // 2
   {
     if (prov.state == PROV_STATE_PROV) {
-      LOG_ERROR("Provisioning failed. Code: %d.",
+      LOG_ERROR("Provisioner: Provisioning failed. Code: %d.",
                 evt->params.link_closed.close_reason);
-      prov.state = PROV_STATE_WAIT;
-    } else if (prov.state == PROV_STATE_COMPLETE) {
-      LOG_INFO("Provisioning complete. ");
-      prov.state = PROV_STATE_CONFIG;
 
-      conf_start(evt->params.link_closed.p_context->data.address,
-                 prov.conf_steps);
+      prov_reset_state();
+      prov.failure_cb();
+    } else if (prov.state == PROV_STATE_COMPLETE) {
+      LOG_INFO("Provisioner: Provisioning complete. ");
+
+      prov_reset_state();
+      prov.success_cb(prov.device_addr);
     }
 
     break;
@@ -180,24 +109,26 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
 
     APP_ERROR_CHECK(nrf_mesh_prov_auth_data_provide(&prov.ctx, static_data,
                                                     NRF_MESH_KEY_SIZE));
-    LOG_INFO("Static authentication provided successfully.");
+    LOG_INFO("Provisioner: Static authentication provided successfully.");
 
     break;
   }
 
   case NRF_MESH_PROV_EVT_CAPS_RECEIVED: // 7
   {
-    LOG_INFO("Received capabilities from device with %d elements.",
+    LOG_INFO("Provisioner: Received capabilities from device with %d elements.",
              evt->params.oob_caps_received.oob_caps.num_elements);
 
     uint32_t ret = nrf_mesh_prov_oob_use(
         &prov.ctx, NRF_MESH_PROV_OOB_METHOD_STATIC, 0, NRF_MESH_KEY_SIZE);
 
     if (ret != NRF_SUCCESS) {
-      LOG_ERROR("Static OOB rejected. ");
-      prov.state = PROV_STATE_WAIT;
+      LOG_ERROR("Provisioner: Static OOB rejected. ");
+
+      prov_reset_state();
+      prov.failure_cb();
     } else {
-      LOG_INFO("Static OOB chosen successfully. ");
+      LOG_INFO("Provisioner: Static OOB chosen successfully. ");
     }
 
     break;
@@ -205,135 +136,99 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
 
   case NRF_MESH_PROV_EVT_COMPLETE: // 8
   {
-    dsm_handle_t addr_handle;
-    dsm_handle_t devkey_handle;
-
-    LOG_INFO("Received provisioning completion event. ");
 
     prov.state = PROV_STATE_COMPLETE;
 
-    APP_ERROR_CHECK(dsm_address_publish_add(
-        evt->params.complete.p_prov_data->address, &addr_handle));
-    APP_ERROR_CHECK(dsm_devkey_add(evt->params.complete.p_prov_data->address,
-                                   prov.app_state->netkey_handle,
-                                   evt->params.complete.p_devkey,
-                                   &devkey_handle));
+    address_book_add(evt->params.unprov.device_uuid, prov.device_addr,
+                     evt->params.complete.p_devkey);
 
     break;
   }
 
   case NRF_MESH_PROV_EVT_FAILED: // 10
   {
-    LOG_ERROR("Provisioning failed: %d", evt->params.failed.failure_code);
+    LOG_ERROR("Provisioner: Provisioning failed: %d",
+              evt->params.failed.failure_code);
   }
 
   default:
-    LOG_ERROR("Received unhandled provisioning event: %d", evt->type);
+    LOG_ERROR("Provisioner: Received unhandled provisioning event: %d",
+              evt->type);
 
     break;
   }
 }
 
 void prov_self_provision() {
-  LOG_INFO("Doing self-provisioning. ");
-
   dsm_local_unicast_address_t local_address = {APP_GATEWAY_ADDR,
                                                ACCESS_ELEMENT_COUNT};
   APP_ERROR_CHECK(dsm_local_unicast_addresses_set(&local_address));
 
-  // rand_hw_rng_get(prov.app_state->netkey, NRF_MESH_KEY_SIZE);
-  // rand_hw_rng_get(prov.app_state->appkey, NRF_MESH_KEY_SIZE);
-  rand_hw_rng_get(prov.app_state->devkey, NRF_MESH_KEY_SIZE);
+  // Generate keys
+  rand_hw_rng_get(prov.app_state->persistent.network.netkey, NRF_MESH_KEY_SIZE);
+  rand_hw_rng_get(prov.app_state->persistent.network.appkey, NRF_MESH_KEY_SIZE);
 
-  // Add the generated keys
-  APP_ERROR_CHECK(dsm_subnet_add(0, prov.app_state->netkey,
-                                 &prov.app_state->netkey_handle));
-  APP_ERROR_CHECK(dsm_appkey_add(APP_APPKEY_IDX, prov.app_state->netkey_handle,
-                                 prov.app_state->appkey,
-                                 &prov.app_state->appkey_handle));
+  uint8_t devkey[NRF_MESH_KEY_SIZE];
+  rand_hw_rng_get(devkey, NRF_MESH_KEY_SIZE);
+
+  // Add generated keys
   APP_ERROR_CHECK(
-      dsm_devkey_add(APP_GATEWAY_ADDR, prov.app_state->netkey_handle,
-                     prov.app_state->devkey, &prov.app_state->devkey_handle));
-
-  // Add the beacon publish address to DSM
-  APP_ERROR_CHECK(dsm_address_subscription_add(
-      APP_BEACON_PUBLISH_ADDRESS, &prov.app_state->beacon_addr_handle));
+      dsm_subnet_add(APP_NETKEY_IDX, prov.app_state->persistent.network.netkey,
+                     &prov.app_state->ephemeral.network.netkey_handle));
+  APP_ERROR_CHECK(dsm_appkey_add(
+      APP_APPKEY_IDX, prov.app_state->ephemeral.network.netkey_handle,
+      prov.app_state->persistent.network.appkey,
+      &prov.app_state->ephemeral.network.appkey_handle));
+  APP_ERROR_CHECK(dsm_devkey_add(
+      APP_GATEWAY_ADDR, prov.app_state->ephemeral.network.netkey_handle, devkey,
+      &prov.app_state->ephemeral.network.devkey_handle));
 
   // Add the gateway's address to DSM
   dsm_handle_t addr_handle;
   APP_ERROR_CHECK(dsm_address_publish_add(APP_GATEWAY_ADDR, &addr_handle));
 
   // Bind config server to use the devkey
-  APP_ERROR_CHECK(config_server_bind(prov.app_state->devkey_handle));
+  APP_ERROR_CHECK(
+      config_server_bind(prov.app_state->ephemeral.network.devkey_handle));
 
-  // Record the UUID of the gateway device
-  memcpy(prov.app_state->provisioned_uuids[APP_GATEWAY_ADDR],
-         nrf_mesh_configure_device_uuid_get(), NRF_MESH_UUID_SIZE);
-  LOG_INFO("Self-provisioning finished. ");
+  LOG_INFO("Provisioner: Self-provisioning finished. ");
 }
 
 void prov_restore() {
-  LOG_INFO("Restoring handles. ");
-
+  // Restore the netkey handle
   uint32_t count = 1;
-  APP_ERROR_CHECK(dsm_subnet_get_all(&prov.app_state->netkey_handle, &count));
+  APP_ERROR_CHECK(dsm_subnet_get_all(
+      &prov.app_state->ephemeral.network.netkey_handle, &count));
   NRF_MESH_ASSERT(count == 1);
 
-  APP_ERROR_CHECK(dsm_appkey_get_all(prov.app_state->netkey_handle,
-                                     &prov.app_state->appkey_handle, &count));
+  // Restore the appkey handle
+  APP_ERROR_CHECK(dsm_appkey_get_all(
+      prov.app_state->ephemeral.network.netkey_handle,
+      &prov.app_state->ephemeral.network.appkey_handle, &count));
   NRF_MESH_ASSERT(count == 1);
 
+  // Restore the devkey handle
   dsm_local_unicast_address_t local_addr;
   dsm_local_unicast_addresses_get(&local_addr);
-  APP_ERROR_CHECK(dsm_devkey_handle_get(local_addr.address_start,
-                                        &prov.app_state->devkey_handle));
-
-  nrf_mesh_address_t addr = {
-      .type = NRF_MESH_ADDRESS_TYPE_GROUP,
-      .value = APP_BEACON_PUBLISH_ADDRESS,
-  };
   APP_ERROR_CHECK(
-      dsm_address_handle_get(&addr, &prov.app_state->beacon_addr_handle));
+      dsm_devkey_handle_get(local_addr.address_start,
+                            &prov.app_state->ephemeral.network.devkey_handle));
 
-  LOG_INFO("Restoring finished. ");
+  LOG_INFO("Provisioner: Provisioner restored. ");
 }
 
-void prov_conf_success_cb(uint16_t node_addr) {
-  LOG_INFO("Provisioner is ready for the next device. ");
-  prov.state = PROV_STATE_WAIT;
-
-  if (node_addr == APP_GATEWAY_ADDR) {
-    NRF_MESH_ASSERT(!prov.init_completed);
-
-    prov.init_completed = true;
-    prov.init_complete_cb();
-
-    LOG_INFO("Finished configuring the gateway node. ");
-  }
-}
-
-void prov_conf_failure_cb(uint16_t node_addr) {
-  LOG_ERROR("Provisioner has failed to config the current device. ");
-  prov.state = PROV_STATE_WAIT;
-
-  if (node_addr == APP_GATEWAY_ADDR) {
-    LOG_INFO("Failed to configure the gateway node. ");
-    APP_ERROR_CHECK(NRF_ERROR_NOT_FOUND);
-  }
-}
-
-void prov_init(app_state_t *app_state, prov_init_complete_cb_t complete_cb) {
+void prov_init(app_state_t *app_state, prov_success_cb_t success_cb,
+               prov_failure_cb_t failure_cb) {
   nrf_mesh_prov_oob_caps_t caps =
       NRF_MESH_PROV_OOB_CAPS_DEFAULT(ACCESS_ELEMENT_COUNT);
 
   prov.state = PROV_STATE_IDLE;
   prov.app_state = app_state;
-  prov.app_state->next_addr = 2;
-  memset(prov.app_state->provisioned_addrs, 0,
-         sizeof(prov.app_state->provisioned_addrs));
-  prov.init_completed = false;
-  prov.init_complete_cb = complete_cb;
+  prov.app_state->persistent.network.next_provisionee_addr = 2;
+  prov.success_cb = success_cb;
+  prov.failure_cb = failure_cb;
 
+  // Initialize the provisioner and adv bearer
   APP_ERROR_CHECK(
       nrf_mesh_prov_generate_keys(prov.public_key, prov.private_key));
   APP_ERROR_CHECK(nrf_mesh_prov_init(
@@ -341,62 +236,23 @@ void prov_init(app_state_t *app_state, prov_init_complete_cb_t complete_cb) {
   APP_ERROR_CHECK(nrf_mesh_prov_bearer_add(
       &prov.ctx, nrf_mesh_prov_bearer_adv_interface_get(&prov.bearer)));
 
-  prov.app_state->netkey[0] = 0x30;
-  prov.app_state->netkey[1] = 0x6A;
-  prov.app_state->netkey[2] = 0xAA;
-  prov.app_state->netkey[3] = 0xCB;
-  prov.app_state->netkey[4] = 0x4A;
-  prov.app_state->netkey[5] = 0x66;
-  prov.app_state->netkey[6] = 0xC4;
-  prov.app_state->netkey[7] = 0x7A;
-  prov.app_state->netkey[8] = 0xAC;
-  prov.app_state->netkey[9] = 0x4A;
-  prov.app_state->netkey[10] = 0xEC;
-  prov.app_state->netkey[11] = 0xEE;
-  prov.app_state->netkey[12] = 0xBD;
-  prov.app_state->netkey[13] = 0x86;
-  prov.app_state->netkey[14] = 0x70;
-  prov.app_state->netkey[15] = 0x5F;
-
-  prov.app_state->appkey[0] = 0xA5;
-  prov.app_state->appkey[1] = 0x73;
-  prov.app_state->appkey[2] = 0x0D;
-  prov.app_state->appkey[3] = 0x76;
-  prov.app_state->appkey[4] = 0x9B;
-  prov.app_state->appkey[5] = 0x28;
-  prov.app_state->appkey[6] = 0x1F;
-  prov.app_state->appkey[7] = 0x7C;
-  prov.app_state->appkey[8] = 0x9C;
-  prov.app_state->appkey[9] = 0xDE;
-  prov.app_state->appkey[10] = 0x91;
-  prov.app_state->appkey[11] = 0x2F;
-  prov.app_state->appkey[12] = 0xAC;
-  prov.app_state->appkey[13] = 0x79;
-  prov.app_state->appkey[14] = 0x6E;
-  prov.app_state->appkey[15] = 0xDC;
-
-  bool provisioned = mesh_stack_is_device_provisioned();
-  if (provisioned) {
+  if (mesh_stack_is_device_provisioned()) {
     prov_restore();
   } else {
     prov_self_provision();
   }
 
-  conf_init(prov.app_state, prov_conf_success_cb, prov_conf_failure_cb);
+  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO,
+           "netkey is: ", prov.app_state->persistent.network.netkey, 16);
 
-  if (!provisioned) {
-    conf_start(APP_GATEWAY_ADDR, CONF_STEPS_GATEWAY);
-  } else {
-    prov.init_completed = true;
-    prov.init_complete_cb();
-  }
+  address_book_init(prov.app_state);
 
-  LOG_INFO("Provisioning initialized.");
+  LOG_INFO("Provisioner: Provisioning initialized. ");
 }
 
 void prov_start_scan() {
-  prov.state = PROV_STATE_WAIT;
+  prov.state = PROV_STATE_SCANNING;
 
   APP_ERROR_CHECK(nrf_mesh_prov_scan_start(prov_evt_handler));
-  LOG_INFO("Provisioning started scanning.");
+  LOG_INFO("Provisioner: Provisioning started scanning.");
 }
