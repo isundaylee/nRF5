@@ -57,8 +57,9 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
           prov.app_state->persistent.network.next_provisionee_addr++;
       memcpy(prov.device_uuid, evt->params.unprov.device_uuid,
              NRF_MESH_UUID_SIZE);
-      address_book_remove(prov.device_uuid);
       app_state_save();
+
+      address_book_remove(prov.device_uuid);
 
       LOG_INFO("Provisioner: Starting to provision a device to address %d.",
                prov.device_addr);
@@ -175,6 +176,7 @@ void prov_self_provision() {
   // Generate keys
   rand_hw_rng_get(prov.app_state->persistent.network.netkey, NRF_MESH_KEY_SIZE);
   rand_hw_rng_get(prov.app_state->persistent.network.appkey, NRF_MESH_KEY_SIZE);
+
   app_state_save();
 
   uint8_t devkey[NRF_MESH_KEY_SIZE];
@@ -250,11 +252,13 @@ void prov_init(app_state_t *app_state, prov_success_cb_t success_cb,
     prov_self_provision();
   }
 
-  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO,
-           "netkey is: ", prov.app_state->persistent.network.netkey, 16);
+  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO, "netkey",
+           prov.app_state->persistent.network.netkey, 16);
+
+  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO, "appkey",
+           prov.app_state->persistent.network.appkey, 16);
 
   address_book_init(prov.app_state);
-  app_state_save();
 
   LOG_INFO("Provisioner: Provisioning initialized. ");
 }

@@ -8,16 +8,21 @@
 #define APP_STATE_FLASH_ENTRY_HANDLE 0x0001
 
 app_state_t app_state;
+app_persistent_state_t app_state_last_persisted;
 
 flash_manager_t app_state_flash_manager;
 
 void app_state_write_complete_cb(flash_manager_t const *flash_manager,
-                                 fm_entry_t const *entry, fm_result_t result) {}
+                                 fm_entry_t const *entry, fm_result_t result) {
+  NRF_MESH_ASSERT(result == FM_RESULT_SUCCESS);
+}
 
 void app_state_remove_complete_cb() {}
 
 void app_state_invalidate_complete_cb(flash_manager_t const *flash_manager,
-                                      uint16_t x, fm_result_t result) {}
+                                      uint16_t x, fm_result_t result) {
+  NRF_MESH_ASSERT(false);
+}
 
 void app_state_init(void) {
   flash_manager_config_t manager_config;
@@ -45,9 +50,12 @@ bool app_state_load(void) {
   if (entry == NULL) {
     LOG_INFO("App State: App flash did not find previous state. ");
     memset(&app_state.persistent, 0, sizeof(app_persistent_state_t));
+    memset(&app_state_last_persisted, 0, sizeof(app_persistent_state_t));
     return false;
   } else {
     memcpy(&app_state.persistent, entry->data, sizeof(app_persistent_state_t));
+    memcpy(&app_state_last_persisted, &app_state.persistent,
+           sizeof(app_persistent_state_t));
     LOG_INFO("App State: App flash finished reading previous data. ");
     return true;
   }
@@ -60,15 +68,22 @@ void app_state_save(void) {
   static fm_mem_listener_t mem_listener = {.callback = app_state_flash_mem_cb,
                                            .p_args = app_state_save};
 
+  if (memcmp(&app_state.persistent, &app_state_last_persisted,
+             sizeof(app_persistent_state_t)) == 0) {
+    return;
+  }
+
   fm_entry_t *entry = flash_manager_entry_alloc(&app_state_flash_manager,
                                                 APP_STATE_FLASH_ENTRY_HANDLE,
                                                 sizeof(app_persistent_state_t));
   if (entry == NULL) {
-    LOG_INFO(
+    LOG_ERROR(
         "App State: Cannot store app persistent state. Trying again later. ");
     flash_manager_mem_listener_register(&mem_listener);
   } else {
     memcpy(entry->data, &app_state.persistent, sizeof(app_persistent_state_t));
+    memcpy(&app_state_last_persisted, &app_state.persistent,
+           sizeof(app_persistent_state_t));
     flash_manager_entry_commit(entry);
 
     LOG_INFO("App State: App persistent state stored. ");

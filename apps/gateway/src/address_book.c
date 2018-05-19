@@ -42,9 +42,10 @@ bool address_book_remove(uint8_t const *uuid) {
       address_book.app_state->persistent.network.provisioned_addrs[i] = 0;
       memset(address_book.app_state->persistent.network.provisioned_uuids[i], 0,
              NRF_MESH_UUID_SIZE);
-      LOG_INFO("Address Book: Removing previous device with address %d. ", i);
-
       app_state_save();
+
+      LOG_INFO("Address Book: Removed previous node with address %d. ", addr);
+
       return true;
     }
   }
@@ -62,6 +63,7 @@ void address_book_add(uint8_t const *uuid, uint16_t addr,
     address_book.app_state->persistent.network.provisioned_addrs[i] = addr;
     memcpy(address_book.app_state->persistent.network.provisioned_uuids[i],
            uuid, NRF_MESH_UUID_SIZE);
+    app_state_save();
 
     dsm_handle_t addr_handle;
     dsm_handle_t devkey_handle;
@@ -70,7 +72,8 @@ void address_book_add(uint8_t const *uuid, uint16_t addr,
         addr, address_book.app_state->ephemeral.network.netkey_handle, devkey,
         &devkey_handle));
 
-    app_state_save();
+    LOG_INFO("Address Book: Added node with address %d. ", addr);
+
     return;
   }
 
