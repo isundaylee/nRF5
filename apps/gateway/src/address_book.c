@@ -72,4 +72,7 @@ void address_book_add(uint8_t const *uuid, uint16_t addr,
 
     return;
   }
+
+  // If we're here, we have more than APP_MAX_PROVISIONEES provisionees.
+  NRF_MESH_ASSERT(false);
 }

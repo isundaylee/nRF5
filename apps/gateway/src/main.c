@@ -78,13 +78,57 @@ static void init_mesh() {
            addr.addr[5]);
 }
 
-static void prov_success_cb(uint16_t addr) { prov_start_scan(); }
+static void prov_success_cb(uint16_t addr) {
+  static conf_step_t steps[] = {
+      {
+          .type = CONF_STEP_TYPE_COMPOSITION_GET,
+          .params.composition_get.page_number = 0x00,
+      },
+      {
+          .type = CONF_STEP_TYPE_APPKEY_ADD,
+          .params.appkey_add.netkey_index = APP_NETKEY_IDX,
+          .params.appkey_add.appkey_index = APP_APPKEY_IDX,
+          .params.appkey_add.appkey = app_state.persistent.network.appkey,
+      },
+      {
+          .type = CONF_STEP_TYPE_MODEL_APP_BIND,
+          .params.model_app_bind.element_addr = 0x00,
+          .params.model_app_bind.model_id.company_id = ACCESS_COMPANY_ID_NONE,
+          .params.model_app_bind.model_id.model_id = HEALTH_SERVER_MODEL_ID,
+          .params.model_app_bind.appkey_index = APP_APPKEY_IDX,
+      },
+      {
+          .type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET,
+          .params.model_publication_set.element_addr = 0x00,
+          .params.model_publication_set.model_id.company_id =
+              ACCESS_COMPANY_ID_NONE,
+          .params.model_publication_set.model_id.model_id =
+              HEALTH_SERVER_MODEL_ID,
+          .params.model_publication_set.publish_address.type =
+              NRF_MESH_ADDRESS_TYPE_UNICAST,
+          .params.model_publication_set.publish_address.value =
+              APP_GATEWAY_ADDR,
+          .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
+          .params.model_publication_set.publish_ttl = 1,
+          .params.model_publication_set.publish_period.step_num = 1,
+          .params.model_publication_set.publish_period.step_res =
+              ACCESS_PUBLISH_RESOLUTION_1S,
+      },
+      {
+          .type = CONF_STEP_TYPE_DONE,
+      }};
+
+  steps[2].params.model_app_bind.element_addr = addr;
+  steps[3].params.model_app_bind.element_addr = addr;
+
+  conf_start(addr, steps);
+}
 
 static void prov_failure_cb() { prov_start_scan(); }
 
-static void conf_success_cb(uint16_t addr) {}
+static void conf_success_cb(uint16_t addr) { prov_start_scan(); }
 
-static void conf_failure_cb(uint16_t addr) {}
+static void conf_failure_cb(uint16_t addr) { prov_start_scan(); }
 
 static void start() {
   APP_ERROR_CHECK(mesh_stack_start());

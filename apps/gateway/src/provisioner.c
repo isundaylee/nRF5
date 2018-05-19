@@ -28,6 +28,7 @@ typedef struct {
 
   prov_state_t state;
   uint16_t device_addr;
+  uint8_t device_uuid[NRF_MESH_UUID_SIZE];
 
   uint8_t public_key[NRF_MESH_PROV_PUBKEY_SIZE];
   uint8_t private_key[NRF_MESH_PROV_PRIVKEY_SIZE];
@@ -54,7 +55,9 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
     if (prov.state == PROV_STATE_SCANNING) {
       prov.device_addr =
           prov.app_state->persistent.network.next_provisionee_addr++;
-      address_book_remove(evt->params.unprov.device_uuid);
+      memcpy(prov.device_uuid, evt->params.unprov.device_uuid,
+             NRF_MESH_UUID_SIZE);
+      address_book_remove(prov.device_uuid);
 
       LOG_INFO("Provisioner: Starting to provision a device to address %d.",
                prov.device_addr);
@@ -94,8 +97,9 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
     } else if (prov.state == PROV_STATE_COMPLETE) {
       LOG_INFO("Provisioner: Provisioning complete. ");
 
+      uint16_t device_addr = prov.device_addr;
       prov_reset_state();
-      prov.success_cb(prov.device_addr);
+      prov.success_cb(device_addr);
     }
 
     break;
@@ -139,7 +143,7 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
 
     prov.state = PROV_STATE_COMPLETE;
 
-    address_book_add(evt->params.unprov.device_uuid, prov.device_addr,
+    address_book_add(prov.device_uuid, prov.device_addr,
                      evt->params.complete.p_devkey);
 
     break;
