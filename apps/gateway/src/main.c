@@ -22,8 +22,6 @@
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
 
-app_state_t app_state;
-
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
 
@@ -156,6 +154,8 @@ static void start() {
     }
   }
 
+  app_state_init();
+  app_state_load();
   prov_init(&app_state, prov_success_cb, prov_failure_cb);
   conf_init(&app_state, conf_success_cb, conf_failure_cb);
 
@@ -167,6 +167,7 @@ int main(void) {
 
   init_leds();
   init_logging();
+
   init_mesh();
 
   execution_start(start);

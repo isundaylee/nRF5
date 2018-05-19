@@ -58,6 +58,7 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
       memcpy(prov.device_uuid, evt->params.unprov.device_uuid,
              NRF_MESH_UUID_SIZE);
       address_book_remove(prov.device_uuid);
+      app_state_save();
 
       LOG_INFO("Provisioner: Starting to provision a device to address %d.",
                prov.device_addr);
@@ -168,9 +169,13 @@ void prov_self_provision() {
                                                ACCESS_ELEMENT_COUNT};
   APP_ERROR_CHECK(dsm_local_unicast_addresses_set(&local_address));
 
+  // Set next provisionee addr to start at 2
+  prov.app_state->persistent.network.next_provisionee_addr = 2;
+
   // Generate keys
   rand_hw_rng_get(prov.app_state->persistent.network.netkey, NRF_MESH_KEY_SIZE);
   rand_hw_rng_get(prov.app_state->persistent.network.appkey, NRF_MESH_KEY_SIZE);
+  app_state_save();
 
   uint8_t devkey[NRF_MESH_KEY_SIZE];
   rand_hw_rng_get(devkey, NRF_MESH_KEY_SIZE);
@@ -228,7 +233,6 @@ void prov_init(app_state_t *app_state, prov_success_cb_t success_cb,
 
   prov.state = PROV_STATE_IDLE;
   prov.app_state = app_state;
-  prov.app_state->persistent.network.next_provisionee_addr = 2;
   prov.success_cb = success_cb;
   prov.failure_cb = failure_cb;
 
@@ -250,6 +254,7 @@ void prov_init(app_state_t *app_state, prov_success_cb_t success_cb,
            "netkey is: ", prov.app_state->persistent.network.netkey, 16);
 
   address_book_init(prov.app_state);
+  app_state_save();
 
   LOG_INFO("Provisioner: Provisioning initialized. ");
 }

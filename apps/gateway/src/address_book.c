@@ -9,9 +9,6 @@
 #include "custom_log.h"
 
 typedef struct {
-  uint16_t addrs[APP_MAX_PROVISIONEES];
-  uint8_t uuids[APP_MAX_PROVISIONEES][NRF_MESH_UUID_SIZE];
-
   app_state_t *app_state;
 } address_book_t;
 
@@ -19,17 +16,17 @@ address_book_t address_book;
 
 void address_book_init(app_state_t *app_state) {
   address_book.app_state = app_state;
-
-  memset(address_book.addrs, 0, sizeof(address_book.addrs));
-  memset(address_book.uuids, 0, sizeof(address_book.uuids));
 }
 
 bool address_book_remove(uint8_t const *uuid) {
   // Remove the device from DSM if we have previously provisioned it to free up
   // space.
   for (int i = 0; i < APP_MAX_PROVISIONEES; i++) {
-    if (memcmp(uuid, address_book.uuids[i], NRF_MESH_UUID_SIZE) == 0) {
-      uint16_t addr = address_book.addrs[i];
+    if (memcmp(uuid,
+               address_book.app_state->persistent.network.provisioned_uuids[i],
+               NRF_MESH_UUID_SIZE) == 0) {
+      uint16_t addr =
+          address_book.app_state->persistent.network.provisioned_addrs[i];
 
       // We need to remove the previous devkey and publish address from DSM.
       dsm_handle_t address_handle;
@@ -42,10 +39,12 @@ bool address_book_remove(uint8_t const *uuid) {
       APP_ERROR_CHECK(dsm_devkey_handle_get(addr, &devkey_handle));
       APP_ERROR_CHECK(dsm_devkey_delete(devkey_handle));
 
-      address_book.addrs[i] = 0;
-      memset(address_book.uuids[i], 0, NRF_MESH_UUID_SIZE);
+      address_book.app_state->persistent.network.provisioned_addrs[i] = 0;
+      memset(address_book.app_state->persistent.network.provisioned_uuids[i], 0,
+             NRF_MESH_UUID_SIZE);
       LOG_INFO("Address Book: Removing previous device with address %d. ", i);
 
+      app_state_save();
       return true;
     }
   }
@@ -56,12 +55,13 @@ bool address_book_remove(uint8_t const *uuid) {
 void address_book_add(uint8_t const *uuid, uint16_t addr,
                       uint8_t const *devkey) {
   for (int i = 0; i < APP_MAX_PROVISIONEES; i++) {
-    if (address_book.addrs[i] != 0) {
+    if (address_book.app_state->persistent.network.provisioned_addrs[i] != 0) {
       continue;
     }
 
-    address_book.addrs[i] = addr;
-    memcpy(address_book.uuids[i], uuid, NRF_MESH_UUID_SIZE);
+    address_book.app_state->persistent.network.provisioned_addrs[i] = addr;
+    memcpy(address_book.app_state->persistent.network.provisioned_uuids[i],
+           uuid, NRF_MESH_UUID_SIZE);
 
     dsm_handle_t addr_handle;
     dsm_handle_t devkey_handle;
@@ -70,6 +70,7 @@ void address_book_add(uint8_t const *uuid, uint16_t addr,
         addr, address_book.app_state->ephemeral.network.netkey_handle, devkey,
         &devkey_handle));
 
+    app_state_save();
     return;
   }
 

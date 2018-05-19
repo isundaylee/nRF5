@@ -19,6 +19,7 @@ $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
 # Source files common to all targets
 SRC_FILES += \
   $(SRC_DIR)/main.c \
+  $(SRC_DIR)/app_state.c \
   $(SRC_DIR)/address_book.c \
   $(SRC_DIR)/provisioner.c \
   $(SRC_DIR)/configurator.c \
