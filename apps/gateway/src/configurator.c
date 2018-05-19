@@ -107,12 +107,37 @@ conf_check_result_t conf_check_status(uint32_t opcode,
   return CONF_CHECK_RESULT_FAIL;
 }
 
+void conf_bind(uint16_t node_addr) {
+  // Setting up config_client
+  dsm_handle_t addr_handle = DSM_HANDLE_INVALID;
+  dsm_handle_t devkey_handle = DSM_HANDLE_INVALID;
+  nrf_mesh_address_t addr;
+
+  addr.type = NRF_MESH_ADDRESS_TYPE_UNICAST;
+  addr.value = node_addr;
+
+  APP_ERROR_CHECK(dsm_address_handle_get(&addr, &addr_handle));
+  APP_ERROR_CHECK(dsm_devkey_handle_get(addr.value, &devkey_handle));
+
+  APP_ERROR_CHECK(config_client_server_bind(devkey_handle));
+  APP_ERROR_CHECK(config_client_server_set(devkey_handle, addr_handle));
+
+  LOG_INFO("Configurator: Config client bound and set for node %d. ",
+           node_addr);
+}
+
 void conf_succeed() {
+  // Bind the config client back to the gateway to avoid reboot crash in case a
+  // previously provisioned device is removed from DSM.
+  conf_bind(APP_GATEWAY_ADDR);
   conf.state = CONF_STATE_IDLE;
   conf.success_cb(conf.node_addr);
 }
 
 void conf_fail() {
+  // Bind the config client back to the gateway to avoid reboot crash in case a
+  // previously provisioned device is removed from DSM.
+  conf_bind(APP_GATEWAY_ADDR);
   conf.state = CONF_STATE_IDLE;
   conf.failure_cb(conf.node_addr);
 }
@@ -252,22 +277,7 @@ void conf_start(uint16_t node_addr, conf_step_t const *steps) {
   conf.state = CONF_STATE_EXECUTING;
   conf.node_addr = node_addr;
 
-  // Setting up config_client
-  dsm_handle_t addr_handle = DSM_HANDLE_INVALID;
-  dsm_handle_t devkey_handle = DSM_HANDLE_INVALID;
-  nrf_mesh_address_t addr;
-
-  addr.type = NRF_MESH_ADDRESS_TYPE_UNICAST;
-  addr.value = node_addr;
-
-  APP_ERROR_CHECK(dsm_address_handle_get(&addr, &addr_handle));
-  APP_ERROR_CHECK(dsm_devkey_handle_get(addr.value, &devkey_handle));
-
-  APP_ERROR_CHECK(config_client_server_bind(devkey_handle));
-  APP_ERROR_CHECK(config_client_server_set(devkey_handle, addr_handle));
-
-  LOG_INFO("Configurator: Config client bound and set. ", devkey_handle,
-           addr_handle);
+  conf_bind(node_addr);
 
   conf.steps = steps;
   conf.current_step = conf.steps;
