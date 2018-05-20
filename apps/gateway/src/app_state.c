@@ -89,3 +89,11 @@ void app_state_save(void) {
     LOG_INFO("App State: App persistent state stored. ");
   }
 }
+
+void app_state_clear(void) {
+  memset(&app_state.persistent, 0, sizeof(app_persistent_state_t));
+
+  app_state_save();
+
+  LOG_INFO("App State: App persistent state cleared. ");
+}

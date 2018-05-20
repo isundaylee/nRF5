@@ -46,3 +46,4 @@ extern app_state_t app_state;
 void app_state_init(void);
 bool app_state_load(void);
 void app_state_save(void);
+void app_state_clear(void);

@@ -132,6 +132,8 @@ static void start() {
   APP_ERROR_CHECK(mesh_stack_start());
   LOG_INFO("Mesh stack started.");
 
+  app_state_init();
+
   if (mesh_stack_is_device_provisioned()) {
     nrf_gpio_pin_set(PIN_LED_INDICATION);
 
@@ -151,11 +153,12 @@ static void start() {
       }
     } else {
       LOG_ERROR("Will reuse the existing network config. ");
+      app_state_load();
     }
+  } else {
+    app_state_clear();
   }
 
-  app_state_init();
-  app_state_load();
   prov_init(&app_state, prov_success_cb, prov_failure_cb);
   conf_init(&app_state, conf_success_cb, conf_failure_cb);
 
