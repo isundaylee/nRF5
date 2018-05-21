@@ -741,6 +741,18 @@ static inline void restore_addresses_for_model(const access_common_t * p_model)
     }
 }
 
+static inline void restore_publication_period_for_model(access_common_t * p_model)
+{
+    if (p_model->model_info.publication_period.step_num != 0)
+    {
+        access_publish_period_set(
+            &p_model->publication_state,
+            p_model->model_info.publication_period.step_res,
+            p_model->model_info.publication_period.step_num
+        );
+    }
+}
+
 static inline bool restore_models(void)
 {
     if (restore_flash_data(FLASH_GROUP_MODEL, ACCESS_MODEL_COUNT, restore_acquired_model) <= 0)
@@ -753,6 +765,7 @@ static inline bool restore_models(void)
         if (m_model_pool[i].model_info.element_index != ACCESS_ELEMENT_INDEX_INVALID)
         {
                 restore_addresses_for_model(&m_model_pool[i]);
+                restore_publication_period_for_model(&m_model_pool[i]);
         }
     }
 
