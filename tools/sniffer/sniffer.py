@@ -1,5 +1,7 @@
 import sys
+import time
 import serial
+import struct
 
 SLIP_START = 0xAB
 SLIP_END = 0xBC
@@ -26,6 +28,8 @@ class PacketBody:
             self.rssi = data[3]
             self.event_counter = data[4] + data[5] * 256
             self.time_diff = data[6] + data[7] * 256 + data[8] * 256 * 256 + data[9] * 256 * 256 * 256
+
+            print(self.channel)
 
             self.access_address = data[10:14]
             self.payload_header = data[14]
@@ -93,6 +97,29 @@ def slip_decode(packet):
 
     return result
 
+class PCAPWriter:
+    def __init__(self, f):
+        self.f = f
+        self.seq = 0
+
+        self.f.write(bytes([
+            0xd4, 0xc3, 0xb2, 0xa1, 0x02, 0x00, 0x04, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x04, 0x00, 0xfb, 0x00, 0x00, 0x00,
+        ]))
+
+    def write_packet(self, packet):
+        t = time.time()
+        sec = int(t)
+        usec = int((t - sec) * 1000000)
+
+        self.f.write(struct.pack('<I', sec))
+        self.f.write(struct.pack('<I', usec))
+        self.f.write(struct.pack('<I', len(packet)))
+        self.f.write(struct.pack('<I', len(packet)))
+
+        self.f.write(packet)
+
 def print_hex(arr):
     print(' '.join(map(lambda c: "%02x" % c, arr)))
 
@@ -106,7 +133,7 @@ def process_packet(raw_packet):
         sys.stderr.write('Discarding an invalid packet with length %d' % len(raw_packet))
         sys.stderr.write("\n")
         sys.stderr.flush()
-        return
+        return None
 
     try:
         packet = Packet(packet)
@@ -114,32 +141,46 @@ def process_packet(raw_packet):
         sys.stderr.write('Discarding an invalid packet with length %d: %s' % (len(raw_packet), str(e)))
         sys.stderr.write("\n")
         sys.stderr.flush()
-        return
+        return None
 
     if packet.header.packet_type == PACKET_TYPE_EVENT_PACKET:
-        print_wireshark_hex_dump(packet.body.payload)
+        return packet.body.payload
+        # print_wireshark_hex_dump(packet.body.payload)
 
 def process_buf(buf):
+    payloads = []
+
     while True:
         try:
             start = buf.index(SLIP_START)
             end = buf[start:].index(SLIP_END) + start
         except ValueError:
-            return buf
+            return buf, payloads
 
-        process_packet(buf[start:end+1])
+        payload = process_packet(buf[start:end+1])
+        if payload is not None:
+            payloads.append(payload)
         buf = buf[end+1:]
 
 def main():
-    # with open('/tmp/ble', 'rb') as f:
     buf = bytes()
 
     with serial.Serial('/dev/tty.usbserial-A9M9DV3R', 460800, timeout=1) as f:
-        while True:
-            block = f.read(256)
-            # block = sys.stdin.buffer.read(1024)
-            buf += block
+        with open('/tmp/ble-out', 'wb') as of:
+            pcap_writer = PCAPWriter(of)
 
-            buf = process_buf(buf)
+            while True:
+                block = f.read(256)
+                # block = sys.stdin.buffer.read(1024)
+                buf += block
+
+                buf, payloads = process_buf(buf)
+                for payload in payloads:
+                    pcap_writer.write_packet(payload)
+                    print('Captured 1 packet with length %d' % len(payload))
+    #
+
+    with open('/tmp/ble-out', 'wb') as f:
+        pcap_writer.write_packet(bytes(10))
 
 main()

@@ -228,6 +228,23 @@ void prov_restore() {
   LOG_INFO("Provisioner: Provisioner restored. ");
 }
 
+void prov_dump_secmat(void) {
+  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO, "netkey",
+           prov.app_state->persistent.network.netkey, 16);
+
+  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO, "appkey",
+           prov.app_state->persistent.network.appkey, 16);
+
+  nrf_mesh_network_secmat_t const *secmat;
+  APP_ERROR_CHECK(dsm_net_secmat_from_keyindex_get(
+      prov.app_state->ephemeral.network.netkey_handle, &secmat));
+
+  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO, "encryption_key",
+           secmat->encryption_key, 16);
+  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO, "privacy_key", secmat->privacy_key, 16);
+  LOG_INFO("NID: 0x%02x", secmat->nid)
+}
+
 void prov_init(app_state_t *app_state, prov_success_cb_t success_cb,
                prov_failure_cb_t failure_cb) {
   nrf_mesh_prov_oob_caps_t caps =
@@ -252,11 +269,7 @@ void prov_init(app_state_t *app_state, prov_success_cb_t success_cb,
     prov_self_provision();
   }
 
-  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO, "netkey",
-           prov.app_state->persistent.network.netkey, 16);
-
-  __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO, "appkey",
-           prov.app_state->persistent.network.appkey, 16);
+  prov_dump_secmat();
 
   address_book_init(prov.app_state);
 
