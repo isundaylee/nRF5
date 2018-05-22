@@ -10,6 +10,7 @@
 #include "nrf_mesh_configure.h"
 
 #include "ble_advdata.h"
+#include "ble_db_discovery.h"
 #include "nrf_ble_gatt.h"
 #include "nrf_delay.h"
 #include "nrf_sdh.h"
@@ -19,6 +20,7 @@
 #include "sdk_config.h"
 
 #include "custom_log.h"
+#include "proxy_client.h"
 
 #define APP_DEVICE_NAME "PROXYCLIENT"
 
@@ -34,15 +36,19 @@ static ble_gap_scan_params_t const scan_params = {
 };
 
 static ble_gap_conn_params_t const conn_params = {
-    .min_conn_interval = MSEC_TO_UNITS(250, UNIT_1_25_MS),
-    .max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS),
+    .min_conn_interval = MSEC_TO_UNITS(25, UNIT_1_25_MS),
+    .max_conn_interval = MSEC_TO_UNITS(100, UNIT_1_25_MS),
     .slave_latency = MSEC_TO_UNITS(0, UNIT_1_25_MS),
-    .conn_sup_timeout = MSEC_TO_UNITS(4000, UNIT_1_25_MS),
+    .conn_sup_timeout = MSEC_TO_UNITS(4000, UNIT_10_MS),
 };
 
 static uint8_t gap_scan_buffer_data[BLE_GAP_SCAN_BUFFER_MIN];
 static ble_data_t gap_scan_buffer = {gap_scan_buffer_data,
                                      BLE_GAP_SCAN_BUFFER_MIN};
+
+BLE_DB_DISCOVERY_DEF(db_discovery);
+NRF_BLE_GATT_DEF(gatt);
+PROXY_CLIENT_DEF(proxy_client);
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -57,8 +63,6 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   while (1) {
   }
 }
-
-#define MESH_PROXY_SERVICE_UUID 0x1828
 
 static void ble_evt_cb(ble_evt_t const *ble_evt, void *context) {
   ble_gap_evt_t const *gap_evt = &ble_evt->evt.gap_evt;
@@ -93,6 +97,39 @@ static void ble_evt_cb(ble_evt_t const *ble_evt, void *context) {
   case BLE_GAP_EVT_CONNECTED: //
   {
     LOG_INFO("Connection established. ");
+
+    APP_ERROR_CHECK(
+        ble_db_discovery_start(&db_discovery, gap_evt->conn_handle));
+    proxy_client_conn_handle_assign(&proxy_client, gap_evt->conn_handle);
+
+    break;
+  }
+
+  case BLE_GAP_EVT_DISCONNECTED: //
+  {
+    LOG_INFO("Connection terminated. Reason: %d",
+             gap_evt->params.disconnected.reason);
+
+    break;
+  }
+
+  case BLE_GATTC_EVT_WRITE_RSP: //
+  {
+    uint16_t status = ble_evt->evt.gattc_evt.gatt_status;
+    if (status != BLE_GATT_STATUS_SUCCESS) {
+      LOG_ERROR("GATT client write error: %d", status);
+    }
+
+    break;
+  }
+
+  case BLE_GATTC_EVT_HVX:                //
+  case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: //
+  case BLE_GATTC_EVT_CHAR_DISC_RSP:      //
+  case BLE_GATTC_EVT_EXCHANGE_MTU_RSP:   //
+  case BLE_GATTC_EVT_DESC_DISC_RSP:      //
+  {
+    // Events that we don't care about.
     break;
   }
 
@@ -102,6 +139,16 @@ static void ble_evt_cb(ble_evt_t const *ble_evt, void *context) {
     break;
   }
   }
+}
+
+static void db_discovery_evt_handler(ble_db_discovery_evt_t *evt) {
+  LOG_INFO("Received DB discovery event: %d", evt->evt_type);
+
+  proxy_client_db_discovery_evt_handler(&proxy_client, evt);
+}
+
+static void init_db_discovery() {
+  APP_ERROR_CHECK(ble_db_discovery_init(db_discovery_evt_handler));
 }
 
 static void init_softdevice() {
@@ -124,8 +171,6 @@ static void init_gap_params(void) {
       &sec_mode, (const uint8_t *)APP_DEVICE_NAME, strlen(APP_DEVICE_NAME)));
 }
 
-NRF_BLE_GATT_DEF(gatt);
-
 static void gatt_evt_cb(nrf_ble_gatt_t *gatt, nrf_ble_gatt_evt_t const *evt) {
   switch (evt->evt_id) {
   case NRF_BLE_GATT_EVT_ATT_MTU_UPDATED: //
@@ -144,6 +189,36 @@ static void gatt_evt_cb(nrf_ble_gatt_t *gatt, nrf_ble_gatt_evt_t const *evt) {
 
 static void init_gatt() {
   APP_ERROR_CHECK(nrf_ble_gatt_init(&gatt, gatt_evt_cb));
+  APP_ERROR_CHECK(nrf_ble_gatt_att_mtu_central_set(&gatt, 69));
+}
+
+static void proxy_client_evt_handler(proxy_client_evt_t *evt) {
+  switch (evt->type) {
+  case PROXY_CLIENT_EVT_DATA_IN: //
+  {
+    static bool first_hvx = true;
+    LOG_INFO("HVX with length %d", evt->params.data_in.len);
+
+    if (first_hvx) {
+      first_hvx = false;
+      uint8_t out[] = {0x02, 0x16, 0x1f, 0x41, 0x52, 0x3c, 0x2d,
+                       0xc1, 0xb2, 0xdb, 0xf1, 0xe7, 0x3c, 0x4b,
+                       0x87, 0xc3, 0x10, 0x26, 0x49, 0x76};
+      APP_ERROR_CHECK(proxy_client_send(&proxy_client, out, sizeof(out)));
+    }
+    
+    break;
+  }
+
+  default: //
+  {
+    break;
+  }
+  }
+}
+
+static void init_proxy_client() {
+  APP_ERROR_CHECK(proxy_client_init(&proxy_client, proxy_client_evt_handler));
 }
 
 static void initialize(void) {
@@ -151,9 +226,11 @@ static void initialize(void) {
              log_callback_custom);
   LOG_INFO("Bluetooth Mesh relay node is initializing. ");
 
+  init_db_discovery();
   init_softdevice();
   init_gap_params();
   init_gatt();
+  init_proxy_client();
 }
 
 static void start() {

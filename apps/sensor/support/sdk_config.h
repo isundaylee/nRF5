@@ -9242,6 +9242,5 @@
 
 // App custom settings
 
-#ifndef NRF_BLE_GATT_ENABLED
 #define NRF_BLE_GATT_ENABLED 1
-#endif
+#define BLE_DB_DISCOVERY_ENABLED 1

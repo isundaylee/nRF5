@@ -275,7 +275,7 @@ INC_FOLDERS += \
 LIB_FILES += \
 
 # Optimization flags
-OPT = -O2 -g
+OPT = -O1 -g
 # Uncomment the line below to enable link time optimization
 #OPT += -flto
 
