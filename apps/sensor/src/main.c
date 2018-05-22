@@ -17,6 +17,7 @@
 #include "nrf_sdh_ble.h"
 #include "nrf_sdh_soc.h"
 #include "proxy.h"
+#include "rand.h"
 #include "sdk_config.h"
 
 #include "custom_log.h"
@@ -123,11 +124,12 @@ static void ble_evt_cb(ble_evt_t const *ble_evt, void *context) {
     break;
   }
 
-  case BLE_GATTC_EVT_HVX:                //
-  case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP: //
-  case BLE_GATTC_EVT_CHAR_DISC_RSP:      //
-  case BLE_GATTC_EVT_EXCHANGE_MTU_RSP:   //
-  case BLE_GATTC_EVT_DESC_DISC_RSP:      //
+  case BLE_GATTC_EVT_HVX:                   //
+  case BLE_GATTC_EVT_PRIM_SRVC_DISC_RSP:    //
+  case BLE_GATTC_EVT_CHAR_DISC_RSP:         //
+  case BLE_GATTC_EVT_EXCHANGE_MTU_RSP:      //
+  case BLE_GATTC_EVT_DESC_DISC_RSP:         //
+  case BLE_GATTC_EVT_WRITE_CMD_TX_COMPLETE: //
   {
     // Events that we don't care about.
     break;
@@ -196,17 +198,8 @@ static void proxy_client_evt_handler(proxy_client_evt_t *evt) {
   switch (evt->type) {
   case PROXY_CLIENT_EVT_DATA_IN: //
   {
-    static bool first_hvx = true;
     LOG_INFO("HVX with length %d", evt->params.data_in.len);
 
-    if (first_hvx) {
-      first_hvx = false;
-      uint8_t out[] = {0x02, 0x16, 0x1f, 0x41, 0x52, 0x3c, 0x2d,
-                       0xc1, 0xb2, 0xdb, 0xf1, 0xe7, 0x3c, 0x4b,
-                       0x87, 0xc3, 0x10, 0x26, 0x49, 0x76};
-      APP_ERROR_CHECK(proxy_client_send(&proxy_client, out, sizeof(out)));
-    }
-    
     break;
   }
 
@@ -221,6 +214,17 @@ static void init_proxy_client() {
   APP_ERROR_CHECK(proxy_client_init(&proxy_client, proxy_client_evt_handler));
 }
 
+static void init_mesh() {
+  nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
+                                .rc_ctiv = 0,
+                                .rc_temp_ctiv = 0,
+                                .accuracy = NRF_CLOCK_LF_ACCURACY_20_PPM};
+  mesh_stack_init_params_t init_params = {.core.irq_priority =
+                                              NRF_MESH_IRQ_PRIORITY_LOWEST,
+                                          .core.lfclksrc = lfc_cfg};
+  ERROR_CHECK(mesh_stack_init(&init_params, NULL));
+}
+
 static void initialize(void) {
   __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
              log_callback_custom);
@@ -231,10 +235,47 @@ static void initialize(void) {
   init_gap_params();
   init_gatt();
   init_proxy_client();
+
+  init_mesh();
+}
+
+static void store_manual_provisioning_data() {
+  uint8_t devkey[NRF_MESH_KEY_SIZE];
+  rand_hw_rng_get(devkey, NRF_MESH_KEY_SIZE);
+
+  nrf_mesh_prov_provisioning_data_t prov_data = {
+      .netkey = {0xAF, 0x99, 0x8E, 0x1B, 0xEA, 0x5C, 0x4E, 0xDF, 0xAA, 0x16,
+                 0x41, 0x54, 0xA3, 0x57, 0x3B, 0x1A},
+      .netkey_index = 0,
+      .iv_index = 0,
+      .address = 0x0100,
+      .flags.iv_update = false,
+      .flags.key_refresh = false};
+
+  APP_ERROR_CHECK(mesh_stack_provisioning_data_store(&prov_data, devkey));
+
+  uint8_t appkey[NRF_MESH_KEY_SIZE] = {0xE3, 0x57, 0x19, 0xB5, 0x1F, 0x53,
+                                       0x5A, 0xD7, 0xD4, 0x47, 0xE0, 0xA3,
+                                       0xD8, 0x7C, 0x4A, 0x6C};
+
+  uint32_t count = 1;
+  dsm_handle_t subnet_handle;
+  dsm_handle_t appkey_handle;
+  APP_ERROR_CHECK(dsm_subnet_get_all(&subnet_handle, &count));
+  APP_ERROR_CHECK(dsm_appkey_add(0, subnet_handle, appkey, &appkey_handle));
 }
 
 static void start() {
   LOG_INFO("Bluetooth Mesh sensor node is scanning for relay nodes. ");
+
+  APP_ERROR_CHECK(nrf_mesh_enable());
+
+  if (!mesh_stack_is_device_provisioned()) {
+    store_manual_provisioning_data();
+    LOG_INFO("Manual provisioning finished. ");
+  } else {
+    LOG_INFO("Node is already provisioned. ");
+  }
 
   APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
 }

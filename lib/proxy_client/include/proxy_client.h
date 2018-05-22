@@ -4,6 +4,7 @@
 
 #include "ble.h"
 #include "ble_db_discovery.h"
+#include "packet_buffer.h"
 
 #define MESH_PROXY_SERVICE_UUID 0x1828
 
@@ -42,11 +43,27 @@ typedef struct {
 
 typedef void (*proxy_client_evt_handler_t)(proxy_client_evt_t *evt);
 
+typedef struct __attribute((packed)) {
+  uint8_t pdu_type : 6;
+  uint8_t sar_type : 2;
+  uint8_t pdu[];
+} proxy_client_proxy_packet_t;
+
+#define PROXY_CLIENT_PACKET_BUFFER_SIZE 300
+
 typedef struct {
   proxy_client_evt_handler_t evt_handler;
 
   uint16_t conn_handle;
   proxy_client_handles_t handles;
+  bool beacon_seen;
+
+  struct {
+    packet_buffer_t packet_buffer;
+    uint8_t packet_buffer_data[PROXY_CLIENT_PACKET_BUFFER_SIZE];
+
+    proxy_client_proxy_packet_t *current_packet;
+  } tx;
 } proxy_client_t;
 
 uint32_t proxy_client_init(proxy_client_t *client,
