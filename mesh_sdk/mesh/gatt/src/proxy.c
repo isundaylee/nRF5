@@ -574,6 +574,9 @@ static void gatt_evt_handler(const mesh_gatt_evt_t * p_evt, void * p_context)
             p_connection->connected = true;
             connection_reset(p_connection);
 
+            uint32_t status = sd_ble_gatts_sys_attr_set(p_evt->conn_index, NULL, 0, 0);
+            NRF_MESH_ASSERT(status == NRF_SUCCESS);
+
             /* Send beacons for all known networks upon connection */
             beacon_cycle_trigger(p_connection);
 
