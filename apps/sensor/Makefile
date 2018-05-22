@@ -20,63 +20,102 @@ $(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
 SRC_FILES += \
   $(SRC_DIR)/main.c \
   $(LIB_ROOT)/custom_log/src/custom_log.c \
-  $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
-  $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_serial.c \
-  $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_backend_rtt.c \
-  $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_default_backends.c \
-  $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_frontend.c \
-  $(SDK_ROOT)/components/libraries/experimental_log/src/nrf_log_str_formatter.c \
-  $(SDK_ROOT)/components/libraries/button/app_button.c \
+  $(SDK_ROOT)/components/ble/common/ble_advdata.c \
+  $(SDK_ROOT)/components/ble/nrf_ble_gatt/nrf_ble_gatt.c \
+  $(SDK_ROOT)/components/libraries/experimental_section_vars/nrf_section_iter.c \
   $(SDK_ROOT)/components/libraries/util/app_error.c \
   $(SDK_ROOT)/components/libraries/util/app_error_handler_gcc.c \
-  $(SDK_ROOT)/components/libraries/util/app_error_weak.c \
-  $(SDK_ROOT)/components/libraries/fifo/app_fifo.c \
-  $(SDK_ROOT)/components/libraries/scheduler/app_scheduler.c \
-  $(SDK_ROOT)/components/libraries/timer/app_timer.c \
-  $(SDK_ROOT)/components/libraries/uart/app_uart_fifo.c \
   $(SDK_ROOT)/components/libraries/util/app_util_platform.c \
-  $(SDK_ROOT)/components/libraries/hardfault/hardfault_implementation.c \
-  $(SDK_ROOT)/components/libraries/util/nrf_assert.c \
-  $(SDK_ROOT)/components/libraries/atomic_fifo/nrf_atfifo.c \
-  $(SDK_ROOT)/components/libraries/atomic_flags/nrf_atflags.c \
-  $(SDK_ROOT)/components/libraries/atomic/nrf_atomic.c \
-  $(SDK_ROOT)/components/libraries/balloc/nrf_balloc.c \
-  $(SDK_ROOT)/external/fprintf/nrf_fprintf.c \
-  $(SDK_ROOT)/external/fprintf/nrf_fprintf_format.c \
-  $(SDK_ROOT)/components/libraries/experimental_memobj/nrf_memobj.c \
-  $(SDK_ROOT)/components/libraries/pwr_mgmt/nrf_pwr_mgmt.c \
-  $(SDK_ROOT)/components/libraries/experimental_section_vars/nrf_section_iter.c \
-  $(SDK_ROOT)/components/libraries/strerror/nrf_strerror.c \
-  $(SDK_ROOT)/components/libraries/uart/retarget.c \
+  $(SDK_ROOT)/components/softdevice/common/nrf_sdh.c \
+  $(SDK_ROOT)/components/softdevice/common/nrf_sdh_ble.c \
+  $(SDK_ROOT)/components/softdevice/common/nrf_sdh_soc.c \
   $(SDK_ROOT)/modules/nrfx/mdk/system_nrf52.c \
-  $(SDK_ROOT)/components/boards/boards.c \
-  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_clock.c \
-  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_gpiote.c \
-  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_power_clock.c \
-  $(SDK_ROOT)/modules/nrfx/drivers/src/prs/nrfx_prs.c \
-  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_twi.c \
-  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uart.c \
-  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uarte.c \
-  $(SDK_ROOT)/components/libraries/bsp/bsp.c \
-  $(SDK_ROOT)/components/libraries/bsp/bsp_btn_ble.c \
-  $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
-  $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
-  $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c \
-  $(wildcard $(MESH_SDK_ROOT)/mesh/core/src/*.c) \
-  $(wildcard $(MESH_SDK_ROOT)/mesh/bearer/src/*.c) \
-  $(filter-out $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov_bearer_gatt.c, \
-    $(wildcard $(MESH_SDK_ROOT)/mesh/prov/src/*.c)) \
-  $(wildcard $(MESH_SDK_ROOT)/mesh/access/src/*.c) \
-  $(wildcard $(MESH_SDK_ROOT)/mesh/dfu/src/*.c) \
-  $(wildcard $(MESH_SDK_ROOT)/mesh/stack/src/*.c) \
-  $(MESH_SDK_ROOT)/models/config/src/config_server.c \
+  $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
+  $(MESH_SDK_ROOT)/mesh/access/src/access.c \
+  $(MESH_SDK_ROOT)/mesh/access/src/access_publish.c \
+  $(MESH_SDK_ROOT)/mesh/access/src/access_reliable.c \
+  $(MESH_SDK_ROOT)/mesh/access/src/device_state_manager.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/ad_listener.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/ad_type_filter.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/adv_packet_filter.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/advertiser.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/bearer_handler.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/broadcast.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/filter_engine.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/gap_address_filter.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/radio_config.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/rssi_filter.c \
+  $(MESH_SDK_ROOT)/mesh/bearer/src/scanner.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/aes.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/aes_cmac.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/beacon.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/bearer_event.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/cache.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/ccm_soft.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/core_tx.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/core_tx_adv.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/enc.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/event.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/fifo.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/flash_manager.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/flash_manager_defrag.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/flash_manager_internal.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/fsm.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/hal.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/heartbeat.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/internal_event.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/list.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/log.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/mesh_flash.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/msg_cache.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/msqueue.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/net_beacon.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/net_packet.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/net_state.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/network.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_flash.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh_configure.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh_keygen.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh_opt.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh_utils.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/packet_buffer.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/packet_mgr.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/queue.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/rand.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/replay_cache.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/ticker.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/timer.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/timer_scheduler.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/timeslot.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/toolchain.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/transport.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/uri.c \
+  $(MESH_SDK_ROOT)/mesh/gatt/src/mesh_gatt.c \
+  $(MESH_SDK_ROOT)/mesh/gatt/src/proxy.c \
+  $(MESH_SDK_ROOT)/mesh/gatt/src/proxy_filter.c \
+  $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov.c \
+  $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov_bearer_gatt.c \
+  $(MESH_SDK_ROOT)/mesh/prov/src/prov_beacon.c \
+  $(MESH_SDK_ROOT)/mesh/prov/src/prov_bearer_adv.c \
+  $(MESH_SDK_ROOT)/mesh/prov/src/prov_provisionee.c \
+  $(MESH_SDK_ROOT)/mesh/prov/src/prov_utils.c \
+  $(MESH_SDK_ROOT)/mesh/prov/src/provisioning.c \
+  $(MESH_SDK_ROOT)/mesh/stack/src/mesh_stack.c \
   $(MESH_SDK_ROOT)/models/config/src/composition_data.c \
+  $(MESH_SDK_ROOT)/models/config/src/config_server.c \
   $(MESH_SDK_ROOT)/models/config/src/packed_index_list.c \
   $(MESH_SDK_ROOT)/models/health/src/health_server.c \
-  $(MESH_SDK_ROOT)/external/micro-ecc/uECC.c \
+  $(MESH_SDK_ROOT)/examples/common/src/app_error_weak.c \
   $(MESH_SDK_ROOT)/examples/common/src/assertion_handler_weak.c \
+  $(MESH_SDK_ROOT)/examples/common/src/mesh_adv.c \
+  $(MESH_SDK_ROOT)/examples/common/src/mesh_app_utils.c \
   $(MESH_SDK_ROOT)/examples/common/src/mesh_provisionee.c \
-  $(MESH_SDK_ROOT)/examples/common/src/mesh_softdevice_init.c \
+  $(MESH_SDK_ROOT)/examples/common/src/rtt_input.c \
+  $(MESH_SDK_ROOT)/examples/nrf_mesh_weak.c \
+  $(MESH_SDK_ROOT)/external/rtt/src/SEGGER_RTT.c \
+  $(MESH_SDK_ROOT)/external/rtt/src/SEGGER_RTT_printf.c \
+  $(MESH_SDK_ROOT)/external/micro-ecc/uECC.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -215,6 +254,8 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/nfc/t2t_lib/hal_t2t \
   $(SDK_ROOT)/components/nfc/ndef/conn_hand_parser/ac_rec_parser \
   $(SDK_ROOT)/components/ble/ble_services/ble_hrs \
+  $(MESH_SDK_ROOT)/mesh/gatt/api \
+  $(MESH_SDK_ROOT)/mesh/gatt/include \
   $(MESH_SDK_ROOT)/mesh/core/api \
   $(MESH_SDK_ROOT)/mesh/core/include \
   $(MESH_SDK_ROOT)/mesh/bearer/api \
@@ -235,27 +276,24 @@ INC_FOLDERS += \
 LIB_FILES += \
 
 # Optimization flags
-OPT = -O3 -g3
+OPT = -O2 -g
 # Uncomment the line below to enable link time optimization
 #OPT += -flto
 
 # C flags common to all targets
 CFLAGS += $(OPT)
+
+CFLAGS += -DNDEBUG
 CFLAGS += -DBOARD_CUSTOM
-CFLAGS += -DDEBUG_PINS_ENABLED
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
-CFLAGS += -DFLOAT_ABI_HARD
-CFLAGS += -DNRF52
-CFLAGS += -DNRF52_SERIES
-CFLAGS += -DNRF_MESH_LOG_ENABLE=1
-CFLAGS += -DLOG_ENABLE_RTT=1
-CFLAGS += -DCONFIG_APP_IN_CORE
+CFLAGS += -DGATT_PROXY=1
+CFLAGS += -DMESH_FEATURE_GATT=1
 CFLAGS += -DNRF52832_XXAA
-CFLAGS += -DNRF52_PAN_74
+CFLAGS += -DNRF52_SERIES
 CFLAGS += -DNRF_SD_BLE_API_VERSION=6
 CFLAGS += -DS132
 CFLAGS += -DSOFTDEVICE_PRESENT
-CFLAGS += -DSWI_DISABLE0
+
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs
 CFLAGS += -Wall -Werror
@@ -273,16 +311,17 @@ ASMFLAGS += -g3
 ASMFLAGS += -mcpu=cortex-m4
 ASMFLAGS += -mthumb -mabi=aapcs
 ASMFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
+
+ASMFLAGS += -DNDEBUG
 ASMFLAGS += -DBOARD_CUSTOM
 ASMFLAGS += -DCONFIG_GPIO_AS_PINRESET
-ASMFLAGS += -DFLOAT_ABI_HARD
-ASMFLAGS += -DNRF52
+ASMFLAGS += -DGATT_PROXY=1
+ASMFLAGS += -DMESH_FEATURE_GATT=1
 ASMFLAGS += -DNRF52832_XXAA
-ASMFLAGS += -DNRF52_PAN_74
+ASMFLAGS += -DNRF52_SERIES
 ASMFLAGS += -DNRF_SD_BLE_API_VERSION=6
 ASMFLAGS += -DS132
 ASMFLAGS += -DSOFTDEVICE_PRESENT
-ASMFLAGS += -DSWI_DISABLE0
 
 # Linker flags
 LDFLAGS += $(OPT)
