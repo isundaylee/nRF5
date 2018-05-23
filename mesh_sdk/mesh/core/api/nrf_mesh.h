@@ -409,6 +409,7 @@ typedef struct
     nrf_mesh_relay_check_cb_t relay_cb; /**< Application call back for relay decisions, can be NULL. */
     uint8_t irq_priority; /**< Application IRQ priority (NRF_MESH_IRQ_PRIORITY_LOWEST or NRF_MESH_IRQ_PRIORITY_THREAD). */
     const uint8_t * p_uuid; /** UUID to be used for unprovisioned node beacons. If NULL, UUID will be auto generated */
+    bool skip_radio;
 } nrf_mesh_init_params_t;
 
 /** @} end of MESH_CORE_COMMON_TYPES */

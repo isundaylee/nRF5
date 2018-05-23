@@ -57,6 +57,7 @@ static volatile bool    m_stopped;      /**< Current state of the bearer handler
 static bearer_action_t* mp_action;      /**< Ongoing bearer action. */
 static timestamp_t      m_end_time;     /**< Latest end time for the ongoing action. */
 static bool             m_scanner_is_active;
+static bool             m_skip_radio;
 /*****************************************************************************
 * Static functions
 *****************************************************************************/
@@ -120,7 +121,10 @@ static void action_switch(void)
 
         if (p_action && (p_action->duration_us + BEARER_ACTION_POST_PROCESS_TIME_US) < available_time)
         {
-            scanner_stop();
+            if (!m_skip_radio)
+            {
+                scanner_stop();
+            }
 
             NRF_MESH_ASSERT(queue_pop(&m_action_queue) == p_elem);
             p_action->queue_elem.p_data = NULL;
@@ -129,19 +133,23 @@ static void action_switch(void)
         }
         else if (available_time > BEARER_SCANNER_MIN_TIME_US)
         {
-            scanner_start();
+            if (!m_skip_radio)
+            {
+                scanner_start();
+            }
         }
     }
 }
 /*****************************************************************************
 * Interface functions
 *****************************************************************************/
-void bearer_handler_init(void)
+void bearer_handler_init(bool skip_radio)
 {
     queue_init(&m_action_queue);
     mp_action = NULL;
     m_scanner_is_active = false;
     m_stopped = true;
+    m_skip_radio = skip_radio;
 }
 
 uint32_t bearer_handler_start(void)
@@ -305,5 +313,8 @@ void bearer_handler_on_ts_end(void)
     NRF_MESH_ASSERT(timeslot_is_in_cb());
     NRF_MESH_ASSERT(mp_action == NULL);
 
-    scanner_stop();
+    if (!m_skip_radio)
+    {
+        scanner_stop();
+    }
 }

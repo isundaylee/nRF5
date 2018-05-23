@@ -221,14 +221,17 @@ static void init_mesh() {
                                 .accuracy = NRF_CLOCK_LF_ACCURACY_20_PPM};
   mesh_stack_init_params_t init_params = {.core.irq_priority =
                                               NRF_MESH_IRQ_PRIORITY_LOWEST,
-                                          .core.lfclksrc = lfc_cfg};
+                                          .core.lfclksrc = lfc_cfg,
+                                          .core.skip_radio = true};
   ERROR_CHECK(mesh_stack_init(&init_params, NULL));
+
+  LOG_INFO("Mesh stack initialized");
 }
 
 static void initialize(void) {
   __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
              log_callback_custom);
-  LOG_INFO("Bluetooth Mesh relay node is initializing. ");
+  LOG_INFO("Bluetooth Mesh sensor node is initializing. ");
 
   init_db_discovery();
   init_softdevice();
@@ -275,9 +278,9 @@ static void start() {
     LOG_INFO("Manual provisioning finished. ");
   } else {
     LOG_INFO("Node is already provisioned. ");
+    APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
   }
 
-  APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
 }
 
 int main(void) {
