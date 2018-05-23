@@ -11,6 +11,7 @@
 
 #include "ble_advdata.h"
 #include "ble_db_discovery.h"
+#include "health_client.h"
 #include "nrf_ble_gatt.h"
 #include "nrf_delay.h"
 #include "nrf_sdh.h"
@@ -50,6 +51,7 @@ static ble_data_t gap_scan_buffer = {gap_scan_buffer_data,
 BLE_DB_DISCOVERY_DEF(db_discovery);
 NRF_BLE_GATT_DEF(gatt);
 PROXY_CLIENT_DEF(proxy_client);
+health_client_t health_client;
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -198,8 +200,6 @@ static void proxy_client_evt_handler(proxy_client_evt_t *evt) {
   switch (evt->type) {
   case PROXY_CLIENT_EVT_DATA_IN: //
   {
-    LOG_INFO("HVX with length %d", evt->params.data_in.len);
-
     break;
   }
 
@@ -214,6 +214,11 @@ static void init_proxy_client() {
   APP_ERROR_CHECK(proxy_client_init(&proxy_client, proxy_client_evt_handler));
 }
 
+static void health_client_evt_handler(const health_client_t *client,
+                                      const health_client_evt_t *event) {
+  LOG_INFO("Event from src %d", event->p_meta_data->src.value);
+}
+
 static void init_mesh() {
   nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
                                 .rc_ctiv = 0,
@@ -223,7 +228,20 @@ static void init_mesh() {
                                               NRF_MESH_IRQ_PRIORITY_LOWEST,
                                           .core.lfclksrc = lfc_cfg,
                                           .core.skip_radio = true};
-  ERROR_CHECK(mesh_stack_init(&init_params, NULL));
+  APP_ERROR_CHECK(mesh_stack_init(&init_params, NULL));
+  APP_ERROR_CHECK(
+      health_client_init(&health_client, 0, health_client_evt_handler));
+  dsm_handle_t subnet_handle = dsm_net_key_index_to_subnet_handle(0);
+  NRF_MESH_ASSERT(subnet_handle != DSM_HANDLE_INVALID);
+  mesh_key_index_t appkey_handle;
+  uint32_t count = 1;
+  APP_ERROR_CHECK(dsm_appkey_get_all(subnet_handle, &appkey_handle, &count));
+  APP_ERROR_CHECK(
+      access_model_application_bind(health_client.model_handle, appkey_handle));
+  dsm_handle_t gateway_addr_handle;
+  APP_ERROR_CHECK(dsm_address_subscription_add(0xCAFE, &gateway_addr_handle));
+  APP_ERROR_CHECK(access_model_subscription_add(health_client.model_handle,
+                                                gateway_addr_handle));
 
   LOG_INFO("Mesh stack initialized");
 }
@@ -280,7 +298,6 @@ static void start() {
     LOG_INFO("Node is already provisioned. ");
     APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
   }
-
 }
 
 int main(void) {

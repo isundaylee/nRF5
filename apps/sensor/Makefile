@@ -108,6 +108,7 @@ SRC_FILES += \
   $(MESH_SDK_ROOT)/models/config/src/config_server.c \
   $(MESH_SDK_ROOT)/models/config/src/packed_index_list.c \
   $(MESH_SDK_ROOT)/models/health/src/health_server.c \
+  $(MESH_SDK_ROOT)/models/health/src/health_client.c \
   $(MESH_SDK_ROOT)/examples/common/src/app_error_weak.c \
   $(MESH_SDK_ROOT)/examples/common/src/assertion_handler_weak.c \
   $(MESH_SDK_ROOT)/examples/common/src/mesh_adv.c \

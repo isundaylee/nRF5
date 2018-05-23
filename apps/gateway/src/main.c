@@ -103,9 +103,8 @@ static void prov_success_cb(uint16_t addr) {
           .params.model_publication_set.model_id.model_id =
               HEALTH_SERVER_MODEL_ID,
           .params.model_publication_set.publish_address.type =
-              NRF_MESH_ADDRESS_TYPE_UNICAST,
-          .params.model_publication_set.publish_address.value =
-              APP_GATEWAY_ADDR,
+              NRF_MESH_ADDRESS_TYPE_GROUP,
+          .params.model_publication_set.publish_address.value = 0xCAFE,
           .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
           .params.model_publication_set.publish_ttl = 1,
           .params.model_publication_set.publish_period.step_num = 1,

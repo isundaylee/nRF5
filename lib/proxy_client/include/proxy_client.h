@@ -73,4 +73,5 @@ void proxy_client_conn_handle_assign(proxy_client_t *client,
 void proxy_client_db_discovery_evt_handler(proxy_client_t *client,
                                            ble_db_discovery_evt_t *evt);
 void proxy_client_ble_evt_handler(ble_evt_t const *ble_evt, void *context);
-uint32_t proxy_client_send(proxy_client_t *client, uint8_t *data, uint16_t len);
+uint32_t proxy_client_send_raw(proxy_client_t *client, uint8_t *data,
+                               uint16_t len);

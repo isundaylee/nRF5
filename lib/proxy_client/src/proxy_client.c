@@ -5,6 +5,7 @@
 #include "mesh_gatt.h"
 #include "net_packet.h"
 #include "net_state.h"
+#include "network.h"
 #include "nrf_error.h"
 #include "nrf_mesh_assert.h"
 #include "nrf_mesh_externs.h"
@@ -90,8 +91,8 @@ void proxy_client_db_discovery_evt_handler(proxy_client_t *client,
   }
 }
 
-uint32_t proxy_client_send(proxy_client_t *client, uint8_t *data,
-                           uint16_t len) {
+uint32_t proxy_client_send_raw(proxy_client_t *client, uint8_t *data,
+                               uint16_t len) {
   if ((client->conn_handle == BLE_CONN_HANDLE_INVALID) ||
       (client->handles.data_in_handle == BLE_GATT_HANDLE_INVALID)) {
     return NRF_ERROR_INVALID_STATE;
@@ -241,6 +242,19 @@ void proxy_client_packet_in(proxy_client_t *client, uint8_t *data,
   switch (proxy_packet->pdu_type) {
   case MESH_GATT_PDU_TYPE_NETWORK_PDU: // Network PDU
   {
+    nrf_mesh_rx_metadata_t rx_metadata = {
+        .source = NRF_MESH_RX_SOURCE_GATT,
+        .params.gatt.timestamp = 0,        // TODO
+        .params.gatt.connection_index = 0, // TODO
+    };
+
+    uint32_t status = network_packet_in(
+        proxy_packet->pdu, len - sizeof(proxy_client_proxy_packet_t),
+        &rx_metadata);
+    if (status != NRF_SUCCESS) {
+      LOG_ERROR("Error while injecting packet: %d", status);
+    }
+
     proxy_client_evt_t pending_evt = {
         .type = PROXY_CLIENT_EVT_DATA_IN,
         .params.data_in.data = data,
@@ -256,6 +270,8 @@ void proxy_client_packet_in(proxy_client_t *client, uint8_t *data,
   {
     if (!client->beacon_seen) {
       client->beacon_seen = true;
+
+      // Set the filter to blacklist: none
       APP_ERROR_CHECK(proxy_client_send_filter_type_set(
           client, PROXY_FILTER_TYPE_BLACKLIST));
     }
@@ -283,13 +299,14 @@ void proxy_client_ble_evt_handler(ble_evt_t const *ble_evt, void *context) {
   switch (ble_evt->header.evt_id) {
   case BLE_GATTC_EVT_HVX: //
   {
-    const ble_gattc_evt_hvx_t hvx = ble_evt->evt.gattc_evt.params.hvx;
+    ble_gattc_evt_hvx_t const *hvx = &ble_evt->evt.gattc_evt.params.hvx;
 
-    if (hvx.handle != client->handles.data_out_handle) {
+    if ((ble_evt->evt.gattc_evt.conn_handle != client->conn_handle) ||
+        (hvx->handle != client->handles.data_out_handle)) {
       break;
     }
 
-    proxy_client_packet_in(client, (uint8_t *)hvx.data, hvx.len);
+    proxy_client_packet_in(client, (uint8_t *)hvx->data, hvx->len);
 
     break;
   }
