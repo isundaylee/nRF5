@@ -57,7 +57,8 @@ static volatile bool    m_stopped;      /**< Current state of the bearer handler
 static bearer_action_t* mp_action;      /**< Ongoing bearer action. */
 static timestamp_t      m_end_time;     /**< Latest end time for the ongoing action. */
 static bool             m_scanner_is_active;
-static bool             m_skip_radio;
+static bool             m_scanner_disabled;
+static bool             m_timeslot_stopped;
 /*****************************************************************************
 * Static functions
 *****************************************************************************/
@@ -117,11 +118,22 @@ static void action_switch(void)
             p_action = p_elem->p_data;
         }
 
+        if (m_scanner_disabled && (p_action == NULL))
+        {
+            // We are running with scanner disabled, and we have no pending
+            // actions in the queue. We should disable timeslot to save power.
+            // Otherwise the high-frequency clock would cost us ~600 uA.
+
+            m_timeslot_stopped = true;
+            timeslot_stop();
+            return;
+        }
+
         const timestamp_t available_time = timeslot_remaining_time_get();
 
         if (p_action && (p_action->duration_us + BEARER_ACTION_POST_PROCESS_TIME_US) < available_time)
         {
-            if (!m_skip_radio)
+            if (!m_scanner_disabled)
             {
                 scanner_stop();
             }
@@ -133,23 +145,34 @@ static void action_switch(void)
         }
         else if (available_time > BEARER_SCANNER_MIN_TIME_US)
         {
-            if (!m_skip_radio)
+            if (!m_scanner_disabled)
             {
                 scanner_start();
             }
         }
     }
 }
+
+static void bearer_handler_ensure_timeslot_enabled(void)
+{
+    if (m_timeslot_stopped)
+    {
+        m_timeslot_stopped = false;
+        timeslot_restart();
+    }
+}
+
 /*****************************************************************************
 * Interface functions
 *****************************************************************************/
-void bearer_handler_init(bool skip_radio)
+void bearer_handler_init()
 {
     queue_init(&m_action_queue);
     mp_action = NULL;
     m_scanner_is_active = false;
     m_stopped = true;
-    m_skip_radio = skip_radio;
+    m_scanner_disabled = false;
+    m_timeslot_stopped = false;
 }
 
 uint32_t bearer_handler_start(void)
@@ -202,6 +225,8 @@ uint32_t bearer_handler_action_enqueue(bearer_action_t* p_action)
     }
     else
     {
+        bearer_handler_ensure_timeslot_enabled();
+
         p_action->queue_elem.p_data = p_action;
         queue_push(&m_action_queue, &p_action->queue_elem);
         if (!m_stopped && mp_action == NULL)
@@ -231,6 +256,8 @@ uint32_t bearer_handler_action_fire(bearer_action_t* p_action)
              (timeslot_remaining_time_get() >
               p_action->duration_us + BEARER_ACTION_POST_PROCESS_TIME_US))
     {
+        bearer_handler_ensure_timeslot_enabled();
+
         p_action->queue_elem.p_data = p_action;
         queue_push(&m_action_queue, &p_action->queue_elem);
         timeslot_trigger();
@@ -284,7 +311,11 @@ void bearer_handler_radio_irq_handler(void)
     else
     {
         NRF_MESH_ASSERT(m_scanner_is_active);
-        scanner_radio_irq_handler();
+
+        if (!m_scanner_disabled)
+        {
+            scanner_radio_irq_handler();
+        }
     }
 }
 
@@ -313,8 +344,14 @@ void bearer_handler_on_ts_end(void)
     NRF_MESH_ASSERT(timeslot_is_in_cb());
     NRF_MESH_ASSERT(mp_action == NULL);
 
-    if (!m_skip_radio)
+    if (!m_scanner_disabled)
     {
         scanner_stop();
     }
+}
+
+void bearer_handler_disable_scanner(void)
+{
+    m_scanner_disabled = true;
+    scanner_stop();
 }

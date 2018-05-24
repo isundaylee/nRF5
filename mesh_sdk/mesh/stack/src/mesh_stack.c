@@ -44,6 +44,8 @@
 #include "health_server.h"
 #include "net_state.h"
 #include "hal.h"
+#include "bearer_handler.h"
+#include "scanner.h"
 
 #if GATT_PROXY
 #include "proxy.h"
@@ -184,6 +186,12 @@ bool mesh_stack_is_device_provisioned(void)
     dsm_local_unicast_address_t addr;
     dsm_local_unicast_addresses_get(&addr);
     return (addr.address_start != NRF_MESH_ADDR_UNASSIGNED);
+}
+
+void mesh_stack_disable_radio(void)
+{
+    bearer_handler_disable_scanner();
+    scanner_disable();
 }
 
 #if PERSISTENT_STORAGE

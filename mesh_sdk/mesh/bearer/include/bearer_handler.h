@@ -109,7 +109,7 @@ typedef struct
 
 
 /** Initialize the bearer handler. */
-void bearer_handler_init(bool skip_radio);
+void bearer_handler_init();
 
 /**
  * Start bearer handler operation.
@@ -211,6 +211,8 @@ void bearer_handler_radio_irq_handler(void);
  * @warning Should only be called by the timeslot module.
  */
 void bearer_handler_timer_irq_handler(void);
+
+void bearer_handler_disable_scanner(void);
 
 /** @} */
 

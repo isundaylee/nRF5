@@ -28,6 +28,10 @@
 
 #define APP_PIN_LED_ERROR 27
 
+////////////////////////////////////////////////////////////////////////////////
+// Definitions
+////////////////////////////////////////////////////////////////////////////////
+
 static ble_gap_scan_params_t const scan_params = {
     .active = 1,
     .interval = MSEC_TO_UNITS(100, UNIT_0_625_MS),
@@ -53,6 +57,10 @@ NRF_BLE_GATT_DEF(gatt);
 PROXY_CLIENT_DEF(proxy_client);
 health_client_t health_client;
 
+////////////////////////////////////////////////////////////////////////////////
+// App error handler
+////////////////////////////////////////////////////////////////////////////////
+
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
 
@@ -67,7 +75,11 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   }
 }
 
-static void ble_evt_cb(ble_evt_t const *ble_evt, void *context) {
+////////////////////////////////////////////////////////////////////////////////
+// Callbacks
+////////////////////////////////////////////////////////////////////////////////
+
+static void ble_evt_handler(ble_evt_t const *ble_evt, void *context) {
   ble_gap_evt_t const *gap_evt = &ble_evt->evt.gap_evt;
 
   switch (ble_evt->header.evt_id) {
@@ -151,31 +163,7 @@ static void db_discovery_evt_handler(ble_db_discovery_evt_t *evt) {
   proxy_client_db_discovery_evt_handler(&proxy_client, evt);
 }
 
-static void init_db_discovery() {
-  APP_ERROR_CHECK(ble_db_discovery_init(db_discovery_evt_handler));
-}
-
-static void init_softdevice() {
-  APP_ERROR_CHECK(nrf_sdh_enable_request());
-
-  uint32_t ram_start = 0;
-  APP_ERROR_CHECK(
-      nrf_sdh_ble_default_cfg_set(MESH_SOFTDEVICE_CONN_CFG_TAG, &ram_start));
-  APP_ERROR_CHECK(nrf_sdh_ble_enable(&ram_start));
-
-  NRF_SDH_BLE_OBSERVER(ble_observer, 3, ble_evt_cb, NULL);
-}
-
-static void init_gap_params(void) {
-  ble_gap_conn_sec_mode_t sec_mode;
-
-  BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
-
-  APP_ERROR_CHECK(sd_ble_gap_device_name_set(
-      &sec_mode, (const uint8_t *)APP_DEVICE_NAME, strlen(APP_DEVICE_NAME)));
-}
-
-static void gatt_evt_cb(nrf_ble_gatt_t *gatt, nrf_ble_gatt_evt_t const *evt) {
+static void gatt_evt_handler(nrf_ble_gatt_t *gatt, nrf_ble_gatt_evt_t const *evt) {
   switch (evt->evt_id) {
   case NRF_BLE_GATT_EVT_ATT_MTU_UPDATED: //
   {
@@ -189,11 +177,6 @@ static void gatt_evt_cb(nrf_ble_gatt_t *gatt, nrf_ble_gatt_evt_t const *evt) {
     break;
   }
   }
-}
-
-static void init_gatt() {
-  APP_ERROR_CHECK(nrf_ble_gatt_init(&gatt, gatt_evt_cb));
-  APP_ERROR_CHECK(nrf_ble_gatt_att_mtu_central_set(&gatt, 69));
 }
 
 static void proxy_client_evt_handler(proxy_client_evt_t *evt) {
@@ -210,13 +193,56 @@ static void proxy_client_evt_handler(proxy_client_evt_t *evt) {
   }
 }
 
-static void init_proxy_client() {
-  APP_ERROR_CHECK(proxy_client_init(&proxy_client, proxy_client_evt_handler));
+static void prov_complete_cb(void) {
+  dsm_local_unicast_address_t node_address;
+  LOG_INFO("Successfully provisioned. ");
+  dsm_local_unicast_addresses_get(&node_address);
+  LOG_INFO("Node Address: 0x%04x. ", node_address.address_start);
+
+  mesh_stack_disable_radio();
+  APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
 }
 
-static void health_client_evt_handler(const health_client_t *client,
-                                      const health_client_evt_t *event) {
-  LOG_INFO("Event from src %d", event->p_meta_data->src.value);
+// static void health_client_evt_handler(const health_client_t *client,
+//                                       const health_client_evt_t *event) {
+//   LOG_INFO("Event from src %d", event->p_meta_data->src.value);
+// }
+
+////////////////////////////////////////////////////////////////////////////////
+// Initialization routines
+////////////////////////////////////////////////////////////////////////////////
+
+static void init_db_discovery() {
+  APP_ERROR_CHECK(ble_db_discovery_init(db_discovery_evt_handler));
+}
+
+static void init_softdevice() {
+  APP_ERROR_CHECK(nrf_sdh_enable_request());
+
+  uint32_t ram_start = 0;
+  APP_ERROR_CHECK(
+      nrf_sdh_ble_default_cfg_set(MESH_SOFTDEVICE_CONN_CFG_TAG, &ram_start));
+  APP_ERROR_CHECK(nrf_sdh_ble_enable(&ram_start));
+
+  NRF_SDH_BLE_OBSERVER(ble_observer, 3, ble_evt_handler, NULL);
+}
+
+static void init_gap_params(void) {
+  ble_gap_conn_sec_mode_t sec_mode;
+
+  BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
+
+  APP_ERROR_CHECK(sd_ble_gap_device_name_set(
+      &sec_mode, (const uint8_t *)APP_DEVICE_NAME, strlen(APP_DEVICE_NAME)));
+}
+
+static void init_gatt() {
+  APP_ERROR_CHECK(nrf_ble_gatt_init(&gatt, gatt_evt_handler));
+  APP_ERROR_CHECK(nrf_ble_gatt_att_mtu_central_set(&gatt, 69));
+}
+
+static void init_proxy_client() {
+  APP_ERROR_CHECK(proxy_client_init(&proxy_client, proxy_client_evt_handler));
 }
 
 static void init_mesh() {
@@ -226,22 +252,8 @@ static void init_mesh() {
                                 .accuracy = NRF_CLOCK_LF_ACCURACY_20_PPM};
   mesh_stack_init_params_t init_params = {.core.irq_priority =
                                               NRF_MESH_IRQ_PRIORITY_LOWEST,
-                                          .core.lfclksrc = lfc_cfg,
-                                          .core.skip_radio = true};
+                                          .core.lfclksrc = lfc_cfg};
   APP_ERROR_CHECK(mesh_stack_init(&init_params, NULL));
-  APP_ERROR_CHECK(
-      health_client_init(&health_client, 0, health_client_evt_handler));
-  dsm_handle_t subnet_handle = dsm_net_key_index_to_subnet_handle(0);
-  NRF_MESH_ASSERT(subnet_handle != DSM_HANDLE_INVALID);
-  mesh_key_index_t appkey_handle;
-  uint32_t count = 1;
-  APP_ERROR_CHECK(dsm_appkey_get_all(subnet_handle, &appkey_handle, &count));
-  APP_ERROR_CHECK(
-      access_model_application_bind(health_client.model_handle, appkey_handle));
-  dsm_handle_t gateway_addr_handle;
-  APP_ERROR_CHECK(dsm_address_subscription_add(0xCAFE, &gateway_addr_handle));
-  APP_ERROR_CHECK(access_model_subscription_add(health_client.model_handle,
-                                                gateway_addr_handle));
 
   LOG_INFO("Mesh stack initialized");
 }
@@ -260,49 +272,37 @@ static void initialize(void) {
   init_mesh();
 }
 
-static void store_manual_provisioning_data() {
-  uint8_t devkey[NRF_MESH_KEY_SIZE];
-  rand_hw_rng_get(devkey, NRF_MESH_KEY_SIZE);
-
-  nrf_mesh_prov_provisioning_data_t prov_data = {
-      .netkey = {0xAF, 0x99, 0x8E, 0x1B, 0xEA, 0x5C, 0x4E, 0xDF, 0xAA, 0x16,
-                 0x41, 0x54, 0xA3, 0x57, 0x3B, 0x1A},
-      .netkey_index = 0,
-      .iv_index = 0,
-      .address = 0x0100,
-      .flags.iv_update = false,
-      .flags.key_refresh = false};
-
-  APP_ERROR_CHECK(mesh_stack_provisioning_data_store(&prov_data, devkey));
-
-  uint8_t appkey[NRF_MESH_KEY_SIZE] = {0xE3, 0x57, 0x19, 0xB5, 0x1F, 0x53,
-                                       0x5A, 0xD7, 0xD4, 0x47, 0xE0, 0xA3,
-                                       0xD8, 0x7C, 0x4A, 0x6C};
-
-  uint32_t count = 1;
-  dsm_handle_t subnet_handle;
-  dsm_handle_t appkey_handle;
-  APP_ERROR_CHECK(dsm_subnet_get_all(&subnet_handle, &count));
-  APP_ERROR_CHECK(dsm_appkey_add(0, subnet_handle, appkey, &appkey_handle));
-}
-
 static void start() {
-  LOG_INFO("Bluetooth Mesh sensor node is scanning for relay nodes. ");
-
   APP_ERROR_CHECK(nrf_mesh_enable());
 
   if (!mesh_stack_is_device_provisioned()) {
-    store_manual_provisioning_data();
-    LOG_INFO("Manual provisioning finished. ");
+    LOG_INFO("Starting the provisioning process. ");
+
+    static const uint8_t static_auth_data[] = {
+        0x6E, 0x6F, 0x72, 0x64, 0x69, 0x63, 0x5F, 0x65,
+        0x78, 0x61, 0x6D, 0x70, 0x6C, 0x65, 0x5F, 0x31};
+    mesh_provisionee_start_params_t prov_start_params = {
+        .p_static_data = static_auth_data,
+        .prov_complete_cb = prov_complete_cb};
+    ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
   } else {
-    LOG_INFO("Node is already provisioned. ");
-    APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
+    LOG_INFO("Node is already provisioned. Disabling the radio. ");
+    mesh_stack_disable_radio();
   }
 }
 
 int main(void) {
   initialize();
   execution_start(start);
+
+  if (mesh_stack_is_device_provisioned()) {
+    // Adds a small delay here to avoid the race condition between mesh seqnum
+    // block allocation and proxy client packet TX.
+    nrf_delay_ms(100);
+
+    LOG_INFO("Bluetooth Mesh sensor node is scanning for relay nodes. ");
+    APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
+  }
 
   for (;;) {
     (void)sd_app_evt_wait();

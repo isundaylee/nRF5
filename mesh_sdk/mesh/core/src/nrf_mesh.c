@@ -84,7 +84,6 @@
 
 static bool m_is_enabled;
 static bool m_is_initialized;
-static bool m_skip_radios;
 static nrf_mesh_rx_cb_t m_rx_cb;
 
 static bool scanner_packet_process_cb(void);
@@ -316,8 +315,6 @@ uint32_t nrf_mesh_init(const nrf_mesh_init_params_t * p_init_params)
     timer_sch_init();
     bearer_event_init(irq_priority);
 
-    m_skip_radios = p_init_params->skip_radio;
-
 #if !defined(HOST)
 #if NRF_SD_BLE_API_VERSION >= 5
     /* From SD BLE API 5 and on, both RC and XTAL should use the PPM-defines. */
@@ -335,12 +332,10 @@ uint32_t nrf_mesh_init(const nrf_mesh_init_params_t * p_init_params)
     instaburst_init(lfclk_accuracy, instaburst_packet_process_cb);
 #endif
 #endif /* !HOST */
-    bearer_handler_init(m_skip_radios);
+    bearer_handler_init();
 
-    if (!m_skip_radios) {
-        scanner_init(scanner_packet_process_cb);
-        advertiser_init();
-    }
+    scanner_init(scanner_packet_process_cb);
+    advertiser_init();
 
     mesh_flash_init();
 
@@ -349,13 +344,11 @@ uint32_t nrf_mesh_init(const nrf_mesh_init_params_t * p_init_params)
     flash_manager_action_queue_empty_cb_set(flash_stable_cb);
 #endif
 
-    if (!m_skip_radios) {
 #if EXPERIMENTAL_INSTABURST_ENABLED
-        core_tx_instaburst_init();
+    core_tx_instaburst_init();
 #else
-        core_tx_adv_init();
+    core_tx_adv_init();
 #endif
-    }
 
     network_init(p_init_params);
     transport_init(p_init_params);
@@ -372,9 +365,7 @@ uint32_t nrf_mesh_init(const nrf_mesh_init_params_t * p_init_params)
 
     ticker_init();
 
-    if (!m_skip_radios) {
-        (void) ad_listener_subscribe(&m_nrf_mesh_listener);
-    }
+    (void) ad_listener_subscribe(&m_nrf_mesh_listener);
 
     m_rx_cb = NULL;
     m_is_initialized = true;
@@ -400,13 +391,11 @@ uint32_t nrf_mesh_enable(void)
             return status;
         }
 
-        if (!m_skip_radios) {
-            scanner_enable();
+        scanner_enable();
 
 #if EXPERIMENTAL_INSTABURST_ENABLED
-            instaburst_rx_enable();
+        instaburst_rx_enable();
 #endif
-        }
 
         m_is_enabled = true;
         return NRF_SUCCESS;

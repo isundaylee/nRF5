@@ -93,9 +93,6 @@ SRC_FILES += \
   $(MESH_SDK_ROOT)/mesh/core/src/toolchain.c \
   $(MESH_SDK_ROOT)/mesh/core/src/transport.c \
   $(MESH_SDK_ROOT)/mesh/core/src/uri.c \
-  $(MESH_SDK_ROOT)/mesh/gatt/src/mesh_gatt.c \
-  $(MESH_SDK_ROOT)/mesh/gatt/src/proxy.c \
-  $(MESH_SDK_ROOT)/mesh/gatt/src/proxy_filter.c \
   $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov.c \
   $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov_bearer_gatt.c \
   $(MESH_SDK_ROOT)/mesh/prov/src/prov_beacon.c \
@@ -291,8 +288,6 @@ CFLAGS += $(OPT)
 CFLAGS += -DNDEBUG
 CFLAGS += -DBOARD_CUSTOM
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
-CFLAGS += -DGATT_PROXY=1
-CFLAGS += -DMESH_FEATURE_GATT=1
 CFLAGS += -DNRF52832_XXAA
 CFLAGS += -DNRF52_SERIES
 CFLAGS += -DNRF_SD_BLE_API_VERSION=6
