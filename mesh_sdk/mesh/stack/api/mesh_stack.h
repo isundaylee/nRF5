@@ -198,7 +198,7 @@ bool mesh_stack_is_device_provisioned(void);
  */
 void mesh_stack_device_reset(void);
 
-void mesh_stack_disable_radio(void);
+uint32_t mesh_stack_disable_radio(void);
 
 /**
  * @}

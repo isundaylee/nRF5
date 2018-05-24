@@ -171,6 +171,8 @@ struct core_tx_bearer
     uint8_t bearer_index;
     core_tx_bearer_type_t type;
 
+    bool enabled;
+
     list_node_t list_node;
 };
 
@@ -278,6 +280,10 @@ void core_tx_complete(core_tx_bearer_t * p_bearer,
                       core_tx_role_t role,
                       uint32_t timestamp,
                       nrf_mesh_tx_token_t token);
+
+uint32_t core_tx_bearer_disable(uint8_t bearer_index);
+uint32_t core_tx_bearer_enable(uint8_t bearer_index);
+
 /** @} */
 
 #ifdef UNIT_TEST
