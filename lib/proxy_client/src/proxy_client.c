@@ -12,7 +12,184 @@
 #include "proxy_config_packet.h"
 #include "proxy_filter.h"
 
+#include "core_tx_proxy_client.h"
+
 #include "custom_log.h"
+
+#define PROXY_CLIENT_SAR_TYPE_COMPLETE 0b00
+#define PROXY_CLIENT_SAR_TYPE_FIRST 0b01
+#define PROXY_CLIENT_SAR_TYPE_CONTINUATION 0b10
+#define PROXY_CLIENT_SAR_TYPE_LAST 0b11
+
+////////////////////////////////////////////////////////////////////////////////
+// proxy_client_proxy_t packet management
+////////////////////////////////////////////////////////////////////////////////
+
+static proxy_client_packet_t *packet_alloc(proxy_client_t *client,
+                                           uint8_t pdu_type, uint8_t sar_type,
+                                           uint16_t proxy_pdu_size) {
+  NRF_MESH_ASSERT(client->tx.current_packet == NULL);
+
+  packet_buffer_packet_t *buffer_packet;
+  uint32_t status =
+      packet_buffer_reserve(&client->tx.packet_buffer, &buffer_packet,
+                            sizeof(proxy_client_packet_t) + proxy_pdu_size);
+
+  if (status != NRF_SUCCESS) {
+    NRF_MESH_ASSERT(status == NRF_ERROR_NO_MEM);
+    return NULL;
+  }
+
+  proxy_client_packet_t *proxy_packet =
+      (proxy_client_packet_t *)buffer_packet->packet;
+
+  proxy_packet->pdu_type = pdu_type;
+  proxy_packet->sar_type = sar_type;
+
+  client->tx.current_packet = buffer_packet;
+
+  return proxy_packet;
+}
+
+static uint32_t packet_send(proxy_client_t *client, uint16_t proxy_pdu_size) {
+  NRF_MESH_ASSERT(client->tx.current_packet != NULL);
+
+  if ((client->conn_handle == BLE_CONN_HANDLE_INVALID) ||
+      (client->handles.data_in_handle == BLE_GATT_HANDLE_INVALID)) {
+    return NRF_ERROR_INVALID_STATE;
+  }
+
+  ble_gattc_write_params_t const write_params = {
+      .write_op = BLE_GATT_OP_WRITE_CMD,
+      .flags = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
+      .handle = client->handles.data_in_handle,
+      .offset = 0,
+      .len = sizeof(proxy_client_packet_t) + proxy_pdu_size,
+      .p_value = (uint8_t *)client->tx.current_packet->packet};
+
+  uint32_t status = sd_ble_gattc_write(client->conn_handle, &write_params);
+
+  packet_buffer_free(&client->tx.packet_buffer,
+                     (packet_buffer_packet_t *)client->tx.current_packet);
+  client->tx.current_packet = NULL;
+
+  return status;
+}
+
+void packet_discard(proxy_client_t *client) {
+  NRF_MESH_ASSERT(client->tx.current_packet != NULL);
+
+  packet_buffer_free(&client->tx.packet_buffer,
+                     (packet_buffer_packet_t *)client->tx.current_packet);
+  client->tx.current_packet = NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Config packet management
+////////////////////////////////////////////////////////////////////////////////
+
+static proxy_config_msg_t *config_packet_alloc(proxy_client_t *client,
+                                               uint16_t params_size) {
+  uint16_t msg_len = PROXY_CONFIG_PARAM_OVERHEAD + params_size;
+  uint16_t proxy_pdu_size =
+      PACKET_MESH_NET_PDU_OFFSET + msg_len + net_packet_mic_size_get(true);
+  proxy_client_packet_t *proxy_packet =
+      packet_alloc(client, MESH_GATT_PDU_TYPE_PROXY_CONFIG,
+                   PROXY_CLIENT_SAR_TYPE_COMPLETE, proxy_pdu_size);
+  packet_mesh_net_packet_t *net_packet =
+      (packet_mesh_net_packet_t *)proxy_packet->pdu;
+
+  if (net_packet == NULL) {
+    return NULL;
+  }
+
+  return (proxy_config_msg_t *)net_packet_payload_get(net_packet);
+}
+
+static uint32_t config_packet_send(proxy_client_t *client,
+                                   uint16_t params_size) {
+  NRF_MESH_ASSERT(client->tx.current_packet != NULL);
+
+  nrf_mesh_network_secmat_t const *secmat;
+  mesh_key_index_t netkey_index;
+
+  // Get netkey index
+  uint32_t subnet_count = 1;
+  APP_ERROR_CHECK(dsm_subnet_get_all(&netkey_index, &subnet_count));
+  NRF_MESH_ASSERT(subnet_count == 1);
+
+  // Get network secmat
+  APP_ERROR_CHECK(dsm_net_secmat_from_keyindex_get(netkey_index, &secmat));
+
+  // Generate packet metadata
+  network_packet_metadata_t tx_net_meta = {
+      .dst = {.type = NRF_MESH_ADDRESS_TYPE_INVALID, .value = 0},
+      .ttl = 0,
+      .control_packet = true,
+      .internal = {.iv_index = net_state_tx_iv_index_get()},
+      .p_security_material = secmat};
+
+  // Fill in packet src address
+  uint16_t unicast_addr_count = 1;
+  nrf_mesh_unicast_address_get(&tx_net_meta.src, &unicast_addr_count);
+  NRF_MESH_ASSERT(unicast_addr_count == 1);
+
+  // Allocate seqnum
+  APP_ERROR_CHECK(
+      net_state_seqnum_alloc(&tx_net_meta.internal.sequence_number));
+
+  // Fill in packet header
+  proxy_client_packet_t *proxy_packet =
+      (proxy_client_packet_t *)(client->tx.current_packet->packet);
+  packet_mesh_net_packet_t *net_packet =
+      (packet_mesh_net_packet_t *)proxy_packet->pdu;
+  net_packet_header_set(net_packet, &tx_net_meta);
+
+  // Encrypt packet
+  uint16_t msg_len = PROXY_CONFIG_PARAM_OVERHEAD + params_size;
+  net_packet_encrypt(&tx_net_meta, msg_len, net_packet,
+                     NET_PACKET_KIND_PROXY_CONFIG);
+
+  // Finally, send it!
+  uint16_t proxy_pdu_size =
+      PACKET_MESH_NET_PDU_OFFSET + msg_len + net_packet_mic_size_get(true);
+  return packet_send(client, proxy_pdu_size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Network packet management
+////////////////////////////////////////////////////////////////////////////////
+
+proxy_client_packet_t *proxy_client_network_packet_alloc(proxy_client_t *client,
+                                                         size_t pdu_size) {
+  return packet_alloc(client, MESH_GATT_PDU_TYPE_NETWORK_PDU,
+                      PROXY_CLIENT_SAR_TYPE_COMPLETE, pdu_size);
+}
+
+void proxy_client_network_packet_send(proxy_client_t *client,
+                                      proxy_client_packet_t *packet,
+                                      uint32_t pdu_len) {
+  NRF_MESH_ASSERT(packet ==
+                  (proxy_client_packet_t *)client->tx.current_packet->packet);
+
+  // TODO: Error-handling here?
+  uint32_t status = packet_send(client, pdu_len);
+  if (status != NRF_SUCCESS) {
+    LOG_ERROR("Proxy Client: packet_send() failed: %d", status);
+  }
+}
+
+void proxy_client_network_packet_discard(proxy_client_t *client,
+                                         proxy_client_packet_t *packet) {
+  NRF_MESH_ASSERT(packet ==
+                  (proxy_client_packet_t *)client->tx.current_packet->packet);
+
+  packet_discard(client);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Other
+////////////////////////////////////////////////////////////////////////////////
 
 uint32_t proxy_client_init(proxy_client_t *client,
                            proxy_client_evt_handler_t evt_handler) {
@@ -33,6 +210,8 @@ uint32_t proxy_client_init(proxy_client_t *client,
 
   packet_buffer_init(&client->tx.packet_buffer, client->tx.packet_buffer_data,
                      PROXY_CLIENT_PACKET_BUFFER_SIZE);
+
+  core_tx_proxy_client_init(client);
 
   uint32_t status = ble_db_discovery_evt_register(&service_uuid);
   if (status != NRF_SUCCESS) {
@@ -108,115 +287,6 @@ uint32_t proxy_client_send_raw(proxy_client_t *client, uint8_t *data,
   return sd_ble_gattc_write(client->conn_handle, &write_params);
 }
 
-static packet_mesh_net_packet_t *proxy_packet_alloc(proxy_client_t *client,
-                                                    uint8_t pdu_type,
-                                                    uint8_t sar_type,
-                                                    uint16_t proxy_pdu_size) {
-  NRF_MESH_ASSERT(client->tx.current_packet == NULL);
-
-  packet_buffer_packet_t *packet;
-  uint32_t status = packet_buffer_reserve(&client->tx.packet_buffer, &packet,
-                                          sizeof(proxy_client_proxy_packet_t) +
-                                              proxy_pdu_size);
-
-  if (status != NRF_SUCCESS) {
-    NRF_MESH_ASSERT(status == NRF_ERROR_NO_MEM);
-    return NULL;
-  }
-
-  proxy_client_proxy_packet_t *proxy_packet =
-      (proxy_client_proxy_packet_t *)packet;
-
-  proxy_packet->pdu_type = pdu_type;
-  proxy_packet->sar_type = sar_type;
-
-  client->tx.current_packet = proxy_packet;
-
-  return (packet_mesh_net_packet_t *)proxy_packet->pdu;
-}
-
-static proxy_config_msg_t *config_packet_alloc(proxy_client_t *client,
-                                               uint16_t params_size) {
-  uint16_t msg_len = PROXY_CONFIG_PARAM_OVERHEAD + params_size;
-  uint16_t proxy_pdu_size =
-      PACKET_MESH_NET_PDU_OFFSET + msg_len + net_packet_mic_size_get(true);
-  packet_mesh_net_packet_t *net_packet = proxy_packet_alloc(
-      client, MESH_GATT_PDU_TYPE_PROXY_CONFIG, 0, proxy_pdu_size);
-
-  if (net_packet == NULL) {
-    return NULL;
-  }
-
-  return (proxy_config_msg_t *)net_packet_payload_get(net_packet);
-}
-
-static uint32_t packet_send(proxy_client_t *client, uint16_t proxy_pdu_size) {
-  NRF_MESH_ASSERT(client->tx.current_packet != NULL);
-
-  if ((client->conn_handle == BLE_CONN_HANDLE_INVALID) ||
-      (client->handles.data_in_handle == BLE_GATT_HANDLE_INVALID)) {
-    return NRF_ERROR_INVALID_STATE;
-  }
-
-  ble_gattc_write_params_t const write_params = {
-      .write_op = BLE_GATT_OP_WRITE_CMD,
-      .flags = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
-      .handle = client->handles.data_in_handle,
-      .offset = 0,
-      .len = sizeof(proxy_client_proxy_packet_t) + proxy_pdu_size,
-      .p_value = (uint8_t *)client->tx.current_packet};
-
-  return sd_ble_gattc_write(client->conn_handle, &write_params);
-}
-
-static uint32_t config_packet_send(proxy_client_t *client,
-                                   uint16_t params_size) {
-  NRF_MESH_ASSERT(client->tx.current_packet != NULL);
-
-  nrf_mesh_network_secmat_t const *secmat;
-  mesh_key_index_t netkey_index;
-
-  // Get netkey index
-  uint32_t subnet_count = 1;
-  APP_ERROR_CHECK(dsm_subnet_get_all(&netkey_index, &subnet_count));
-  NRF_MESH_ASSERT(subnet_count == 1);
-
-  // Get network secmat
-  APP_ERROR_CHECK(dsm_net_secmat_from_keyindex_get(netkey_index, &secmat));
-
-  // Generate packet metadata
-  network_packet_metadata_t tx_net_meta = {
-      .dst = {.type = NRF_MESH_ADDRESS_TYPE_INVALID, .value = 0},
-      .ttl = 0,
-      .control_packet = true,
-      .internal = {.iv_index = net_state_tx_iv_index_get()},
-      .p_security_material = secmat};
-
-  // Fill in packet src address
-  uint16_t unicast_addr_count = 1;
-  nrf_mesh_unicast_address_get(&tx_net_meta.src, &unicast_addr_count);
-  NRF_MESH_ASSERT(unicast_addr_count == 1);
-
-  // Allocate seqnum
-  APP_ERROR_CHECK(
-      net_state_seqnum_alloc(&tx_net_meta.internal.sequence_number));
-
-  // Fill in packet header
-  packet_mesh_net_packet_t *net_packet =
-      (packet_mesh_net_packet_t *)client->tx.current_packet->pdu;
-  net_packet_header_set(net_packet, &tx_net_meta);
-
-  // Encrypt packet
-  uint16_t msg_len = PROXY_CONFIG_PARAM_OVERHEAD + params_size;
-  net_packet_encrypt(&tx_net_meta, msg_len, net_packet,
-                     NET_PACKET_KIND_PROXY_CONFIG);
-
-  // Finally, send it!
-  uint16_t proxy_pdu_size =
-      PACKET_MESH_NET_PDU_OFFSET + msg_len + net_packet_mic_size_get(true);
-  return packet_send(client, proxy_pdu_size);
-}
-
 uint32_t proxy_client_send_filter_type_set(proxy_client_t *client,
                                            uint8_t filter_type) {
   LOG_INFO("Proxy Client: Setting filter type to %d", filter_type);
@@ -236,12 +306,16 @@ uint32_t proxy_client_send_filter_type_set(proxy_client_t *client,
 
 void proxy_client_packet_in(proxy_client_t *client, uint8_t *data,
                             uint16_t len) {
-  proxy_client_proxy_packet_t *proxy_packet =
-      (proxy_client_proxy_packet_t *)data;
+  proxy_client_packet_t *proxy_packet = (proxy_client_packet_t *)data;
 
   switch (proxy_packet->pdu_type) {
   case MESH_GATT_PDU_TYPE_NETWORK_PDU: // Network PDU
   {
+    if (proxy_packet->sar_type != PROXY_CLIENT_SAR_TYPE_COMPLETE) {
+      LOG_ERROR("Proxy Client: Ignored non-complete SAR packet. ");
+      break;
+    }
+
     nrf_mesh_rx_metadata_t rx_metadata = {
         .source = NRF_MESH_RX_SOURCE_GATT,
         .params.gatt.timestamp = 0,        // TODO
@@ -249,10 +323,11 @@ void proxy_client_packet_in(proxy_client_t *client, uint8_t *data,
     };
 
     uint32_t status = network_packet_in(
-        proxy_packet->pdu, len - sizeof(proxy_client_proxy_packet_t),
-        &rx_metadata);
+        proxy_packet->pdu, len - sizeof(proxy_client_packet_t), &rx_metadata);
     if (status != NRF_SUCCESS) {
-      LOG_ERROR("Error while injecting packet: %d", status);
+      // LOG_ERROR("Proxy Client: Error while injecting packet: %d", status);
+      // __LOG_XB(LOG_SRC_APP, LOG_LEVEL_INFO, "Packet", proxy_packet->pdu,
+      //          len - sizeof(proxy_client_packet_t));
     }
 
     proxy_client_evt_t pending_evt = {

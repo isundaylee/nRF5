@@ -21,6 +21,7 @@ SRC_FILES += \
   $(SRC_DIR)/main.c \
   $(LIB_ROOT)/custom_log/src/custom_log.c \
   $(LIB_ROOT)/proxy_client/src/proxy_client.c \
+  $(LIB_ROOT)/proxy_client/src/core_tx_proxy_client.c \
   $(SDK_ROOT)/components/ble/ble_db_discovery/ble_db_discovery.c \
   $(SDK_ROOT)/components/ble/common/ble_advdata.c \
   $(SDK_ROOT)/components/ble/nrf_ble_gatt/nrf_ble_gatt.c \

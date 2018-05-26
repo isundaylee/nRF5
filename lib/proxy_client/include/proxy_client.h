@@ -47,11 +47,11 @@ typedef struct __attribute((packed)) {
   uint8_t pdu_type : 6;
   uint8_t sar_type : 2;
   uint8_t pdu[];
-} proxy_client_proxy_packet_t;
+} proxy_client_packet_t;
 
 #define PROXY_CLIENT_PACKET_BUFFER_SIZE 300
 
-typedef struct {
+struct proxy_client_t {
   proxy_client_evt_handler_t evt_handler;
 
   uint16_t conn_handle;
@@ -62,9 +62,11 @@ typedef struct {
     packet_buffer_t packet_buffer;
     uint8_t packet_buffer_data[PROXY_CLIENT_PACKET_BUFFER_SIZE];
 
-    proxy_client_proxy_packet_t *current_packet;
+    packet_buffer_packet_t *current_packet;
   } tx;
-} proxy_client_t;
+};
+
+typedef struct proxy_client_t proxy_client_t;
 
 uint32_t proxy_client_init(proxy_client_t *client,
                            proxy_client_evt_handler_t evt_handler);
@@ -75,3 +77,11 @@ void proxy_client_db_discovery_evt_handler(proxy_client_t *client,
 void proxy_client_ble_evt_handler(ble_evt_t const *ble_evt, void *context);
 uint32_t proxy_client_send_raw(proxy_client_t *client, uint8_t *data,
                                uint16_t len);
+
+proxy_client_packet_t *proxy_client_network_packet_alloc(proxy_client_t *client,
+                                                         size_t pdu_size);
+void proxy_client_network_packet_send(proxy_client_t *client,
+                                      proxy_client_packet_t *packet,
+                                      uint32_t pdu_len);
+void proxy_client_network_packet_discard(proxy_client_t *client,
+                                         proxy_client_packet_t *packet);

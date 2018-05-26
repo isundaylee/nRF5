@@ -163,7 +163,8 @@ static void db_discovery_evt_handler(ble_db_discovery_evt_t *evt) {
   proxy_client_db_discovery_evt_handler(&proxy_client, evt);
 }
 
-static void gatt_evt_handler(nrf_ble_gatt_t *gatt, nrf_ble_gatt_evt_t const *evt) {
+static void gatt_evt_handler(nrf_ble_gatt_t *gatt,
+                             nrf_ble_gatt_evt_t const *evt) {
   switch (evt->evt_id) {
   case NRF_BLE_GATT_EVT_ATT_MTU_UPDATED: //
   {
@@ -203,10 +204,42 @@ static void prov_complete_cb(void) {
   APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
 }
 
-// static void health_client_evt_handler(const health_client_t *client,
-//                                       const health_client_evt_t *event) {
-//   LOG_INFO("Event from src %d", event->p_meta_data->src.value);
-// }
+static void config_server_evt_cb(config_server_evt_t const *evt) {
+
+  switch (evt->type) {
+  case CONFIG_SERVER_EVT_APPKEY_ADD: //
+  {
+    LOG_INFO("App key has been added. ");
+
+    APP_ERROR_CHECK(access_model_application_bind(
+        health_client.model_handle, evt->params.appkey_add.appkey_handle));
+    dsm_handle_t sub_addr_handle;
+    APP_ERROR_CHECK(dsm_address_subscription_add(0xCAFE, &sub_addr_handle));
+    APP_ERROR_CHECK(access_model_subscription_add(health_client.model_handle,
+                                                  sub_addr_handle));
+
+    break;
+  }
+
+  case CONFIG_SERVER_EVT_MODEL_PUBLICATION_SET: //
+  {
+    LOG_INFO("Model publication is set. ");
+
+    break;
+  }
+
+  default: //
+  {
+    LOG_INFO("Received unhandled config server evt: %d", evt->type);
+    break;
+  }
+  }
+}
+
+static void health_client_evt_handler(const health_client_t *client,
+                                      const health_client_evt_t *event) {
+  LOG_INFO("Event from src %d", event->p_meta_data->src.value);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Initialization routines
@@ -245,14 +278,21 @@ static void init_proxy_client() {
   APP_ERROR_CHECK(proxy_client_init(&proxy_client, proxy_client_evt_handler));
 }
 
+static void init_models(void) {
+  health_client_init(&health_client, 0, health_client_evt_handler);
+  // (void) &health_client_evt_handler;
+}
+
 static void init_mesh() {
   nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
                                 .rc_ctiv = 0,
                                 .rc_temp_ctiv = 0,
                                 .accuracy = NRF_CLOCK_LF_ACCURACY_20_PPM};
-  mesh_stack_init_params_t init_params = {.core.irq_priority =
-                                              NRF_MESH_IRQ_PRIORITY_LOWEST,
-                                          .core.lfclksrc = lfc_cfg};
+  mesh_stack_init_params_t init_params = {
+      .core.irq_priority = NRF_MESH_IRQ_PRIORITY_LOWEST,
+      .core.lfclksrc = lfc_cfg,
+      .models.config_server_cb = config_server_evt_cb,
+      .models.models_init_cb = init_models};
   APP_ERROR_CHECK(mesh_stack_init(&init_params, NULL));
 
   LOG_INFO("Mesh stack initialized");
@@ -286,6 +326,13 @@ static void start() {
         .prov_complete_cb = prov_complete_cb};
     ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
   } else {
+    LOG_INFO("Already provisioned. Resetting... ");
+    mesh_stack_config_clear();
+    nrf_delay_ms(1000);
+    mesh_stack_device_reset();
+    while (1) {
+    }
+
     LOG_INFO("Node is already provisioned. Disabling the radio. ");
     mesh_stack_disable_radio();
   }
