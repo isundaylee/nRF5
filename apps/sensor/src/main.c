@@ -20,6 +20,7 @@
 #include "proxy.h"
 #include "rand.h"
 #include "sdk_config.h"
+#include "bearer_handler.h"
 
 #include "custom_log.h"
 #include "proxy_client.h"
@@ -27,6 +28,7 @@
 #define APP_DEVICE_NAME "PROXYCLIENT"
 
 #define APP_PIN_LED_ERROR 27
+#define APP_PIN_FORCE_RESET 7
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -303,6 +305,8 @@ static void initialize(void) {
              log_callback_custom);
   LOG_INFO("Bluetooth Mesh sensor node is initializing. ");
 
+  nrf_gpio_cfg_input(APP_PIN_FORCE_RESET, NRF_GPIO_PIN_PULLDOWN);
+
   init_db_discovery();
   init_softdevice();
   init_gap_params();
@@ -326,15 +330,17 @@ static void start() {
         .prov_complete_cb = prov_complete_cb};
     ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
   } else {
-    LOG_INFO("Already provisioned. Resetting... ");
-    mesh_stack_config_clear();
-    nrf_delay_ms(1000);
-    mesh_stack_device_reset();
-    while (1) {
+    if (nrf_gpio_pin_read(APP_PIN_FORCE_RESET)) {
+      LOG_INFO("Already provisioned. Resetting... ");
+      mesh_stack_config_clear();
+      nrf_delay_ms(500);
+      mesh_stack_device_reset();
+      while (1) {
+      }
+    } else {
+      LOG_INFO("Node is already provisioned. Disabling the radio. ");
+      mesh_stack_disable_radio();
     }
-
-    LOG_INFO("Node is already provisioned. Disabling the radio. ");
-    mesh_stack_disable_radio();
   }
 }
 
@@ -353,5 +359,6 @@ int main(void) {
 
   for (;;) {
     (void)sd_app_evt_wait();
+    bearer_handler_restart_timeslot_if_needed();
   }
 }

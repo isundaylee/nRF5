@@ -57,8 +57,10 @@ static volatile bool    m_stopped;      /**< Current state of the bearer handler
 static bearer_action_t* mp_action;      /**< Ongoing bearer action. */
 static timestamp_t      m_end_time;     /**< Latest end time for the ongoing action. */
 static bool             m_scanner_is_active;
+
 static bool             m_scanner_disabled;
 static bool             m_timeslot_stopped;
+static bool             m_timeslot_restart_pending;
 /*****************************************************************************
 * Static functions
 *****************************************************************************/
@@ -124,6 +126,8 @@ static void action_switch(void)
             // actions in the queue. We should disable timeslot to save power.
             // Otherwise the high-frequency clock would cost us ~600 uA.
 
+            __LOG(LOG_SRC_BEARER, LOG_LEVEL_DBG3, "Stopping timeslot");
+
             m_timeslot_stopped = true;
             timeslot_stop();
             return;
@@ -153,12 +157,13 @@ static void action_switch(void)
     }
 }
 
-static void bearer_handler_ensure_timeslot_enabled(void)
+static void ensure_timeslot_enabled(void)
 {
     if (m_timeslot_stopped)
     {
-        m_timeslot_stopped = false;
-        timeslot_restart();
+        __LOG(LOG_SRC_BEARER, LOG_LEVEL_DBG3, "Marking timeslot restart");
+
+        m_timeslot_restart_pending = true;
     }
 }
 
@@ -171,8 +176,10 @@ void bearer_handler_init()
     mp_action = NULL;
     m_scanner_is_active = false;
     m_stopped = true;
+
     m_scanner_disabled = false;
     m_timeslot_stopped = false;
+    m_timeslot_restart_pending = false;
 }
 
 uint32_t bearer_handler_start(void)
@@ -225,7 +232,7 @@ uint32_t bearer_handler_action_enqueue(bearer_action_t* p_action)
     }
     else
     {
-        bearer_handler_ensure_timeslot_enabled();
+        ensure_timeslot_enabled();
 
         p_action->queue_elem.p_data = p_action;
         queue_push(&m_action_queue, &p_action->queue_elem);
@@ -256,7 +263,7 @@ uint32_t bearer_handler_action_fire(bearer_action_t* p_action)
              (timeslot_remaining_time_get() >
               p_action->duration_us + BEARER_ACTION_POST_PROCESS_TIME_US))
     {
-        bearer_handler_ensure_timeslot_enabled();
+        ensure_timeslot_enabled();
 
         p_action->queue_elem.p_data = p_action;
         queue_push(&m_action_queue, &p_action->queue_elem);
@@ -354,4 +361,18 @@ void bearer_handler_disable_scanner(void)
 {
     m_scanner_disabled = true;
     scanner_stop();
+}
+
+void bearer_handler_restart_timeslot_if_needed(void)
+{
+    if (m_timeslot_stopped && m_timeslot_restart_pending)
+    {
+        __LOG(LOG_SRC_BEARER, LOG_LEVEL_DBG3, "Restarting timeslot");
+
+        m_timeslot_restart_pending = false;
+        uint32_t status = timeslot_start_again();
+        m_timeslot_stopped = false;
+
+        NRF_MESH_ASSERT(status == NRF_SUCCESS);
+    }
 }

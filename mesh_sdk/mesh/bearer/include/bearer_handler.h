@@ -214,6 +214,8 @@ void bearer_handler_timer_irq_handler(void);
 
 void bearer_handler_disable_scanner(void);
 
+void bearer_handler_restart_timeslot_if_needed(void);
+
 /** @} */
 
 /** @} */

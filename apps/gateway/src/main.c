@@ -42,7 +42,8 @@ static void init_leds() {
 }
 
 static void init_logging() {
-  LOG_INIT();
+  __LOG_INIT(LOG_SRC_APP | LOG_SRC_BEARER | LOG_SRC_ACCESS, LOG_LEVEL_DBG1,
+             log_callback_custom);
   LOG_INFO("Hello, world!");
 }
 
