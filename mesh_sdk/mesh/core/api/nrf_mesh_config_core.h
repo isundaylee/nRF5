@@ -103,7 +103,7 @@
 
 /** Core mesh relay queue buffer size */
 #ifndef CORE_TX_QUEUE_BUFFER_SIZE_RELAY
-#define CORE_TX_QUEUE_BUFFER_SIZE_RELAY 128
+#define CORE_TX_QUEUE_BUFFER_SIZE_RELAY 256
 #endif
 
 /** Core mesh instaburst originator queue buffer size */
@@ -293,7 +293,7 @@
  */
 /** Maximum number of concurrent transport SAR sessions, shared by RX and TX. */
 #ifndef TRANSPORT_SAR_SESSIONS_MAX
-#define TRANSPORT_SAR_SESSIONS_MAX (4)
+#define TRANSPORT_SAR_SESSIONS_MAX (16)
 #endif
 
 /** Number of elements in the SAR RX cache, storing the last RX sessions. Must be power of two. */

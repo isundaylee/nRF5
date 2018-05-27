@@ -9,6 +9,7 @@
 #include "nrf_mesh_config_examples.h"
 #include "nrf_mesh_configure.h"
 
+#include "bearer_handler.h"
 #include "ble_advdata.h"
 #include "ble_db_discovery.h"
 #include "health_client.h"
@@ -20,7 +21,6 @@
 #include "proxy.h"
 #include "rand.h"
 #include "sdk_config.h"
-#include "bearer_handler.h"
 
 #include "custom_log.h"
 #include "proxy_client.h"
@@ -213,12 +213,12 @@ static void config_server_evt_cb(config_server_evt_t const *evt) {
   {
     LOG_INFO("App key has been added. ");
 
-    APP_ERROR_CHECK(access_model_application_bind(
-        health_client.model_handle, evt->params.appkey_add.appkey_handle));
-    dsm_handle_t sub_addr_handle;
-    APP_ERROR_CHECK(dsm_address_subscription_add(0xCAFE, &sub_addr_handle));
-    APP_ERROR_CHECK(access_model_subscription_add(health_client.model_handle,
-                                                  sub_addr_handle));
+    // APP_ERROR_CHECK(access_model_application_bind(
+    //     health_client.model_handle, evt->params.appkey_add.appkey_handle));
+    // dsm_handle_t sub_addr_handle;
+    // APP_ERROR_CHECK(dsm_address_subscription_add(0xCAFE, &sub_addr_handle));
+    // APP_ERROR_CHECK(access_model_subscription_add(health_client.model_handle,
+    //                                               sub_addr_handle));
 
     break;
   }

@@ -127,6 +127,9 @@ void conf_bind(uint16_t node_addr) {
 }
 
 void conf_succeed() {
+  LOG_INFO("Configurator: Configuration succeeded for node %d. ",
+           conf.node_addr);
+
   // Bind the config client back to the gateway to avoid reboot crash in case a
   // previously provisioned device is removed from DSM.
   conf_bind(APP_GATEWAY_ADDR);
@@ -135,6 +138,9 @@ void conf_succeed() {
 }
 
 void conf_fail() {
+  LOG_INFO("Configurator: Configuration failed for node %d. ",
+           conf.node_addr);
+
   // Bind the config client back to the gateway to avoid reboot crash in case a
   // previously provisioned device is removed from DSM.
   conf_bind(APP_GATEWAY_ADDR);
