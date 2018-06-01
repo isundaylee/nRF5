@@ -27,8 +27,10 @@
 
 #define APP_DEVICE_NAME "PROXYCLIENT"
 
-#define APP_PIN_LED_ERROR 27
 #define APP_PIN_FORCE_RESET 7
+
+#define APP_PIN_LED_ERROR 23
+#define APP_PIN_LED_INDICATION 24
 
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions
@@ -306,6 +308,9 @@ static void initialize(void) {
   LOG_INFO("Bluetooth Mesh sensor node is initializing. ");
 
   nrf_gpio_cfg_input(APP_PIN_FORCE_RESET, NRF_GPIO_PIN_PULLDOWN);
+
+  nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
+  nrf_gpio_cfg_output(APP_PIN_LED_INDICATION);
 
   init_db_discovery();
   init_softdevice();
