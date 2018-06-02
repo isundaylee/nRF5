@@ -17,6 +17,7 @@
 #include "nrf_ble_gatt.h"
 #include "nrf_delay.h"
 #include "nrf_drv_clock.h"
+#include "nrf_drv_saadc.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
 #include "nrf_sdh_soc.h"
@@ -82,6 +83,39 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// SAADC util routines
+////////////////////////////////////////////////////////////////////////////////
+
+static void saadc_cb(nrf_drv_saadc_evt_t const *event);
+
+static void saadc_enable() {
+  nrf_drv_saadc_config_t config = {.low_power_mode = true,
+                                   .resolution = NRF_SAADC_RESOLUTION_12BIT,
+                                   .oversample = NRF_SAADC_OVERSAMPLE_4X,
+                                   .interrupt_priority = APP_IRQ_PRIORITY_LOW};
+
+  APP_ERROR_CHECK(nrf_drv_saadc_init(&config, saadc_cb));
+
+  nrf_saadc_channel_config_t channel_config = {
+      .reference = NRF_SAADC_REFERENCE_INTERNAL,
+      .gain = NRF_SAADC_GAIN1_6,
+      .acq_time = NRF_SAADC_ACQTIME_10US,
+      .mode = NRF_SAADC_MODE_SINGLE_ENDED,
+      .pin_p = NRF_SAADC_INPUT_VDD,
+      .pin_n = NRF_SAADC_INPUT_DISABLED,
+      .resistor_p = NRF_SAADC_RESISTOR_DISABLED,
+      .resistor_n = NRF_SAADC_RESISTOR_DISABLED,
+  };
+
+  APP_ERROR_CHECK(nrf_drv_saadc_channel_init(0, &channel_config));
+
+  // Enable BURST mode for channel 0
+  NRF_SAADC->CH[0].CONFIG |= 0x01000000;
+}
+
+static void saadc_disable() { nrf_drv_saadc_uninit(); }
+
+////////////////////////////////////////////////////////////////////////////////
 // Callbacks
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -118,6 +152,7 @@ static void ble_evt_handler(ble_evt_t const *ble_evt, void *context) {
   case BLE_GAP_EVT_CONNECTED: //
   {
     LOG_INFO("Connection established. ");
+    nrf_gpio_pin_clear(APP_PIN_LED_INDICATION);
 
     APP_ERROR_CHECK(
         ble_db_discovery_start(&db_discovery, gap_evt->conn_handle));
@@ -247,6 +282,27 @@ static void health_client_evt_handler(const health_client_t *client,
   LOG_INFO("Event from src %d", event->p_meta_data->src.value);
 }
 
+static void app_timer_gatt_scan_cb(void *context) {
+  LOG_INFO("Bluetooth Mesh sensor node is scanning for relay nodes. ");
+  APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
+}
+
+static void app_timer_check_vcc_cb(void *context) {
+  saadc_enable();
+
+  nrf_saadc_value_t raw_vcc;
+  APP_ERROR_CHECK(nrfx_saadc_sample_convert(0, &raw_vcc));
+
+  saadc_disable();
+
+  float vcc = 0.6 * 6.0 * (1.0 * raw_vcc / (1 << 12));
+  LOG_INFO("VCC: " NRF_LOG_FLOAT_MARKER " V", NRF_LOG_FLOAT(vcc));
+}
+
+static void saadc_cb(nrf_drv_saadc_evt_t const *event) {
+  LOG_INFO("SAADC event: %d", event->type);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Initialization routines
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,11 +346,7 @@ static void init_models(void) {
 }
 
 APP_TIMER_DEF(app_timer_gatt_scan_id);
-
-static void app_timer_gatt_scan_cb(void *context) {
-  LOG_INFO("Bluetooth Mesh sensor node is scanning for relay nodes. ");
-  APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
-}
+APP_TIMER_DEF(app_timer_check_vcc_id);
 
 static uint32_t app_timer_ms_to_ticks(uint32_t ms) {
   return (2048 * ms) / 1000;
@@ -305,6 +357,10 @@ static void init_timers() {
 
   app_timer_create(&app_timer_gatt_scan_id, APP_TIMER_MODE_SINGLE_SHOT,
                    app_timer_gatt_scan_cb);
+
+  app_timer_create(&app_timer_check_vcc_id, APP_TIMER_MODE_REPEATED,
+                   app_timer_check_vcc_cb);
+  app_timer_start(app_timer_check_vcc_id, app_timer_ms_to_ticks(5000), NULL);
 }
 
 static void init_mesh() {
@@ -331,6 +387,8 @@ static void initialize(void) {
 
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_cfg_output(APP_PIN_LED_INDICATION);
+
+  nrf_gpio_pin_set(APP_PIN_LED_INDICATION);
 
   init_db_discovery();
   init_softdevice();
@@ -382,6 +440,11 @@ int main(void) {
   }
 
   for (;;) {
+    // Clears the FPU interrupt pending flags
+    __set_FPSCR(__get_FPSCR() & ~(0x0000009F));
+    (void)__get_FPSCR();
+    NVIC_ClearPendingIRQ(FPU_IRQn);
+
     (void)sd_app_evt_wait();
     bearer_handler_restart_timeslot_if_needed();
   }
