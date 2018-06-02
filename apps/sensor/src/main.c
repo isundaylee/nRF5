@@ -9,12 +9,14 @@
 #include "nrf_mesh_config_examples.h"
 #include "nrf_mesh_configure.h"
 
+#include "app_timer.h"
 #include "bearer_handler.h"
 #include "ble_advdata.h"
 #include "ble_db_discovery.h"
 #include "health_client.h"
 #include "nrf_ble_gatt.h"
 #include "nrf_delay.h"
+#include "nrf_drv_clock.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
 #include "nrf_sdh_soc.h"
@@ -287,6 +289,24 @@ static void init_models(void) {
   // (void) &health_client_evt_handler;
 }
 
+APP_TIMER_DEF(app_timer_gatt_scan_id);
+
+static void app_timer_gatt_scan_cb(void *context) {
+  LOG_INFO("Bluetooth Mesh sensor node is scanning for relay nodes. ");
+  APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
+}
+
+static uint32_t app_timer_ms_to_ticks(uint32_t ms) {
+  return (2048 * ms) / 1000;
+}
+
+static void init_timers() {
+  APP_ERROR_CHECK(app_timer_init());
+
+  app_timer_create(&app_timer_gatt_scan_id, APP_TIMER_MODE_SINGLE_SHOT,
+                   app_timer_gatt_scan_cb);
+}
+
 static void init_mesh() {
   nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
                                 .rc_ctiv = 0,
@@ -317,6 +337,7 @@ static void initialize(void) {
   init_gap_params();
   init_gatt();
   init_proxy_client();
+  init_timers();
 
   init_mesh();
 }
@@ -335,7 +356,7 @@ static void start() {
         .prov_complete_cb = prov_complete_cb};
     ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
   } else {
-    if (nrf_gpio_pin_read(APP_PIN_FORCE_RESET)) {
+    if (!nrf_gpio_pin_read(APP_PIN_FORCE_RESET)) {
       LOG_INFO("Already provisioned. Resetting... ");
       mesh_stack_config_clear();
       nrf_delay_ms(500);
@@ -354,12 +375,10 @@ int main(void) {
   execution_start(start);
 
   if (mesh_stack_is_device_provisioned()) {
-    // Adds a small delay here to avoid the race condition between mesh seqnum
-    // block allocation and proxy client packet TX.
-    nrf_delay_ms(100);
-
-    LOG_INFO("Bluetooth Mesh sensor node is scanning for relay nodes. ");
-    APP_ERROR_CHECK(sd_ble_gap_scan_start(&scan_params, &gap_scan_buffer));
+    // Delay a bit before starting to scan for GATT proxy in order to give the
+    // mesh stack a bit of time to finish initializing tasks (e.g. flash op for
+    // net state seqnum block allocation).
+    app_timer_start(app_timer_gatt_scan_id, app_timer_ms_to_ticks(100), NULL);
   }
 
   for (;;) {
