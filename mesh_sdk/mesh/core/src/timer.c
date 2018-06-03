@@ -34,6 +34,10 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+#if TIMER_USE_RTC2
+#else
+
 #include <stddef.h>
 
 #include "timer.h"
@@ -95,6 +99,11 @@ static inline void timer_mut_unlock(void)
 /*****************************************************************************
 * Interface functions
 *****************************************************************************/
+void timer_init(void)
+{
+    // Nothing to do here
+}
+
 void timer_event_handler(void)
 {
     for (uint32_t i = 0; i < TIMER_COMPARE_COUNT; ++i)
@@ -355,3 +364,4 @@ void timer_on_ts_end(timestamp_t timeslot_end_time)
 #endif
 }
 
+#endif // TIMER_USE_RTC2

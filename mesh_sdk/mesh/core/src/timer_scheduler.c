@@ -43,7 +43,11 @@
 
 
 /** Time in us to regard as immidiate when firing several timers at once */
+#if TIMER_USE_RTC2
+#define TIMER_MARGIN    (10000)
+#else
 #define TIMER_MARGIN    (100)
+#endif
 
 /*****************************************************************************
 * Local typedefs
@@ -313,4 +317,3 @@ void timer_sch_reschedule(timer_event_t* p_timer_evt, timestamp_t new_timeout)
     bearer_event_flag_set(m_event_flag);
     _ENABLE_IRQS(was_masked);
 }
-

@@ -91,6 +91,7 @@ SRC_FILES += \
   $(MESH_SDK_ROOT)/mesh/core/src/replay_cache.c \
   $(MESH_SDK_ROOT)/mesh/core/src/ticker.c \
   $(MESH_SDK_ROOT)/mesh/core/src/timer.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/timer_rtc2.c \
   $(MESH_SDK_ROOT)/mesh/core/src/timer_scheduler.c \
   $(MESH_SDK_ROOT)/mesh/core/src/timeslot.c \
   $(MESH_SDK_ROOT)/mesh/core/src/toolchain.c \
@@ -289,6 +290,7 @@ OPT = -O2 -g
 CFLAGS += $(OPT)
 
 CFLAGS += -DNDEBUG
+CFLAGS += -DTIMER_USE_RTC2=1
 CFLAGS += -DBOARD_CUSTOM
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET
 CFLAGS += -DNRF52832_XXAA

@@ -101,7 +101,12 @@ static void action_start(bearer_action_t* p_action)
     NRF_RADIO->INTENCLR = 0xFFFFFFFF;
     (void) NVIC_ClearPendingIRQ(RADIO_IRQn);
     const timestamp_t time_now = timer_now();
+#ifdef TIMER_USE_RTC2
+    // Give some leeway here due to the coarse-grained timestamp used.
+    m_end_time = time_now + mp_action->duration_us + 2000;
+#else
     m_end_time = time_now + mp_action->duration_us;
+#endif
 #ifdef BEARER_HANDLER_DEBUG
     mp_action->debug.event_count++;
 #endif

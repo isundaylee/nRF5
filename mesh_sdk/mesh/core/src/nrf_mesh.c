@@ -312,6 +312,7 @@ uint32_t nrf_mesh_init(const nrf_mesh_init_params_t * p_init_params)
 #endif
 
     msg_cache_init();
+    timer_init();
     timer_sch_init();
     bearer_event_init(irq_priority);
 

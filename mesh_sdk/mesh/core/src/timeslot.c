@@ -479,8 +479,19 @@ uint32_t timeslot_start(void)
 
 uint32_t timeslot_start_again(void)
 {
-    m_radio_request_earliest.params.earliest.length_us = TIMESLOT_BASE_LENGTH_LONG_US;
-    return sd_radio_request(&m_radio_request_earliest);
+    if (m_timeslot_forced_command == TS_FORCED_COMMAND_STOP)
+    {
+        // If the stop command is still pending, simply cancel the command. No
+        // need to actually restart the timeslot.
+
+        m_timeslot_forced_command = TS_FORCED_COMMAND_NONE;
+        return NRF_SUCCESS;
+    }
+    else
+    {
+        m_radio_request_earliest.params.earliest.length_us = TIMESLOT_BASE_LENGTH_LONG_US;
+        return sd_radio_request(&m_radio_request_earliest);
+    }
 }
 
 void timeslot_stop(void)
