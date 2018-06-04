@@ -69,13 +69,40 @@ health_client_t health_client;
 ////////////////////////////////////////////////////////////////////////////////
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
-  error_info_t *error_info = (error_info_t *)info;
-
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_pin_set(APP_PIN_LED_ERROR);
 
-  LOG_ERROR("Encountered error %d on line %d in file %s", error_info->err_code,
-            error_info->line_num, error_info->p_file_name);
+  switch (id) {
+  case NRF_FAULT_ID_SD_ASSERT: //
+  {
+    LOG_ERROR("SoftDevice assertion failed at PC 0x%x", pc);
+    break;
+  }
+
+  case NRF_FAULT_ID_SDK_ERROR: //
+  {
+
+    error_info_t *error_info = (error_info_t *)info;
+    LOG_ERROR("Encountered error %d on line %d in file %s",
+              error_info->err_code, error_info->line_num,
+              error_info->p_file_name);
+    break;
+  }
+
+  case NRF_FAULT_ID_SDK_ASSERT: //
+  {
+    assert_info_t *assert_info = (assert_info_t *)info;
+    LOG_ERROR("Assertion failed on line %d in file %s", assert_info->line_num,
+              assert_info->p_file_name);
+    break;
+  }
+
+  default: //
+  {
+    LOG_ERROR("Unknown fault with ID %d at PC 0x%x", id, pc);
+    break;
+  }
+  }
 
   NRF_BREAKPOINT_COND;
   while (1) {
