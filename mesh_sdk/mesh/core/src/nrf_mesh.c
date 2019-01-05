@@ -312,7 +312,6 @@ uint32_t nrf_mesh_init(const nrf_mesh_init_params_t * p_init_params)
 #endif
 
     msg_cache_init();
-    timer_init();
     timer_sch_init();
     bearer_event_init(irq_priority);
 
@@ -334,7 +333,6 @@ uint32_t nrf_mesh_init(const nrf_mesh_init_params_t * p_init_params)
 #endif
 #endif /* !HOST */
     bearer_handler_init();
-
     scanner_init(scanner_packet_process_cb);
     advertiser_init();
 
@@ -350,7 +348,6 @@ uint32_t nrf_mesh_init(const nrf_mesh_init_params_t * p_init_params)
 #else
     core_tx_adv_init();
 #endif
-
     network_init(p_init_params);
     transport_init(p_init_params);
     heartbeat_init();
@@ -385,7 +382,6 @@ uint32_t nrf_mesh_enable(void)
 #if !defined(HOST)
         NRF_MESH_ASSERT(timeslot_start() == NRF_SUCCESS);
 #endif
-
         uint32_t status = bearer_handler_start();
         if (status != NRF_SUCCESS)
         {

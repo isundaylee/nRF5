@@ -51,8 +51,6 @@
  */
 void core_tx_adv_init(void);
 
-uint32_t core_tx_adv_disable(void);
-
 /**
  * Sets the number of transmissions to do for a single packet, when transmitted in the given role.
  *

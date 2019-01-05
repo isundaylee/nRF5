@@ -146,11 +146,6 @@ void core_tx_adv_init(void)
     core_tx_bearer_add(&m_bearer, &m_interface, CORE_TX_BEARER_TYPE_ADV);
 }
 
-uint32_t core_tx_adv_disable(void)
-{
-    return core_tx_bearer_disable(m_bearer.bearer_index);
-}
-
 void core_tx_adv_count_set(core_tx_role_t role, uint8_t tx_count)
 {
     NRF_MESH_ASSERT(role < CORE_TX_ROLE_COUNT);

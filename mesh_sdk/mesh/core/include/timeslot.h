@@ -92,8 +92,6 @@ void timeslot_init(uint32_t lfclk_accuracy_ppm);
  */
 uint32_t timeslot_start(void);
 
-uint32_t timeslot_start_again(void);
-
 /**
  * Forcibly stop the timeslot execution.
  *

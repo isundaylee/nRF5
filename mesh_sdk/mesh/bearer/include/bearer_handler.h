@@ -109,7 +109,7 @@ typedef struct
 
 
 /** Initialize the bearer handler. */
-void bearer_handler_init();
+void bearer_handler_init(void);
 
 /**
  * Start bearer handler operation.
@@ -212,12 +212,9 @@ void bearer_handler_radio_irq_handler(void);
  */
 void bearer_handler_timer_irq_handler(void);
 
-void bearer_handler_disable_scanner(void);
-
-void bearer_handler_restart_timeslot_if_needed(void);
-
 /** @} */
 
 /** @} */
 
 #endif /* BEARER_HANDLER_H__ */
+

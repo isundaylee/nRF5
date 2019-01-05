@@ -92,8 +92,6 @@ typedef enum
 /** Callback type for callbacks at finished timers */
 typedef void(*timer_callback_t)(timestamp_t timestamp);
 
-void timer_init(void);
-
 /** Hardware event handler, should be called at all TIMER0 events. */
 void timer_event_handler(void);
 

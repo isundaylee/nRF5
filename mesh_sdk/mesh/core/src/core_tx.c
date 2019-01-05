@@ -115,11 +115,6 @@ core_tx_bearer_bitmap_t core_tx_packet_alloc(const core_tx_alloc_params_t * p_pa
     {
         core_tx_bearer_t * p_bearer = PARENT_BY_FIELD_GET(core_tx_bearer_t, list_node, p_iterator);
 
-        if (!p_bearer->enabled)
-        {
-            continue;
-        }
-
         core_tx_alloc_result_t result = p_bearer->p_interface->packet_alloc(p_bearer, p_params);
 
         alloc_result_log(p_bearer, result);
@@ -146,12 +141,6 @@ void core_tx_packet_send(void)
     {
         core_tx_bearer_t * p_bearer = PARENT_BY_FIELD_GET(core_tx_bearer_t, list_node, p_iterator);
 
-        // TODO: Make sure we're iterating over the same list as in _alloc().
-        if (!p_bearer->enabled)
-        {
-            continue;
-        }
-
         if (m_packet.bearer_bitmap & (1 << p_bearer->bearer_index))
         {
             p_bearer->p_interface->packet_send(p_bearer, m_packet.buffer.pdu, m_packet.length);
@@ -167,12 +156,6 @@ void core_tx_packet_discard(void)
     LIST_FOREACH(p_iterator, mp_bearers)
     {
         core_tx_bearer_t * p_bearer = PARENT_BY_FIELD_GET(core_tx_bearer_t, list_node, p_iterator);
-
-        // TODO: Make sure we're iterating over the same list as in _alloc().
-        if (!p_bearer->enabled)
-        {
-            continue;
-        }
 
         if (m_packet.bearer_bitmap & (1 << p_bearer->bearer_index))
         {
@@ -230,41 +213,8 @@ void core_tx_bearer_add(core_tx_bearer_t * p_bearer,
     p_bearer->p_interface  = p_interface;
     p_bearer->bearer_index = m_bearer_count++;
     p_bearer->type         = type;
-    p_bearer->enabled      = true;
 
     list_add(&mp_bearers, &p_bearer->list_node);
-}
-
-uint32_t core_tx_bearer_disable(uint8_t bearer_index)
-{
-    LIST_FOREACH(p_iterator, mp_bearers)
-    {
-        core_tx_bearer_t * p_bearer = PARENT_BY_FIELD_GET(core_tx_bearer_t, list_node, p_iterator);
-
-        if (bearer_index == p_bearer->bearer_index)
-        {
-            p_bearer->enabled = false;
-            return NRF_SUCCESS;
-        }
-    }
-
-    return NRF_ERROR_NOT_FOUND;
-}
-
-uint32_t core_tx_bearer_enable(uint8_t bearer_index)
-{
-    LIST_FOREACH(p_iterator, mp_bearers)
-    {
-        core_tx_bearer_t * p_bearer = PARENT_BY_FIELD_GET(core_tx_bearer_t, list_node, p_iterator);
-
-        if (bearer_index == p_bearer->bearer_index)
-        {
-            p_bearer->enabled = true;
-            return NRF_SUCCESS;
-        }
-    }
-
-    return NRF_ERROR_NOT_FOUND;
 }
 
 #ifdef UNIT_TEST
