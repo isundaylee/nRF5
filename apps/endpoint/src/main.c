@@ -1,15 +1,15 @@
 #include "access_config.h"
+#include "app_timer.h"
+#include "ble_softdevice_support.h"
 #include "log.h"
 #include "mesh_adv.h"
 #include "mesh_app_utils.h"
 #include "mesh_provisionee.h"
 #include "mesh_stack.h"
-#include "ble_softdevice_support.h"
 #include "net_state.h"
 #include "nrf_gpio.h"
 #include "nrf_mesh_config_examples.h"
 #include "nrf_mesh_configure.h"
-#include "app_timer.h"
 
 #include "nrf_delay.h"
 #include "nrf_sdh.h"
@@ -28,14 +28,14 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_pin_set(APP_PIN_LED_ERROR);
 
-
   error_info_t *error_info = (error_info_t *)info;
   assert_info_t *assert_info = (assert_info_t *)info;
 
   switch (id) {
   case NRF_FAULT_ID_SDK_ERROR:
-    LOG_ERROR("Encountered error %d on line %d in file %s", error_info->err_code,
-              error_info->line_num, error_info->p_file_name);
+    LOG_ERROR("Encountered error %d on line %d in file %s",
+              error_info->err_code, error_info->line_num,
+              error_info->p_file_name);
     break;
   case NRF_FAULT_ID_SDK_ASSERT:
     LOG_ERROR("Encountered assertion error on line %d in file %s on pc 0x%x",
@@ -49,12 +49,12 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 }
 
 void mesh_assertion_handler(uint32_t pc) {
-    assert_info_t assert_info = {.line_num = 0,
-                                 .p_file_name = (uint8_t *)""};
+  assert_info_t assert_info = {.line_num = 0, .p_file_name = (uint8_t *)""};
 
-    app_error_fault_handler(NRF_FAULT_ID_SDK_ASSERT, pc, (uint32_t)(&assert_info));
+  app_error_fault_handler(NRF_FAULT_ID_SDK_ASSERT, pc,
+                          (uint32_t)(&assert_info));
 
-    UNUSED_VARIABLE(assert_info);
+  UNUSED_VARIABLE(assert_info);
 }
 
 static void initialize(void) {
@@ -87,7 +87,7 @@ static void prov_complete_cb(void) {
 
 APP_TIMER_DEF(reset_timer);
 
-static void reset_timer_handler(void * context) {
+static void reset_timer_handler(void *context) {
   LOG_INFO("Clearing config and resetting...");
 
   mesh_stack_config_clear();
