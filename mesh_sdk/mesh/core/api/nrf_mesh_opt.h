@@ -39,6 +39,8 @@
 #define NRF_MESH_OPT_H_
 
 #include <stdint.h>
+#include "toolchain.h"
+
 /**
  * @defgroup NRF_MESH_OPT Mesh options
  * @ingroup NRF_MESH
@@ -84,10 +86,14 @@ typedef enum
     NRF_MESH_OPT_NET_RELAY_RETRANSMIT_COUNT,
     /** Relay retransmit interval in milliseconds. */
     NRF_MESH_OPT_NET_RELAY_RETRANSMIT_INTERVAL_MS,
+    /** Relay TX power. */
+    NRF_MESH_OPT_NET_RELAY_TX_POWER,
     /** Number of retransmits per network packet originating from this device. */
     NRF_MESH_OPT_NET_NETWORK_TRANSMIT_COUNT,
     /** Interval between retransmitted packets originating from this device in milliseconds. */
     NRF_MESH_OPT_NET_NETWORK_TRANSMIT_INTERVAL_MS,
+    /** TX power for packets originating from this device. */
+    NRF_MESH_OPT_NET_NETWORK_TX_POWER
 } nrf_mesh_opt_id_t;
 
 
@@ -111,22 +117,26 @@ typedef struct
 /**
  * Function for setting various nRF Mesh options.
  *
+ * @deprecated This function has been deprecated. Use the appropriate mesh_opt-function instead.
+ *
  * @param[in] id    Identifier for option to set. See @c nrf_mesh_opt_id_t.
  * @param[in] p_opt Pointer to option struct.
  *
  * @retval NRF_SUCCESS Successfully set option.
  */
-uint32_t nrf_mesh_opt_set(nrf_mesh_opt_id_t id, const nrf_mesh_opt_t * const p_opt);
+_DEPRECATED uint32_t nrf_mesh_opt_set(nrf_mesh_opt_id_t id, const nrf_mesh_opt_t * const p_opt);
 
 /**
  * Function for getting various nRF Mesh options.
+ *
+ * @deprecated This function has been deprecated. Use the appropriate mesh_opt-function instead.
  *
  * @param[in]  id    Identifier for option to get. See @c nrf_mesh_opt_id_t.
  * @param[out] p_opt Pointer to option struct.
  *
  * @retval NRF_SUCCESS Successfully retrieved option.
  */
-uint32_t nrf_mesh_opt_get(nrf_mesh_opt_id_t id, nrf_mesh_opt_t * const p_opt);
+_DEPRECATED uint32_t nrf_mesh_opt_get(nrf_mesh_opt_id_t id, nrf_mesh_opt_t * const p_opt);
 
 /** @} end of NRF_MESH_OPT */
 #endif

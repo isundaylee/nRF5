@@ -40,6 +40,7 @@
 #include <stdint.h>
 #include "ble_hci.h"
 #include "ble_gatt.h"
+#include "ble_gap.h"
 #include "ble_gatts.h"
 #include "ble_types.h"
 #include "nrf_error.h"
@@ -421,6 +422,11 @@ static void write_evt_handle(const ble_evt_t * p_ble_evt)
 
 static void tx_complete_handle(uint16_t conn_handle)
 {
+    /**
+     * NOTE: We're assuming that a successful call to sd_ble_gatts_hvx() means guarantee of
+     * delivery. Hence, the TX_COMPLETE event is merely used for flow control.
+     */
+
     uint16_t conn_index = conn_handle_to_index(conn_handle);
     if (conn_index == MESH_GATT_CONN_INDEX_INVALID)
     {
@@ -429,7 +435,13 @@ static void tx_complete_handle(uint16_t conn_handle)
 
     mesh_gatt_connection_t * p_conn = &m_gatt.connections[conn_index];
     packet_buffer_packet_t * p_packet = p_conn->tx.transaction.p_curr_packet;
-    NRF_MESH_ASSERT(p_packet != NULL);
+
+    if (p_packet == NULL)
+    {
+        /* Some other HVX user transmitted a packet. We don't have anything to send for this
+         * connection index, so we'll return here. */
+        return;
+    }
 
     mesh_gatt_proxy_buffer_t * p_proxy_buffer = (mesh_gatt_proxy_buffer_t *) p_packet->packet;
 
@@ -497,7 +509,9 @@ static void exchange_mtu_req_handle(const ble_evt_t * p_ble_evt)
     if (conn_index != MESH_GATT_CONN_INDEX_INVALID)
     {
         uint16_t client_rx_mtu = p_ble_evt->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu;
-        uint16_t server_rx_mtu = MIN(client_rx_mtu, MESH_GATT_MTU_SIZE_MAX);
+        uint16_t server_rx_mtu = MAX(MIN(MIN(client_rx_mtu, NRF_SDH_BLE_GATT_MAX_MTU_SIZE),
+                                         MESH_GATT_MTU_SIZE_MAX),
+                                     BLE_GATT_ATT_MTU_DEFAULT);
 
         NRF_MESH_ERROR_CHECK(
             sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle, server_rx_mtu));
@@ -677,7 +691,30 @@ void mesh_gatt_on_ble_evt(const ble_evt_t * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             disconnect_evt_handle(p_ble_evt);
             break;
-
+#if NRF_SD_BLE_API_VERSION == 6
+        case BLE_GAP_EVT_ADV_SET_TERMINATED:
+            if (p_ble_evt->evt.gap_evt.params.adv_set_terminated.reason ==
+                BLE_GAP_EVT_ADV_SET_TERMINATED_REASON_TIMEOUT)
+            {
+                mesh_gatt_evt_t evt;
+                evt.type = MESH_GATT_EVT_TYPE_ADV_TIMEOUT;
+                evt.conn_index = p_ble_evt->evt.gap_evt.conn_handle;
+                m_gatt.evt_handler(&evt, m_gatt.p_context);
+            }
+            break;
+#elif NRF_SD_BLE_API_VERSION <= 5
+        case BLE_GAP_EVT_TIMEOUT:
+            if (p_ble_evt->evt.gap_evt.params.timeout.src == BLE_GAP_TIMEOUT_SRC_ADVERTISING)
+            {
+                mesh_gatt_evt_t evt;
+                evt.type = MESH_GATT_EVT_TYPE_ADV_TIMEOUT;
+                evt.conn_index = p_ble_evt->evt.gap_evt.conn_handle;
+                m_gatt.evt_handler(&evt, m_gatt.p_context);
+            }
+            break;
+#else
+#error Unsupported SoftDevice version
+#endif
         case BLE_GATTS_EVT_WRITE:
             write_evt_handle(p_ble_evt);
             break;
@@ -690,16 +727,6 @@ void mesh_gatt_on_ble_evt(const ble_evt_t * p_ble_evt, void * p_context)
         /* TODO: The following events should be handled by an SDK module/the application. */
         case BLE_GATTS_EVT_SYS_ATTR_MISSING:
         {
-            uint32_t err_code = sd_ble_gatts_service_changed(p_ble_evt->evt.gatts_evt.conn_handle,
-                                                             m_gatt.handles.service,
-                                                             m_gatt.handles.service);
-
-            /* Those errors can be expected when sending trying to send Service Changed indication
-             * if the CCCD is not set to indicate. Thus set the returning error code to success. */
-            NRF_MESH_ASSERT((err_code == NRF_SUCCESS) ||
-                            (err_code == BLE_ERROR_INVALID_CONN_HANDLE) ||
-                            (err_code == NRF_ERROR_INVALID_STATE) ||
-                            (err_code == NRF_ERROR_BUSY));
             NRF_MESH_ERROR_CHECK(sd_ble_gatts_sys_attr_set(p_ble_evt->evt.gatts_evt.conn_handle, NULL, 0, 0));
             break;
         }

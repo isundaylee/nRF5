@@ -1,10 +1,110 @@
 # Release Notes
 
+## BLE Mesh v2.2.0
+- This is a minor production release.
+
+### New features
+  - Generic server/client model interfaces for OnOff, Default Transition Time, and Level models
+  - Sample generic OnOff server behavior implementation
+  - New Mesh Config module that provides high-level access to persistent storage. This module uses the existing
+  Flash Manager and aims to enable multiple flash backends (including nRF5 SDK fstorage) in the future.
+  - Moved mesh runtime configuration options to a new, type-safe mesh_opt_* API in their
+  respective submodules. The options are stored in persistent memory through the new
+  mesh_config module.
+  - Added persistent storage to several internal states:
+    - Heartbeat publication
+    - Net beacon
+    - GATT proxy
+
+### Other
+  - Updated model directory structure:
+    - Foundation models have been moved to models/foundation
+    - Generic models are present in models/model_spec
+    - Vendor specific models have been moved to models/vendor
+    - Experimental models have been moved to models/experimental
+  - Updated examples to support Generic OnOff models
+  - Simplified EnOcean, Light Switch Client, and SDK coexistence examples to use only two Generic OnOff
+  client model instances
+  - Marked the old `nrf_mesh_opt` API deprecated (it will be removed in the next major production release)
+  - Updated the mesh to use the section variables module from the nRF5 SDK (see the migration guide for details)
+  - Updated various parts of the documentation (added documentation for GATT Proxy example and for PA/LNA support)
+
+### Bugfixes
+  - EnOcean example was not supporting multiple enocean switches
+  - Mesh GATT asserted if other services uses HVX (MBTLE-2623)
+  - Serial interface driver does no longer block on packet allocation (MBTLE-1844)
+  - Made access address definition explicitly unsigned (MBTLE-2453)
+  - `bootloader_verify.py` did not recognize nRF52840 (MBTLE-2610)
+  - Fixed parsing error in PyACI `heartbeat_subscription_get()` (MBTLE-2690)
+
+### Known issues and limitations
+  - Softdevice S140 v6.0.0 sets the event IRQ priority into the wrong value 6 (should be 7).
+  That might cause an internal stack memory corruption.
+  To avoid the issue the file from Mesh SDK `<Mesh SDK folder>/external/sdk_fix/nrf_sdh.c` shall be used.
+  Otherwise the examples which use GATT will generate assertion `Mesh error 3 at <address> (examples/common/include/mesh_app_utils.h:100)`
+  - If the mesh stack is configured with IRQ priority NRF_MESH_IRQ_PRIORITY_THREAD and run in the main loop with app_scheduler, there might be delays of ~15 ms.
+
+## BLE Mesh v2.1.1
+- This is a minor production release.
+
+### New features
+- Add PA/LNA support for timeslot projects
+
+### Bugfixes
+- Access loopback needs context switch
+- Config server: send_publication_status() always sends status code as ACCESS_STATUS_SUCCESS or it Asserts
+- Sending a reliable message via internal loop causes to double sending with opposite results
+- Don't allow provisioner to use OOB public key if we don't support it
+- Fix static assertions for flash size
+- Config server replies to feature set when it shouldn't
+- light_switch_proxy_client SES project imports app_error.c twice, leads to compile error
+- Light switch client requires all buttons to be configured
+- Heartbeat Publication Set message duplicates count value
+- Mesh GATT asserts on MTU requests
+- In-place modification of event list during event handling
+- Device page generator outputs file for nrf52832 no matter platform chosen
+- Mesh timeslot extension is prohibiting softdevice advertising (GATT)
+- Mesh proxy sets advertising timing in wrong order
+- Invalid handling of service changed attribute
+- Application defined softdevice settings are lost during GATT dabase reset
+- Core TX alloc rejected by GATT proxy bearer
+- Provisioner stops provisioning new nodes prematurely
+- No support for reserved groups (all-nodes, all-proxies, ...)
+- Heartbeat does not include all active features in published message
+- Segger Embedded Studio projects have invalid memory configurations
+- Connecting and disconnecting from PB-GATT leaves provisioning bearers in undefined state
+- Persistent storage is turned off for proxy client
+- Mesh GATT module does not propagate ADV timeout event
+- hal_led_blink_ms call is blocking and used in IRQs
+- `device_page_generator.py` key parsing errors
+- `device_page_generator.py` wrong output filename
+
+
+### Known issues and limitations
+
+- Publish re-transmission settings are not supported
+- Some Config server and Health server model states are not persistent
+- Setting device in attention state during provisioning is not supported
+- Light switch provisioner example:
+  During the configuration of a node, the static provisioner example may sometimes consider a status response of a previous configuration step as the status response of the current configuration step. This may cause a node configuration to remain incomplete, without the provisioner noticing. If this happens, provisioned client or server nodes will not respond to user inputs as expected.
+  This occurs due to mesh message re-transmissions logic built into the stack causing responses to SET messages to arrive out of order. This scenario is most likely to manifest itself in situations when the mesh stack is not scanning for the majority of the time. For example, while running other BLE connections with a short connection interval.
+
+
+### Verification Notices / Test Errata
+- Test Configurations:
+-- nrf52832   ||   s132_6.0.0   ||   pca10040
+-- nrf52840   ||   s140_6.0.0   ||   pca10056
+
+
+
+
 ## BLE Mesh v2.0.1
 - This is a minor bugfix release
 
 ### Bugfixes
 - Ignore Config Proxy Set and Config Friend Set messages with invalid parameters
+
+
 
 ## BLE Mesh v2.0.0
 - This is a major production release.
@@ -183,7 +283,7 @@ This is a hotfix release, providing critical bug fixes and improvements.
 
 ### New features
 
-- nrf_mesh_packet_send() now supports the reliable feature. I.e., it is possible to send single segments messages using the transport layer SAR.
+- nrf_mesh_packet_send() now supports the reliable feature. I.e., it is possible to send single segments messages using the transport layer SAR.
 - Interactive PyACI has support for an interactive provisioner and provisionee
 - New serial interface event "Prov Failed"
 
@@ -191,14 +291,14 @@ This is a hotfix release, providing critical bug fixes and improvements.
 
 - Provisionee not handling invalid provisioning data properly
 - Problems using "Release" configuration in SES examples
-- Incorrect usage of hal_led_blink_ms() in light control server
+- Incorrect usage of hal_led_blink_ms() in light control server
 - Serial buffers must be word aligned
 - Number of elements not handled in Serial interface's "Capabilities set" command
 - S110 build failure
 - Default build type is set in CMake
 - Word alignment problems caused by high optimization levels when using Segger Embedded Studio
 - PB-remote opcodes overlapping with Configuration model opcodes
-- Advertisement bearer used timer_scheduler contexts dangerously, potentially corrupting its internal linked list
+- Advertisement bearer used timer_scheduler contexts dangerously, potentially corrupting its internal linked list
 - PB-remote server would get confused about out-of-order ACKs from the client
 - Documentation has been updated
 
@@ -403,4 +503,3 @@ can be overridden using +transport_sar_mem_funcs_set()+, otherwise +__HEAPSIZE+ 
 defined.
 
 **WARNING:** SoftDevice needs to be Flashed without memory protection
-

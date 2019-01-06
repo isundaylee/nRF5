@@ -50,6 +50,8 @@ Command                                 | Opcode
 [Beacon Stop](#device-beacon-stop)                      | `0x11`
 [Beacon Params Get](#device-beacon-params-get)                | `0x13`
 [Beacon Params Set](#device-beacon-params-set)                | `0x12`
+[Housekeeping Data Get](#device-housekeeping-data-get)            | `0x14`
+[Housekeeping Data Clear](#device-housekeeping-data-clear)          | `0x15`
 
 
 ## Application Commands {#application-commands}
@@ -208,7 +210,7 @@ Command                                 | Opcode
 
 _Opcode:_ `0x02`
 
-_Total length: 1..98 bytes_
+_Total length: 1..255 bytes_
 
 A simple loopback test command, to verify that the serial transport layer is working as intended.
 
@@ -216,7 +218,7 @@ _Echo Parameters:_
 
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
-`uint8_t[97]` | Data                                    | 0..97 | 0      | Data to echo back.
+`uint8_t[254]` | Data                                    | 0..254 | 0      | Data to echo back.
 
 ### Response
 
@@ -228,7 +230,7 @@ _Echo Response Parameters:_
 
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
-`uint8_t[97]` | Data                                    | 0..97 | 0      | Data received in the echo command.
+`uint8_t[254]` | Data                                    | 0..254 | 0      | Data received in the echo command.
 
 
 ### Device Internal Events Report {#device-internal-events-report}
@@ -441,11 +443,56 @@ Potential status codes:
 
 _The response has no parameters._
 
+### Device Housekeeping Data Get {#device-housekeeping-data-get}
+
+_Opcode:_ `0x14`
+
+_Total length: 1 byte_
+
+Get the current housekeeping data values.
+
+_Housekeeping Data Get takes no parameters._
+
+### Response
+
+Potential status codes:
+
+- `SUCCESS`
+
+- `INVALID_LENGTH`
+
+_Housekeeping Data Get Response Parameters:_
+
+Type          | Name                                    | Size | Offset | Description
+--------------|-----------------------------------------|------|--------|------------
+`uint32_t`    | Alloc Fail Count                        | 4    | 0      | Number of failed serial packet allocations.
+
+
+### Device Housekeeping Data Clear {#device-housekeeping-data-clear}
+
+_Opcode:_ `0x15`
+
+_Total length: 1 byte_
+
+Clear the current housekeeping data values.
+
+_Housekeeping Data Clear takes no parameters._
+
+### Response
+
+Potential status codes:
+
+- `SUCCESS`
+
+- `INVALID_LENGTH`
+
+_The response has no parameters._
+
 ### Application Application {#application-application}
 
 _Opcode:_ `0x20`
 
-_Total length: 1..98 bytes_
+_Total length: 1..255 bytes_
 
 Application specific command, has no functionality in the framework, but is forwarded to the application.
 
@@ -453,7 +500,7 @@ _Application Parameters:_
 
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
-`uint8_t[97]` | Data                                    | 0..97 | 0      | Application data.
+`uint8_t[254]` | Data                                    | 0..254 | 0      | Application data.
 
 ### Response
 
@@ -1436,7 +1483,7 @@ _Subnet Get All Response Parameters:_
 
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
-`uint16_t[47]` | Subnet Key Index                        | 94   | 0      | List of all subnetwork key indexes known by the device.
+`uint16_t[126]` | Subnet Key Index                        | 252  | 0      | List of all subnetwork key indexes known by the device.
 
 
 ### Bluetooth Mesh Subnet Count Max Get {#bluetooth-mesh-subnet-count-max-get}
@@ -1591,7 +1638,7 @@ _Appkey Get All Response Parameters:_
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
 `uint16_t`    | Subnet Handle                           | 2    | 0      | Handle of the Subnetwork associated with the application keys.
-`uint16_t[46]` | Appkey Key Index                        | 92   | 2      | List of all application key indexes known by the device.
+`uint16_t[125]` | Appkey Key Index                        | 250  | 2      | List of all application key indexes known by the device.
 
 
 ### Bluetooth Mesh Appkey Count Max Get {#bluetooth-mesh-appkey-count-max-get}
@@ -1820,7 +1867,7 @@ _Addr Get All Response Parameters:_
 
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
-`uint16_t[47]` | Address Handles                         | 94   | 0      | List of all address handles known by the device, not including local unicast addresses.
+`uint16_t[126]` | Address Handles                         | 252  | 0      | List of all address handles known by the device, not including local unicast addresses.
 
 
 ### Bluetooth Mesh Addr Nonvirtual Count Max Get {#bluetooth-mesh-addr-nonvirtual-count-max-get}
@@ -2063,7 +2110,7 @@ Type          | Name                                    | Size | Offset | Descri
 
 _Opcode:_ `0xab`
 
-_Total length: 10..98 bytes_
+_Total length: 10..255 bytes_
 
 Send a mesh packet. The source address handle must represent a local unicast address.
 
@@ -2077,7 +2124,7 @@ Type          | Name                                    | Size | Offset | Descri
 `uint8_t`     | TTL                                     | 1    | 6      | Time To Live value to use in packet.
 `uint8_t`     | Force Segmented                         | 1    | 7      | Whether or not to force use of segmented message type for the transmission.
 `uint8_t`     | Transmic Size                           | 1    | 8      | Transport MIC size used enum. SMALL=0, LARGE=1, DEFAULT=2. LARGE may only be used with segmented packets.
-`uint8_t[88]` | Data                                    | 0..88 | 9      | Payload of the packet.
+`uint8_t[245]` | Data                                    | 0..245 | 9      | Payload of the packet.
 
 ### Response
 
@@ -2539,7 +2586,7 @@ _Model Subs Get Response Parameters:_
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
 `uint16_t`    | Count                                   | 2    | 0      | Number of available handles in @c address_handles
-`dsm_handle_t[46]` | Address Handles                         | 92   | 2      | List of the address handles of all subscription addresses bound to the given model
+`dsm_handle_t[125]` | Address Handles                         | 250  | 2      | List of the address handles of all subscription addresses bound to the given model
 
 
 ### Access Layer Model App Bind {#access-layer-model-app-bind}
@@ -2639,7 +2686,7 @@ _Model App Get Response Parameters:_
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
 `uint16_t`    | Count                                   | 2    | 0      | Number of available handles in @c appkey_handles
-`dsm_handle_t[46]` | Appkey Handles                          | 92   | 2      | List of the address handles of all subscription addresses bound to the given model
+`dsm_handle_t[125]` | Appkey Handles                          | 250  | 2      | List of the address handles of all subscription addresses bound to the given model
 
 
 ### Access Layer Model Pub App Set {#access-layer-model-pub-app-set}
@@ -2984,7 +3031,7 @@ _Elem Models Get Response Parameters:_
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
 `uint16_t`    | Count                                   | 2    | 0      | Number of available handles in @c model_handles
-`access_model_handle_t[46]` | Model Handles                           | 92   | 2      | List of the address handles of all subscription addresses bound to the given model
+`access_model_handle_t[125]` | Model Handles                           | 250  | 2      | List of the address handles of all subscription addresses bound to the given model
 
 
 ### Access Layer Access Flash Store {#access-layer-access-flash-store}
@@ -3032,14 +3079,14 @@ _Models Get Response Parameters:_
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
 `uint16_t`    | Count                                   | 2    | 0      | Number of available handles in @c model_ids
-`access_model_id_t[23]` | Model IDs                               | 92   | 2      | List of the model ids of all the available models.
+`access_model_id_t[62]` | Model IDs                               | 248  | 2      | List of the model ids of all the available models.
 
 
 ### Model Specific Init {#model-specific-init}
 
 _Opcode:_ `0xfd`
 
-_Total length: 7..98 bytes_
+_Total length: 7..255 bytes_
 
 Calls the initializer of the addressed model in order to create a new instance.
 
@@ -3048,7 +3095,7 @@ _Init Parameters:_
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
 `serial_cmd_model_specific_init_header_t` | Model Init Info                         | 6    | 0      | Basic information that is always needed to initialize a model
-`uint8_t[91]` | Data                                    | 0..91 | 6      | Additional data provided to the initializer
+`uint8_t[248]` | Data                                    | 0..248 | 6      | Additional data provided to the initializer
 
 ### Response
 
@@ -3071,7 +3118,7 @@ Type          | Name                                    | Size | Offset | Descri
 
 _Opcode:_ `0xfe`
 
-_Total length: 3..98 bytes_
+_Total length: 3..255 bytes_
 
 Forwards a model specific command to a model instance. See the serial handler for the specific model being commanded for more information.
 
@@ -3080,7 +3127,7 @@ _Command Parameters:_
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
 `serial_cmd_model_specific_command_header_t` | Model Cmd Info                          | 2    | 0      | Contains the handle of the model being addressed.
-`uint8_t[95]` | Data                                    | 0..95 | 2      | Additional data provided to the event
+`uint8_t[252]` | Data                                    | 0..252 | 2      | Additional data provided to the event
 
 ### Response
 
@@ -3099,6 +3146,6 @@ _Command Response Parameters:_
 Type          | Name                                    | Size | Offset | Description
 --------------|-----------------------------------------|------|--------|------------
 `uint8_t`     | Data Len                                | 1    | 0      | Length of data array. Set to 0 to indicate no data to send
-`uint8_t[94]` | Data                                    | 0..94 | 1      | Command response data specific to each model.
+`uint8_t[251]` | Data                                    | 0..251 | 1      | Command response data specific to each model.
 
 

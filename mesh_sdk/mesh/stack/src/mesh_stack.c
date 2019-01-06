@@ -44,12 +44,13 @@
 #include "health_server.h"
 #include "net_state.h"
 #include "hal.h"
+#include "mesh_config.h"
+#include "mesh_config_backend_glue.h"
 
 #if GATT_PROXY
 #include "proxy.h"
 #endif
 
-static mesh_stack_init_params_t m_init_params;
 static health_server_t m_health_server;
 
 static void device_reset(void)
@@ -66,10 +67,9 @@ uint32_t mesh_stack_init(const mesh_stack_init_params_t * p_init_params,
     {
         return NRF_ERROR_NULL;
     }
-    m_init_params = *p_init_params;
 
     /* Initialize the mesh stack */
-    status = nrf_mesh_init(&m_init_params.core);
+    status = nrf_mesh_init(&p_init_params->core);
     if (status != NRF_SUCCESS)
     {
         return status;
@@ -80,7 +80,7 @@ uint32_t mesh_stack_init(const mesh_stack_init_params_t * p_init_params,
     access_init();
 
     /* Initialize the configuration server */
-    status = config_server_init(m_init_params.models.config_server_cb);
+    status = config_server_init(p_init_params->models.config_server_cb);
     if (status != NRF_SUCCESS)
     {
         return status;
@@ -88,24 +88,28 @@ uint32_t mesh_stack_init(const mesh_stack_init_params_t * p_init_params,
 
     /* Initialize the health server for the primary element */
     status = health_server_init(&m_health_server, 0, DEVICE_COMPANY_ID,
-                                m_init_params.models.health_server_attention_cb,
-                                m_init_params.models.p_health_server_selftest_array,
-                                m_init_params.models.health_server_num_selftests);
+                                p_init_params->models.health_server_attention_cb,
+                                p_init_params->models.p_health_server_selftest_array,
+                                p_init_params->models.health_server_num_selftests);
     if (status != NRF_SUCCESS)
     {
         return status;
     }
 
     /* Give application opportunity to initialize application specific models */
-    if (m_init_params.models.models_init_cb != NULL)
+    if (p_init_params->models.models_init_cb != NULL)
     {
-        m_init_params.models.models_init_cb();
+        p_init_params->models.models_init_cb();
     }
 
     /* Load configuration, and check if the device has already been provisioned */
+    mesh_config_load();
+
     (void) dsm_flash_config_load();
     (void) access_flash_config_load();
+
     bool is_provisioned = mesh_stack_is_device_provisioned();
+
 #if GATT_PROXY
     if (is_provisioned)
     {
@@ -123,13 +127,18 @@ uint32_t mesh_stack_init(const mesh_stack_init_params_t * p_init_params,
 
 uint32_t mesh_stack_start(void)
 {
+    /* If the device is provisioned, the proxy state is automatically recovered from flash when
+     * mesh_config loads the configuration. */
+    uint32_t status = nrf_mesh_enable();
 #if GATT_PROXY
-    if (mesh_stack_is_device_provisioned())
+    if (status == NRF_SUCCESS &&
+        mesh_stack_is_device_provisioned() &&
+        proxy_is_enabled())
     {
-        proxy_enable();
+        (void) proxy_start();
     }
 #endif
-    return nrf_mesh_enable();
+    return status;
 }
 
 uint32_t mesh_stack_provisioning_data_store(const nrf_mesh_prov_provisioning_data_t * p_prov_data,
@@ -220,5 +229,31 @@ void mesh_stack_device_reset(void)
 {
     device_reset();
 }
-
 #endif  /* PERSISTENT_STORAGE */
+
+uint32_t mesh_stack_persistence_flash_usage(const uint32_t ** pp_start, uint32_t * p_length)
+{
+    if (pp_start == NULL || p_length == NULL)
+    {
+        return NRF_ERROR_NULL;
+    }
+
+#if PERSISTENT_STORAGE
+    mesh_config_backend_flash_usage_t mesh_config_usage;
+    mesh_config_backend_flash_usage_get(&mesh_config_usage);
+    if (mesh_config_usage.p_start != NULL)
+    {
+        *pp_start = mesh_config_usage.p_start;
+    }
+    else
+    {
+        /* If there's no mesh config present in flash, access holds the lowest flash area. */
+        *pp_start = access_flash_area_get();
+    }
+    *p_length = (((const uint8_t *) flash_manager_recovery_page_get()) - ((const uint8_t *) *pp_start) + PAGE_SIZE);
+#else
+    *pp_start = NULL;
+    *p_length = 0;
+#endif
+    return NRF_SUCCESS;
+}

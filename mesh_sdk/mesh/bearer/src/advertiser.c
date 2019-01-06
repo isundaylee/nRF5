@@ -55,9 +55,7 @@ static prng_t m_adv_prng;
 static inline bool is_active(const advertiser_t * p_adv)
 {
     /* Any state that will lead to the timer firing is considered active. */
-    return (p_adv->timer.state != TIMER_EVENT_STATE_UNUSED &&
-            p_adv->timer.state != TIMER_EVENT_STATE_ABORTED &&
-            p_adv->timer.state != TIMER_EVENT_STATE_IGNORED);
+    return (p_adv->timer.state != TIMER_EVENT_STATE_UNUSED);
 }
 
 static inline packet_buffer_packet_t * get_packet_buffer_from_adv_packet(adv_packet_t * p_packet)
@@ -348,7 +346,7 @@ adv_packet_t * advertiser_packet_alloc(advertiser_t * p_adv, uint32_t adv_payloa
         packet_payload_size_set(&p_adv_packet->packet, adv_payload_size);
         p_adv_packet->packet.header.type = BLE_PACKET_TYPE_ADV_NONCONN_IND;
         set_adv_address(p_adv, &p_adv_packet->packet);
-        p_adv_packet->token = 0;
+        p_adv_packet->token = NRF_MESH_INITIAL_TOKEN;
         return p_adv_packet;
     }
     else
@@ -439,6 +437,12 @@ void advertiser_config_get(const advertiser_t * p_adv, advertiser_config_t * p_c
 {
     NRF_MESH_ASSERT(p_config != NULL && NULL != p_adv);
     memcpy(p_config, &p_adv->config, sizeof(advertiser_config_t));
+}
+
+void advertiser_tx_power_set(advertiser_t * p_adv, radio_tx_power_t tx_power)
+{
+    NRF_MESH_ASSERT(NULL != p_adv);
+    p_adv->broadcast.params.radio_config.tx_power = tx_power;
 }
 
 void advertiser_flush(advertiser_t * p_adv)

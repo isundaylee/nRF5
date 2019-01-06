@@ -66,6 +66,9 @@
 #define SERIAL_OPCODE_CMD_DEVICE_BEACON_STOP                  (0x11) /**< Params: @ref serial_cmd_device_beacon_stop_t */
 #define SERIAL_OPCODE_CMD_DEVICE_BEACON_PARAMS_SET            (0x12) /**< Params: @ref serial_cmd_device_beacon_params_set_t */
 #define SERIAL_OPCODE_CMD_DEVICE_BEACON_PARAMS_GET            (0x13) /**< Params: @ref serial_cmd_device_beacon_params_get_t */
+#define SERIAL_OPCODE_CMD_DEVICE_HOUSEKEEPING_DATA_GET        (0x14) /**< Params: None. */
+#define SERIAL_OPCODE_CMD_DEVICE_HOUSEKEEPING_DATA_CLEAR      (0x15) /**< Params: None. */
+
 #define SERIAL_OPCODE_CMD_RANGE_DEVICE_END                    (0x1F) /**< DEVICE range end. */
 
 #define SERIAL_OPCODE_CMD_RANGE_APP_START                     (0x20) /**< APP range start. */
@@ -663,12 +666,15 @@ typedef struct __attribute((packed))
     uint8_t data[NRF_MESH_SERIAL_PAYLOAD_MAXLEN - sizeof(serial_cmd_model_specific_init_header_t)]; /**< Additional data provided to the initializer */
 } serial_cmd_model_specific_init_t;
 
+NRF_MESH_STATIC_ASSERT(sizeof(serial_cmd_model_specific_init_t) == NRF_MESH_SERIAL_PAYLOAD_MAXLEN);
+
 /** Used for sending commands to one of the initialized models */
 typedef struct __attribute((packed))
 {
     serial_cmd_model_specific_command_header_t model_cmd_info; /**< Contains the handle of the model being addressed. */
     uint8_t data[NRF_MESH_SERIAL_PAYLOAD_MAXLEN - sizeof(serial_cmd_model_specific_command_header_t)]; /**< Additional data provided to the event */
 } serial_cmd_model_specific_command_t;
+NRF_MESH_STATIC_ASSERT(sizeof(serial_cmd_model_specific_command_t) == NRF_MESH_SERIAL_PAYLOAD_MAXLEN);
 
 /** ACCESS layer command parameters. */
 typedef union __attribute((packed))

@@ -92,12 +92,12 @@ static void send_failed(nrf_mesh_prov_ctx_t * p_ctx, nrf_mesh_prov_failure_code_
     }
 }
 
-static void send_capabilities(nrf_mesh_prov_ctx_t * p_ctx)
+static uint32_t send_capabilities(nrf_mesh_prov_ctx_t * p_ctx)
 {
     prov_pdu_caps_t pdu;
     pdu.pdu_type = PROV_PDU_TYPE_CAPABILITIES;
 
-    pdu.num_components = p_ctx->capabilities.num_elements;
+    pdu.num_elements = p_ctx->capabilities.num_elements;
     pdu.algorithms = LE2BE16(p_ctx->capabilities.algorithms);
     pdu.pubkey_type = p_ctx->capabilities.pubkey_type;
     pdu.oob_static_types = p_ctx->capabilities.oob_static_types;
@@ -109,10 +109,8 @@ static void send_capabilities(nrf_mesh_prov_ctx_t * p_ctx)
 #if PROV_DEBUG_MODE
     __LOG(LOG_SRC_PROV, LOG_LEVEL_INFO, "Provisionee: sending capabilities\n");
 #endif
-    if (NRF_SUCCESS != prov_tx_capabilities(p_ctx->p_active_bearer, &pdu, p_ctx->confirmation_inputs))
-    {
-        send_failed(p_ctx, NRF_MESH_PROV_FAILURE_CODE_OUT_OF_RESOURCES);
-    }
+
+    return prov_tx_capabilities(p_ctx->p_active_bearer, &pdu, p_ctx->confirmation_inputs);
 }
 
 static uint32_t handle_prov_start(nrf_mesh_prov_ctx_t * p_ctx, const uint8_t * p_buffer)
@@ -124,6 +122,12 @@ static uint32_t handle_prov_start(nrf_mesh_prov_ctx_t * p_ctx, const uint8_t * p
         p_pdu->auth_method >= NRF_MESH_PROV_OOB_METHOD_PROHIBITED)
     {
     	return NRF_ERROR_INVALID_DATA;
+    }
+
+    if (p_pdu->public_key == NRF_MESH_PROV_PUBLIC_KEY_OOB &&
+        p_ctx->capabilities.pubkey_type != NRF_MESH_PROV_OOB_PUBKEY_TYPE_OOB)
+    {
+        return NRF_ERROR_INVALID_DATA;
     }
 
     if ((p_pdu->auth_method == NRF_MESH_PROV_OOB_METHOD_NONE ||
@@ -315,7 +319,19 @@ static void prov_provisionee_pkt_in(prov_bearer_t * p_bearer, const uint8_t * p_
                 /* Copy PDU contents (excluding PDU type) into the confirmation inputs: */
                 memcpy(p_ctx->confirmation_inputs + PROV_CONFIRM_INPUTS_INVITE_OFFSET, p_buffer + 1, sizeof(prov_pdu_invite_t) - 1);
 
-                send_capabilities(p_ctx);
+                if (NRF_SUCCESS != send_capabilities(p_ctx))
+                {
+                    send_failed(p_ctx, NRF_MESH_PROV_FAILURE_CODE_OUT_OF_RESOURCES);
+                    break;
+                }
+
+                const prov_pdu_invite_t * p_invite = (const prov_pdu_invite_t *) p_buffer;
+
+                nrf_mesh_prov_evt_t event;
+                event.type = NRF_MESH_PROV_EVT_INVITE_RECEIVED;
+                event.params.invite_received.p_context = p_ctx;
+                event.params.invite_received.attention_duration_s = p_invite->attention_duration;
+                p_ctx->event_handler(&event);
             }
             break;
         case PROV_PDU_TYPE_START:
@@ -330,10 +346,16 @@ static void prov_provisionee_pkt_in(prov_bearer_t * p_bearer, const uint8_t * p_
                     break;
                 }
 
+                nrf_mesh_prov_evt_t event;
+                event.type = NRF_MESH_PROV_EVT_START_RECEIVED;
+                event.params.start_received.p_context = p_ctx;
+                p_ctx->event_handler(&event);
+
                 p_ctx->state = NRF_MESH_PROV_STATE_WAIT_PUB_KEY;
                 if (p_ctx->pubkey_oob)
                 {
-                    nrf_mesh_prov_evt_t event;
+                    memset(&event, 0, sizeof(nrf_mesh_prov_evt_t));
+
                     event.type = NRF_MESH_PROV_EVT_OOB_PUBKEY_REQUEST;
                     event.params.oob_pubkey_request.p_context = p_ctx;
                     p_ctx->event_handler(&event);
@@ -433,6 +455,10 @@ static void prov_provisionee_pkt_in(prov_bearer_t * p_bearer, const uint8_t * p_
                 else if (!prov_data_is_valid(&p_ctx->data))
                 {
                     send_failed(p_ctx, NRF_MESH_PROV_FAILURE_CODE_INVALID_FORMAT);
+                }
+                else if (!prov_address_is_valid(&p_ctx->data, p_ctx->capabilities.num_elements))
+                {
+                    send_failed(p_ctx, NRF_MESH_PROV_FAILURE_CODE_CANNOT_ASSIGN_ADDR);
                 }
                 else if (NRF_SUCCESS != prov_tx_complete(p_ctx->p_active_bearer))
                 {

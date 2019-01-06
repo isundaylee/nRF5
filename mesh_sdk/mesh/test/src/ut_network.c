@@ -42,7 +42,7 @@
 #include "unity.h"
 #include "cmock.h"
 
-#include "nordic_common.h"
+#include "utils.h"
 #include "test_assert.h"
 
 #include "log.h"
@@ -127,7 +127,7 @@ static void packet_alloc_Expect(network_packet_metadata_t * p_metadata, uint32_t
     alloc_params.role           = role;
     alloc_params.net_packet_len = packet_len;
     alloc_params.p_metadata     = p_metadata;
-    alloc_params.token          = (role == CORE_TX_ROLE_ORIGINATOR ? TOKEN : CORE_TX_TOKEN_RELAY);
+    alloc_params.token          = (role == CORE_TX_ROLE_ORIGINATOR ? TOKEN : NRF_MESH_RELAY_TOKEN);
 
     core_tx_packet_alloc_ExpectAndReturn(&alloc_params, NULL, success);
     core_tx_packet_alloc_IgnoreArg_pp_packet();
@@ -224,6 +224,13 @@ void test_init(void)
     net_state_init_Expect();
     init_params.relay_cb = relay_callback;
     network_init(&init_params);
+}
+
+void test_enable(void)
+{
+    net_state_enable_Expect();
+    net_beacon_enable_Expect();
+    network_enable();
 }
 
 void test_alloc(void)
@@ -449,7 +456,7 @@ void test_packet_in(void)
             m_transport_packet_in_expect.p_net_metadata = &vector[i].meta;
             m_transport_packet_in_expect.p_rx_metadata  = &rx_meta;
             m_transport_packet_in_expect.calls          = 1;
-
+            core_tx_adv_is_enabled_ExpectAndReturn(CORE_TX_ROLE_RELAY, true);
             /* 3: Relay if needed: */
             if (vector[i].meta.ttl >= 2)
             {

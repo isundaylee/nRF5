@@ -37,6 +37,7 @@
 #ifndef CORE_TX_INSTABURST_H__
 #define CORE_TX_INSTABURST_H__
 #include "core_tx.h"
+#include "radio_config.h"
 
 /**
  * @defgroup CORE_TX_INSTABURST Core TX Instaburst bearer
@@ -54,21 +55,10 @@
 void core_tx_instaburst_init(void);
 
 /**
- * Sets the advertisement interval for the specific role.
- *
- * @param[in] role Role to set the advertisement interval for.
- * @param[in] interval_ms Advertisement interval in milliseconds.
+ * Checks if the advertiser for the given role is enabled.
  */
-void core_tx_instaburst_interval_set(core_tx_role_t role, uint32_t interval_ms);
+bool core_tx_instaburst_is_enabled(core_tx_role_t role);
 
-/**
- * Gets the advertisement interval in milliseconds for the given role.
- *
- * @param[in] role Role to get the advertisement interval for.
- *
- * @returns The advertisement interval for the given role in milliseconds.
- */
-uint32_t core_tx_instaburst_interval_get(core_tx_role_t role);
 
 /** @} */
 

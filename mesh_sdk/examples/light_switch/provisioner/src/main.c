@@ -42,6 +42,7 @@
 #include "boards.h"
 #include "nrf_delay.h"
 #include "simple_hal.h"
+#include "app_timer.h"
 
 /* Core */
 #include "nrf_mesh.h"
@@ -63,7 +64,6 @@
 #include "config_client.h"
 #include "config_server.h"
 #include "health_client.h"
-#include "simple_on_off_client.h"
 
 /* Logging and RTT */
 #include "rtt_input.h"
@@ -73,11 +73,7 @@
 #include "light_switch_example_common.h"
 #include "example_network_config.h"
 #include "nrf_mesh_config_examples.h"
-
-#define RTT_INPUT_POLL_PERIOD_MS (100)
-#define LED_BLINK_INTERVAL_MS    (200)
-#define LED_BLINK_CNT_START      (2)
-#define LED_BLINK_CNT_PROV       (4)
+#include "example_common.h"
 
 #define APP_NETWORK_STATE_ENTRY_HANDLE (0x0001)
 #define APP_FLASH_PAGE_COUNT           (1)
@@ -89,8 +85,9 @@
 static network_dsm_handles_data_volatile_t m_dev_handles;
 static network_stats_data_stored_t m_nw_state;
 
-static const uint8_t m_client_node_uuid[NRF_MESH_UUID_SIZE] = CLIENT_NODE_UUID;
-static const uint8_t m_server_uuid_filter[SERVER_NODE_UUID_PREFIX_SIZE] = SERVER_NODE_UUID_PREFIX;
+static const uint8_t m_client_uuid_filter[COMMON_UUID_PREFIX_LEN] = {COMMON_CLIENT_UUID};
+static const uint8_t m_server_uuid_filter[COMMON_UUID_PREFIX_LEN] = {COMMON_SERVER_UUID};
+static uint8_t m_current_uuid[NRF_MESH_UUID_SIZE];
 static prov_helper_uuid_filter_t m_exp_uuid;
 static bool m_node_prov_setup_started;
 
@@ -152,12 +149,17 @@ static void app_flash_manager_add(void)
         .callback = flash_manager_mem_available,
         .p_args = app_flash_manager_add
     };
+
+    const uint32_t * start_address;
+    uint32_t allocated_area_size;
+    ERROR_CHECK(mesh_stack_persistence_flash_usage(&start_address, &allocated_area_size));
+
     flash_manager_config_t manager_config;
     manager_config.write_complete_cb = flash_write_complete;
     manager_config.invalidate_complete_cb = flash_invalidate_complete;
     manager_config.remove_complete_cb = flash_remove_complete;
     manager_config.min_available_space = WORD_SIZE;
-    manager_config.p_area = (const flash_manager_page_t *) (((const uint8_t *) dsm_flash_area_get()) - (ACCESS_FLASH_PAGE_COUNT * PAGE_SIZE * 2));
+    manager_config.p_area = (const flash_manager_page_t *)((uint32_t)start_address - PAGE_SIZE * APP_FLASH_PAGE_COUNT);
     manager_config.page_count = APP_FLASH_PAGE_COUNT;
     uint32_t status = flash_manager_add(&m_flash_manager, &manager_config);
     if (NRF_SUCCESS != status)
@@ -253,11 +255,12 @@ static void app_config_successful_cb(void)
     access_flash_config_store();
     ERROR_CHECK(store_app_data());
 
-    if (m_nw_state.configured_devices < SERVER_NODE_COUNT)
+    if (m_nw_state.configured_devices < (SERVER_NODE_COUNT + CLIENT_NODE_COUNT))
     {
         m_exp_uuid.p_uuid = m_server_uuid_filter;
-        m_exp_uuid.length = SERVER_NODE_UUID_PREFIX_SIZE;
-        prov_helper_provision_next_device(PROVISIONER_RETRY_COUNT, m_nw_state.next_device_address, &m_exp_uuid);
+        m_exp_uuid.length = COMMON_UUID_PREFIX_LEN;
+        prov_helper_provision_next_device(PROVISIONER_RETRY_COUNT, m_nw_state.next_device_address,
+                                          &m_exp_uuid, &m_current_uuid[0]);
         prov_helper_scan_start();
 
         hal_led_pin_set(APP_PROVISIONING_LED, 1);
@@ -349,32 +352,40 @@ static void check_network_state(void)
             /* Execute configuration */
             __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "Waiting for provisioned node to be configured ...\n");
             node_setup_start(m_nw_state.last_device_address, PROVISIONER_RETRY_COUNT,
-                            m_nw_state.appkey, APPKEY_INDEX);
+                            m_nw_state.appkey, APPKEY_INDEX, &m_current_uuid[0]);
 
             hal_led_pin_set(APP_CONFIGURATION_LED, 1);
         }
         else if (m_nw_state.provisioned_devices == 0)
         {
             /* Start provisioning - First provision the client with known UUID */
-            m_exp_uuid.p_uuid = m_client_node_uuid;
-            m_exp_uuid.length = NRF_MESH_UUID_SIZE;
+            m_exp_uuid.p_uuid = m_client_uuid_filter;
+            m_exp_uuid.length = COMMON_UUID_PREFIX_LEN;
             __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "Waiting for Client node to be provisioned ...\n");
-            prov_helper_provision_next_device(PROVISIONER_RETRY_COUNT, m_nw_state.next_device_address, &m_exp_uuid);
+            prov_helper_provision_next_device(PROVISIONER_RETRY_COUNT, m_nw_state.next_device_address,
+                                              &m_exp_uuid, &m_current_uuid[0]);
             prov_helper_scan_start();
 
             hal_led_pin_set(APP_PROVISIONING_LED, 1);
         }
-        else if (m_nw_state.provisioned_devices < SERVER_NODE_COUNT)
+        else if (m_nw_state.provisioned_devices < (SERVER_NODE_COUNT + CLIENT_NODE_COUNT))
         {
             /* Start provisioning - rest of the devices */
             m_exp_uuid.p_uuid = m_server_uuid_filter;
-            m_exp_uuid.length = SERVER_NODE_UUID_PREFIX_SIZE;
+            m_exp_uuid.length = COMMON_UUID_PREFIX_LEN;
             __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "Waiting for Server node to be provisioned ...\n");
-            prov_helper_provision_next_device(PROVISIONER_RETRY_COUNT, m_nw_state.next_device_address, &m_exp_uuid);
+            prov_helper_provision_next_device(PROVISIONER_RETRY_COUNT, m_nw_state.next_device_address,
+                                              &m_exp_uuid, &m_current_uuid[0]);
             prov_helper_scan_start();
 
             hal_led_pin_set(APP_PROVISIONING_LED, 1);
         }
+        else
+        {
+            __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "All servers provisioned\n");
+            return;
+        }
+
         m_node_prov_setup_started = true;
     }
     else
@@ -546,10 +557,12 @@ static void mesh_init(void)
 
 static void initialize(void)
 {
-    __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS, LOG_LEVEL_INFO, LOG_CALLBACK_DEFAULT);
+    __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS, LOG_LEVEL_DBG1, LOG_CALLBACK_DEFAULT);
     __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "----- BLE Mesh Light Switch Provisioner Demo -----\n");
 
+    ERROR_CHECK(app_timer_init());
     hal_leds_init();
+
 #if BUTTON_BOARD
     ERROR_CHECK(hal_buttons_init(button_event_handler));
 #endif

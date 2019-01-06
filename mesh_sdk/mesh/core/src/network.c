@@ -59,13 +59,13 @@
 #include "core_tx_instaburst.h"
 #include "heartbeat.h"
 #include "nrf_mesh_config_bearer.h"
+#include "mesh_opt_core.h"
 #if GATT_PROXY
 #include "proxy.h"
 #endif
 /********************
  * Static variables *
  ********************/
-static bool m_relay_enable;
 static nrf_mesh_relay_check_cb_t m_relay_check_cb;
 /********************
  * Static functions *
@@ -131,7 +131,7 @@ static void packet_relay(network_packet_metadata_t * p_net_metadata,
     network_tx_packet_buffer_t buffer;
     buffer.user_data.p_metadata = p_net_metadata;
     buffer.user_data.payload_len = payload_len;
-    buffer.user_data.token = CORE_TX_TOKEN_RELAY;
+    buffer.user_data.token = NRF_MESH_RELAY_TOKEN;
     buffer.role = CORE_TX_ROLE_RELAY;
 
     if (allocate_packet(&buffer) == NRF_SUCCESS)
@@ -169,7 +169,11 @@ static bool metadata_is_valid(const network_packet_metadata_t * p_net_metadata)
 static bool should_relay(const network_packet_metadata_t * p_metadata)
 {
     /* Relay feature must be enabled */
-    if (!m_relay_enable)
+#if EXPERIMENTAL_INSTABURST_ENABLED
+    if (!core_tx_instaburst_is_enabled(CORE_TX_ROLE_RELAY))
+#else
+    if (!core_tx_adv_is_enabled(CORE_TX_ROLE_RELAY))
+#endif
     {
         return false;
     }
@@ -212,128 +216,15 @@ void network_init(const nrf_mesh_init_params_t * p_init_params)
         m_relay_check_cb = p_init_params->relay_cb;
     }
 
-    m_relay_enable = true;
-
     net_state_init();
     net_state_recover_from_flash();
     net_beacon_init();
 }
 
-uint32_t network_opt_set(nrf_mesh_opt_id_t id, const nrf_mesh_opt_t * p_opt)
+void network_enable(void)
 {
-    if (p_opt == NULL)
-    {
-        return NRF_ERROR_NULL;
-    }
-
-    switch (id)
-    {
-        case NRF_MESH_OPT_NET_RELAY_RETRANSMIT_INTERVAL_MS:
-#if EXPERIMENTAL_INSTABURST_ENABLED
-            core_tx_instaburst_interval_set(CORE_TX_ROLE_RELAY, p_opt->opt.val);
-#else
-            core_tx_adv_interval_set(CORE_TX_ROLE_RELAY, p_opt->opt.val);
-#endif
-            break;
-        case NRF_MESH_OPT_NET_RELAY_ENABLE:
-            if (m_relay_enable != p_opt->opt.val)
-            {
-                m_relay_enable = p_opt->opt.val;
-                heartbeat_on_feature_change_trigger(HEARTBEAT_TRIGGER_TYPE_RELAY);
-            }
-            break;
-        case NRF_MESH_OPT_NET_RELAY_RETRANSMIT_COUNT:
-            if (p_opt->opt.val > NETWORK_RELAY_RETRANSMITS_MAX)
-            {
-                return NRF_ERROR_INVALID_PARAM;
-            }
-            else
-            {
-#if EXPERIMENTAL_INSTABURST_ENABLED
-                return NRF_ERROR_NOT_SUPPORTED;
-#else
-                core_tx_adv_count_set(CORE_TX_ROLE_RELAY, p_opt->opt.val);
-                break;
-#endif
-            }
-        case NRF_MESH_OPT_NET_NETWORK_TRANSMIT_INTERVAL_MS:
-#if EXPERIMENTAL_INSTABURST_ENABLED
-            core_tx_instaburst_interval_set(CORE_TX_ROLE_ORIGINATOR, p_opt->opt.val);
-#else
-            core_tx_adv_interval_set(CORE_TX_ROLE_ORIGINATOR, p_opt->opt.val);
-#endif
-            break;
-        case NRF_MESH_OPT_NET_NETWORK_TRANSMIT_COUNT:
-            if (p_opt->opt.val > NETWORK_RELAY_RETRANSMITS_MAX)
-            {
-                return NRF_ERROR_INVALID_PARAM;
-            }
-            else
-            {
-#if EXPERIMENTAL_INSTABURST_ENABLED
-                return NRF_ERROR_NOT_SUPPORTED;
-#else
-                core_tx_adv_count_set(CORE_TX_ROLE_ORIGINATOR, p_opt->opt.val);
-                break;
-#endif
-            }
-        default:
-            return NRF_ERROR_NOT_FOUND;
-    }
-
-    return NRF_SUCCESS;
-}
-
-uint32_t network_opt_get(nrf_mesh_opt_id_t id, nrf_mesh_opt_t * p_opt)
-{
-    if (p_opt == NULL)
-    {
-        return NRF_ERROR_NULL;
-    }
-
-    switch (id)
-    {
-        case NRF_MESH_OPT_NET_RELAY_RETRANSMIT_INTERVAL_MS:
-#if EXPERIMENTAL_INSTABURST_ENABLED
-            p_opt->opt.val = core_tx_instaburst_interval_get(CORE_TX_ROLE_RELAY);
-#else
-            p_opt->opt.val = core_tx_adv_interval_get(CORE_TX_ROLE_RELAY);
-#endif
-            p_opt->len = sizeof(p_opt->opt.val);
-            break;
-        case NRF_MESH_OPT_NET_RELAY_ENABLE:
-            p_opt->opt.val = m_relay_enable;
-            p_opt->len = sizeof(p_opt->opt.val);
-            break;
-        case NRF_MESH_OPT_NET_RELAY_RETRANSMIT_COUNT:
-#if EXPERIMENTAL_INSTABURST_ENABLED
-            p_opt->opt.val = 1;
-#else
-            p_opt->opt.val = core_tx_adv_count_get(CORE_TX_ROLE_RELAY);
-#endif
-            p_opt->len = sizeof(p_opt->opt.val);
-            break;
-        case NRF_MESH_OPT_NET_NETWORK_TRANSMIT_INTERVAL_MS:
-#if EXPERIMENTAL_INSTABURST_ENABLED
-            p_opt->opt.val = core_tx_instaburst_interval_get(CORE_TX_ROLE_ORIGINATOR);
-#else
-            p_opt->opt.val = core_tx_adv_interval_get(CORE_TX_ROLE_ORIGINATOR);
-#endif
-            p_opt->len = sizeof(p_opt->opt.val);
-            break;
-        case NRF_MESH_OPT_NET_NETWORK_TRANSMIT_COUNT:
-#if EXPERIMENTAL_INSTABURST_ENABLED
-            p_opt->opt.val = 1;
-#else
-            p_opt->opt.val = core_tx_adv_count_get(CORE_TX_ROLE_ORIGINATOR);
-#endif
-            p_opt->len = sizeof(p_opt->opt.val);
-            break;
-        default:
-            return NRF_ERROR_NOT_FOUND;
-    }
-
-    return NRF_SUCCESS;
+    net_state_enable();
+    net_beacon_enable();
 }
 
 uint32_t network_packet_alloc(network_tx_packet_buffer_t * p_buffer)
@@ -378,6 +269,7 @@ uint32_t network_packet_in(const uint8_t * p_packet, uint32_t net_packet_len, co
     {
         return NRF_ERROR_NULL;
     }
+
     const packet_mesh_net_packet_t * p_net_packet = (const packet_mesh_net_packet_t *) p_packet;
     uint32_t status = NRF_SUCCESS;
 
@@ -399,18 +291,20 @@ uint32_t network_packet_in(const uint8_t * p_packet, uint32_t net_packet_len, co
     {
         NRF_MESH_ASSERT(net_metadata.p_security_material != NULL);
 
+#if GATT_PROXY
+        proxy_net_packet_processed(&net_metadata, p_rx_metadata);
+#endif
+
         const uint8_t * p_net_payload = packet_mesh_net_payload_get(&net_decrypted_packet);
 
         uint8_t payload_len = net_packet_payload_len_get(&net_metadata, net_packet_len);
+
+        __INTERNAL_EVENT_PUSH(INTERNAL_EVENT_NET_PACKET_RECEIVED, 0, net_packet_len, &net_decrypted_packet);
 
         status = transport_packet_in((const packet_mesh_trs_packet_t *) p_net_payload,
                                      payload_len,
                                      &net_metadata,
                                      p_rx_metadata);
-
-#if GATT_PROXY
-        proxy_net_packet_processed(&net_metadata, p_rx_metadata);
-#endif
 
         if (should_relay(&net_metadata))
         {
@@ -419,4 +313,129 @@ uint32_t network_packet_in(const uint8_t * p_packet, uint32_t net_packet_len, co
         msg_cache_entry_add(net_metadata.src, net_metadata.internal.sequence_number);
     }
     return status;
+}
+
+uint32_t network_opt_set(nrf_mesh_opt_id_t id, const nrf_mesh_opt_t * p_opt)
+{
+    if (p_opt == NULL)
+    {
+        return NRF_ERROR_NULL;
+    }
+
+    switch (id)
+    {
+        case NRF_MESH_OPT_NET_RELAY_RETRANSMIT_INTERVAL_MS:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_RELAY, &cfg));
+            cfg.tx_interval_ms = p_opt->opt.val;
+            return mesh_opt_core_adv_set(CORE_TX_ROLE_RELAY, &cfg);
+        }
+        case NRF_MESH_OPT_NET_RELAY_ENABLE:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_RELAY, &cfg));
+            cfg.enabled = (bool) p_opt->opt.val;
+            return mesh_opt_core_adv_set(CORE_TX_ROLE_RELAY, &cfg);
+        }
+        case NRF_MESH_OPT_NET_RELAY_RETRANSMIT_COUNT:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_RELAY, &cfg));
+            cfg.tx_count = p_opt->opt.val;
+            return mesh_opt_core_adv_set(CORE_TX_ROLE_RELAY, &cfg);
+        }
+        case NRF_MESH_OPT_NET_RELAY_TX_POWER:
+            return mesh_opt_core_tx_power_set(CORE_TX_ROLE_RELAY, (radio_tx_power_t) p_opt->opt.val);
+        case NRF_MESH_OPT_NET_NETWORK_TRANSMIT_INTERVAL_MS:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_RELAY, &cfg));
+            cfg.tx_interval_ms = p_opt->opt.val;
+            return mesh_opt_core_adv_set(CORE_TX_ROLE_ORIGINATOR, &cfg);
+        }
+        case NRF_MESH_OPT_NET_NETWORK_TRANSMIT_COUNT:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_ORIGINATOR, &cfg));
+            cfg.tx_count = p_opt->opt.val;
+            return mesh_opt_core_adv_set(CORE_TX_ROLE_ORIGINATOR, &cfg);
+        }
+        case NRF_MESH_OPT_NET_NETWORK_TX_POWER:
+            return mesh_opt_core_tx_power_set(CORE_TX_ROLE_ORIGINATOR, (radio_tx_power_t) p_opt->opt.val);
+        default:
+            return NRF_ERROR_NOT_FOUND;
+    }
+}
+
+uint32_t network_opt_get(nrf_mesh_opt_id_t id, nrf_mesh_opt_t * p_opt)
+{
+    if (p_opt == NULL)
+    {
+        return NRF_ERROR_NULL;
+    }
+
+    switch (id)
+    {
+        case NRF_MESH_OPT_NET_RELAY_RETRANSMIT_INTERVAL_MS:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_RELAY, &cfg));
+            p_opt->opt.val = cfg.tx_interval_ms;
+            p_opt->len = sizeof(p_opt->opt.val);
+            break;
+        }
+        case NRF_MESH_OPT_NET_RELAY_ENABLE:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_RELAY, &cfg));
+            p_opt->opt.val = cfg.enabled;
+            p_opt->len = sizeof(p_opt->opt.val);
+            break;
+        }
+        case NRF_MESH_OPT_NET_RELAY_RETRANSMIT_COUNT:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_RELAY, &cfg));
+            p_opt->opt.val = cfg.tx_count;
+            p_opt->len = sizeof(p_opt->opt.val);
+            break;
+        }
+        case NRF_MESH_OPT_NET_RELAY_TX_POWER:
+        {
+            radio_tx_power_t tx_power;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_tx_power_get(CORE_TX_ROLE_RELAY, &tx_power));
+            p_opt->opt.val = tx_power;
+            p_opt->len = sizeof(p_opt->opt.val);
+            break;
+        }
+        case NRF_MESH_OPT_NET_NETWORK_TRANSMIT_INTERVAL_MS:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_ORIGINATOR, &cfg));
+            p_opt->opt.val = cfg.tx_interval_ms;
+            p_opt->len = sizeof(p_opt->opt.val);
+            break;
+        }
+        case NRF_MESH_OPT_NET_NETWORK_TRANSMIT_COUNT:
+        {
+            mesh_opt_core_adv_t cfg;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_adv_get(CORE_TX_ROLE_ORIGINATOR, &cfg));
+            p_opt->opt.val = cfg.tx_count;
+            p_opt->len = sizeof(p_opt->opt.val);
+            break;
+        }
+        case NRF_MESH_OPT_NET_NETWORK_TX_POWER:
+        {
+            radio_tx_power_t tx_power;
+            NRF_MESH_ERROR_CHECK(mesh_opt_core_tx_power_get(CORE_TX_ROLE_ORIGINATOR, &tx_power));
+            p_opt->opt.val = tx_power;
+            p_opt->len = sizeof(p_opt->opt.val);
+            break;
+        }
+        default:
+            break;
+    }
+
+    return NRF_SUCCESS;
 }

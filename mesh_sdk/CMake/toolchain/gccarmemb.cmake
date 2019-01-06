@@ -4,13 +4,20 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 set(data_flags "-ffunction-sections -fdata-sections -fno-strict-aliasing -fno-builtin --short-enums")
 set(warning_flags "-Wall -Wno-attributes -Wno-format")
 set(CMAKE_C_FLAGS_INIT "--std=gnu99 ${warning_flags} ${data_flags}")
-set(CMAKE_C_FLAGS_DEBUG "-Og -g3" CACHE STRING "")
-set(CMAKE_C_FLAGS_MINSIZEREL "-Os -g" CACHE STRING "")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g" CACHE STRING "")
-set(CMAKE_C_FLAGS_RELEASE "-O3" CACHE STRING "")
+
+set(CMAKE_C_FLAGS_DEBUG          "-Og -g3"  CACHE STRING "")
+set(CMAKE_C_FLAGS_MINSIZEREL     "-Os -g "  CACHE STRING "")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g "  CACHE STRING "")
+set(CMAKE_C_FLAGS_RELEASE        "-O3 -DNDEBUG" CACHE STRING "")
 
 set(cortex-m0_DEFINES
     -mcpu=cortex-m0
+    -mthumb
+    -mabi=aapcs
+    -mfloat-abi=soft)
+
+set(cortex-m4_DEFINES
+    -mcpu=cortex-m4
     -mthumb
     -mabi=aapcs
     -mfloat-abi=soft)
@@ -39,5 +46,19 @@ function (create_hex executable)
         POST_BUILD
         COMMAND arm-none-eabi-objcopy -O ihex ${CMAKE_CURRENT_BINARY_DIR}/${executable}.elf ${CMAKE_CURRENT_BINARY_DIR}/${executable}.hex
         BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/${executable}.hex)
+
+    add_custom_command(
+        TARGET ${executable}
+        POST_BUILD
+        COMMAND arm-none-eabi-size ${CMAKE_CURRENT_BINARY_DIR}/${executable}.elf)
 endfunction(create_hex)
 
+
+if (CMAKE_INTERPROCEDURAL_OPTIMIZATION)
+    message(WARNING
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION enables -flto with GCC which can lead to unexpected behavior. "
+        "One particular problem is that the interrupt vector table can be messed up if the startup file "
+        "isn't the first source file of the target. In general weak symbols tend to cause problems.\n"
+        "More information https://gcc.gnu.org/bugzilla/show_bug.cgi?id=83967. "
+        )
+endif (CMAKE_INTERPROCEDURAL_OPTIMIZATION)

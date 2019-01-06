@@ -45,7 +45,8 @@
 #include "mesh_softdevice_init.h"
 #include "mesh_provisionee.h"
 #include "nrf_mesh_config_examples.h"
-
+#include "mesh_opt_prov.h"
+#include "app_timer.h"
 
 #define LED_BLINK_INTERVAL_SHORT_MS (100)
 #define LED_BLINK_INTERVAL_MS       (200)
@@ -65,8 +66,7 @@ static void mesh_init(void)
     ERROR_CHECK(mesh_stack_init(&init_params, &m_device_provisioned));
 
     __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "Enabling ECDH offloading...\n");
-    nrf_mesh_opt_t value = {.len = 4, .opt.val = 1 };
-    ERROR_CHECK(nrf_mesh_opt_set(NRF_MESH_OPT_PROV_ECDH_OFFLOADING, &value));
+    ERROR_CHECK(mesh_opt_prov_ecdh_offloading_set(true));
 
     __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "Initializing serial interface...\n");
     ERROR_CHECK(nrf_mesh_serial_init(NULL));
@@ -81,6 +81,7 @@ static void initialize(void)
     __LOG_INIT(LOG_MSK_DEFAULT | LOG_SRC_ACCESS | LOG_SRC_SERIAL | LOG_SRC_APP, LOG_LEVEL_INFO, log_callback_rtt);
     __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "----- Bluetooth Mesh Serial Interface Application -----\n");
 
+    ERROR_CHECK(app_timer_init());
     hal_leds_init();
 
     nrf_clock_lf_cfg_t lfc_cfg = DEV_BOARD_LF_CLK_CFG;
@@ -99,22 +100,23 @@ static void start(void)
         static const uint8_t static_auth_data[NRF_MESH_KEY_SIZE] = STATIC_AUTH_DATA;
         mesh_provisionee_start_params_t prov_start_params =
         {
-            .p_static_data = static_auth_data
+            .p_static_data = static_auth_data,
+            .prov_complete_cb = NULL,
+            .p_device_uri = NULL
         };
         ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
     }
     ERROR_CHECK(nrf_mesh_serial_enable());
 
     __LOG(LOG_SRC_APP, LOG_LEVEL_INFO, "Bluetooth Mesh Serial Interface Application started!\n");
-
-    hal_led_mask_set(LEDS_MASK, LED_MASK_STATE_OFF);
-    hal_led_blink_ms(LEDS_MASK, LED_BLINK_INTERVAL_MS, LED_BLINK_CNT_START);
 }
 
 int main(void)
 {
     initialize();
     execution_start(start);
+    hal_led_mask_set(LEDS_MASK, LED_MASK_STATE_OFF);
+    hal_led_blink_ms(LEDS_MASK, LED_BLINK_INTERVAL_MS, LED_BLINK_CNT_START);
 
     for (;;)
     {

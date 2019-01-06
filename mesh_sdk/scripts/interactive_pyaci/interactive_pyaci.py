@@ -27,10 +27,16 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+import sys
+
+if sys.version_info < (3, 5):
+    print(("ERROR: To use {} you need at least Python 3.5.\n" +
+           "You are currently using Python {}.{}").format(sys.argv[0], *sys.version_info))
+    sys.exit(1)
+
 import logging
 import IPython
 import DateTime
-import sys
 import os
 import colorama
 
@@ -48,7 +54,7 @@ from mesh.provisioning import Provisioner, Provisionee  # NOQA: ignore unused im
 from mesh import types as mt                            # NOQA: ignore unused import
 from mesh.database import MeshDB                        # NOQA: ignore unused import
 from models.config import ConfigurationClient           # NOQA: ignore unused import
-from models.simple_on_off import SimpleOnOffClient      # NOQA: ignore unused import
+from models.generic_on_off import GenericOnOffClient    # NOQA: ignore unused import
 
 
 LOG_DIR = os.path.join(os.path.dirname(sys.argv[0]), "log")
@@ -116,13 +122,12 @@ class Interactive(object):
 
     def __init__(self, acidev):
         self.acidev = acidev
-        self.acidev.add_packet_recipient(self.__event_handler)
-        self.logger = configure_logger(self.acidev.device_name)
-        self.send = self.acidev.write_aci_cmd
-
         self._event_filter = []
         self._event_filter_enabled = True
         self._other_events = []
+
+        self.logger = configure_logger(self.acidev.device_name)
+        self.send = self.acidev.write_aci_cmd
 
         # Increment the local unicast address range
         # for the next Interactive instance
@@ -134,6 +139,10 @@ class Interactive(object):
         self.access = access.Access(self, self.local_unicast_adress_start,
                                     self.CONFIG.ACCESS_ELEMENT_COUNT)
         self.model_add = self.access.model_add
+
+        # Adding the packet recipient will start dynamic behavior.
+        # We add it after all the member variables has been defined
+        self.acidev.add_packet_recipient(self.__event_handler)
 
     def close(self):
         self.acidev.stop()

@@ -151,9 +151,8 @@ class ConfigurationClient(Model):
         self._tmp_address = None
         super(ConfigurationClient, self).__init__(self.opcodes)
 
-    def composition_data_get(self):
-        page_num = 0x00
-        self.send(self._COMPOSITION_DATA_GET, bytearray([page_num]))
+    def composition_data_get(self, page_number=0x00):
+        self.send(self._COMPOSITION_DATA_GET, bytearray([page_number]))
 
     def appkey_add(self, appkey_index=0):
         key = self.prov_db.find_appkey(appkey_index)
@@ -387,7 +386,7 @@ class ConfigurationClient(Model):
                                   feature_bitfield=0, netkey_index=0):
         message = bytearray()
         message += struct.pack(
-            "<HBBBHH", dst, log2b(count), log2b(count), ttl, feature_bitfield, netkey_index)
+            "<HBBBHH", dst, log2b(count), log2b(period), ttl, feature_bitfield, netkey_index)
         self.send(self._HEARTBEAT_PUBLICATION_SET, message)
 
     def heartbeat_subscription_get(self):
@@ -614,7 +613,7 @@ class ConfigurationClient(Model):
             state, node.relay_retransmit.count, node.relay_retransmit.interval)
 
     def __heartbeat_subscription_status_handler(self, opcode, message):
-        status, src, dst, period_log, min_hops, max_hops = struct.unpack(
+        status, src, dst, period_log, count_log, min_hops, max_hops = struct.unpack(
             "<BHHBBBB", message.data)
         status = AccessStatus(status)
         self.logger.info("Heartbeat subscription status: %s", status)
@@ -624,8 +623,8 @@ class ConfigurationClient(Model):
             else:
                 period = 2**(period_log - 1)
             self.logger.info("Heartbeat subscription state: " +
-                             "src: %04x, dst: %04x, period: %ds, min/max: %d/%d",
-                             src, dst, period, min_hops, max_hops)
+                             "src: %04x, dst: %04x, period: %ds, count: %d, min/max: %d/%d",
+                             src, dst, period, count_log, min_hops, max_hops)
 
     def __model_app_status_handler(self, opcode, message):
         status, element_address, appkey_index = struct.unpack(
