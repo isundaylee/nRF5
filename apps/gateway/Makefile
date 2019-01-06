@@ -36,7 +36,6 @@ SRC_FILES += \
   $(SDK_ROOT)/components/libraries/util/app_error_weak.c \
   $(SDK_ROOT)/components/libraries/fifo/app_fifo.c \
   $(SDK_ROOT)/components/libraries/scheduler/app_scheduler.c \
-  $(SDK_ROOT)/components/libraries/timer/app_timer.c \
   $(SDK_ROOT)/components/libraries/uart/app_uart_fifo.c \
   $(SDK_ROOT)/components/libraries/util/app_util_platform.c \
   $(SDK_ROOT)/components/libraries/hardfault/hardfault_implementation.c \
@@ -63,11 +62,65 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_uarte.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp_btn_ble.c \
+  $(SDK_ROOT)/components/softdevice/common/nrf_sdh.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c \
-  $(filter-out $(MESH_SDK_ROOT)/mesh/core/src/core_tx_instaburst.c, \
-    $(wildcard $(MESH_SDK_ROOT)/mesh/core/src/*.c)) \
+  \
+  $(MESH_SDK_ROOT)/mesh/core/src/internal_event.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh_configure.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/aes.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/msg_cache.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/transport.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/event.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/packet_buffer.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/flash_manager_defrag.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/fifo.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_flash.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/net_state.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/mesh_flash.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh_utils.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/queue.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/hal.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/aes_cmac.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/timer_scheduler.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/timer.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/rand.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh_opt.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/mesh_opt.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/timeslot.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/timeslot_timer.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/bearer_event.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/enc.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/network.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/net_packet.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/msqueue.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/nrf_mesh_keygen.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/cache.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/list.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/log.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/flash_manager.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/ccm_soft.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/toolchain.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/replay_cache.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/beacon.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/flash_manager_internal.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/core_tx.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/heartbeat.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/net_beacon.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/mesh_config.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/fsm.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/mesh_config_backend.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/mesh_config_flashman_glue.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/lpn.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/core_tx_lpn.c \
+  $(MESH_SDK_ROOT)/mesh/core/src/mesh_lpn_subman.c \
+  \
+  $(MESH_SDK_ROOT)/mesh/core/src/core_tx_adv.c \
+  \
+  $(MESH_SDK_ROOT)/mesh/core/src/mesh_mem_stdlib.c \
+  \
   $(wildcard $(MESH_SDK_ROOT)/mesh/bearer/src/*.c) \
   $(filter-out $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov_bearer_gatt.c, \
     $(wildcard $(MESH_SDK_ROOT)/mesh/prov/src/*.c)) \
@@ -83,7 +136,8 @@ SRC_FILES += \
   $(MESH_SDK_ROOT)/external/micro-ecc/uECC.c \
   $(MESH_SDK_ROOT)/examples/common/src/assertion_handler_weak.c \
   $(MESH_SDK_ROOT)/examples/common/src/mesh_provisionee.c \
-  $(MESH_SDK_ROOT)/examples/common/src/mesh_softdevice_init.c \
+  $(MESH_SDK_ROOT)/examples/common/src/ble_softdevice_support.c \
+  $(MESH_SDK_ROOT)/external/app_timer/app_timer_mesh.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -271,6 +325,7 @@ CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs
 CFLAGS += -Wall -Werror
 CFLAGS += -Wno-int-in-bool-context
+CFLAGS += -Wno-error=deprecated-declarations
 CFLAGS += -Wno-format
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in a separate section, this allows linker to discard unused ones

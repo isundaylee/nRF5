@@ -74,7 +74,7 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
              NRF_MESH_KEY_SIZE);
 
       APP_ERROR_CHECK(
-          nrf_mesh_prov_provision(&prov.ctx, evt->params.unprov.device_uuid,
+          nrf_mesh_prov_provision(&prov.ctx, evt->params.unprov.device_uuid, 10,
                                   &prov_data, NRF_MESH_PROV_BEARER_ADV));
       prov.state = PROV_STATE_PROV;
     }

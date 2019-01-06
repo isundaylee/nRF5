@@ -6,8 +6,8 @@
 #include "access_config.h"
 
 #include "mesh_app_utils.h"
-#include "mesh_softdevice_init.h"
 #include "mesh_stack.h"
+#include "ble_softdevice_support.h"
 
 #include "nrf_mesh_events.h"
 
@@ -51,14 +51,14 @@ static void config_server_evt_cb(config_server_evt_t const *evt) {}
 
 static void init_mesh() {
   // Initialize the softdevice
+  ble_stack_init();
+  LOG_INFO("Mesh soft device initialized.");
+
+  // Initialize the Mesh stack
   nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
                                 .rc_ctiv = 0,
                                 .rc_temp_ctiv = 0,
                                 .accuracy = NRF_CLOCK_LF_ACCURACY_20_PPM};
-  APP_ERROR_CHECK(mesh_softdevice_init(lfc_cfg));
-  LOG_INFO("Mesh soft device initialized.");
-
-  // Initialize the Mesh stack
   mesh_stack_init_params_t mesh_init_params = {
       .core.irq_priority = NRF_MESH_IRQ_PRIORITY_LOWEST,
       .core.lfclksrc = lfc_cfg,
@@ -170,8 +170,11 @@ int main(void) {
 
   init_leds();
   init_logging();
-
   init_mesh();
 
-  execution_start(start);
+  start();
+
+  while (true) {
+    (void) sd_app_evt_wait();
+  }
 }
