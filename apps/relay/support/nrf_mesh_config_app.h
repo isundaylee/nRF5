@@ -128,7 +128,7 @@
  * Sizes for the internal storage of the Device State Manager.
  * @{
  */
- 
+
 /** Maximum number of subnetworks. */
 #define DSM_SUBNET_MAX                                  (4)
 /** Maximum number of applications */
@@ -142,6 +142,8 @@
 /** Number of flash pages reserved for the DSM storage */
 #define DSM_FLASH_PAGE_COUNT                            (1)
 /** @} end of DSM_CONFIG */
+
+#define ACCESS_MODEL_PUBLISH_PERIOD_RESTORE             (1)
 
 
 /** @} */
