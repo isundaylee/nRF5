@@ -1,11 +1,12 @@
 #include "access_config.h"
-#include "boards.h"
 #include "log.h"
 #include "mesh_adv.h"
 #include "mesh_app_utils.h"
 #include "mesh_provisionee.h"
 #include "mesh_stack.h"
+#include "ble_softdevice_support.h"
 #include "net_state.h"
+#include "nrf_gpio.h"
 #include "nrf_mesh_config_examples.h"
 #include "nrf_mesh_configure.h"
 
@@ -22,36 +23,48 @@
 #define APP_PIN_LED_ERROR 27
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
-  error_info_t *error_info = (error_info_t *)info;
-
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_pin_set(APP_PIN_LED_ERROR);
 
-  LOG_ERROR("Encountered error %d on line %d in file %s", error_info->err_code,
-            error_info->line_num, error_info->p_file_name);
+
+  error_info_t *error_info = (error_info_t *)info;
+  assert_info_t *assert_info = (assert_info_t *)info;
+
+  switch (id) {
+  case NRF_FAULT_ID_SDK_ERROR:
+    LOG_ERROR("Encountered error %d on line %d in file %s", error_info->err_code,
+              error_info->line_num, error_info->p_file_name);
+    break;
+  case NRF_FAULT_ID_SDK_ASSERT:
+    LOG_ERROR("Encountered assertion error on line %d in file %s on pc 0x%x",
+              assert_info->line_num, assert_info->p_file_name, pc);
+    break;
+  }
 
   NRF_BREAKPOINT_COND;
   while (1) {
   }
 }
 
-static void on_sd_soc_evt(uint32_t sd_evt, void *p_context) {
-  (void)nrf_mesh_on_sd_evt(sd_evt);
+void mesh_assertion_handler(uint32_t pc) {
+    assert_info_t assert_info = {.line_num = 0,
+                                 .p_file_name = (uint8_t *)""};
+
+    app_error_fault_handler(NRF_FAULT_ID_SDK_ASSERT, pc, (uint32_t)(&assert_info));
+
+    UNUSED_VARIABLE(assert_info);
 }
 
-NRF_SDH_SOC_OBSERVER(sdh_soc_observer, NRF_SDH_BLE_STACK_OBSERVER_PRIO,
-                     on_sd_soc_evt, NULL);
+static void initialize(void) {
+  __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
+             log_callback_custom);
+  LOG_INFO("Mesh relay node is initializing. ");
 
-static void init_softdevice() {
-  APP_ERROR_CHECK(nrf_sdh_enable_request());
+  // Initialize the softdevice
+  ble_stack_init();
+  LOG_INFO("Mesh soft device initialized.");
 
-  uint32_t ram_start = 0;
-  APP_ERROR_CHECK(
-      nrf_sdh_ble_default_cfg_set(MESH_SOFTDEVICE_CONN_CFG_TAG, &ram_start));
-  APP_ERROR_CHECK(nrf_sdh_ble_enable(&ram_start));
-}
-
-static void init_mesh(void) {
+  // Initialize the Mesh stack
   nrf_clock_lf_cfg_t lfc_cfg = {.source = NRF_CLOCK_LF_SRC_XTAL,
                                 .rc_ctiv = 0,
                                 .rc_temp_ctiv = 0,
@@ -59,26 +72,8 @@ static void init_mesh(void) {
   mesh_stack_init_params_t init_params = {.core.irq_priority =
                                               NRF_MESH_IRQ_PRIORITY_LOWEST,
                                           .core.lfclksrc = lfc_cfg};
-  ERROR_CHECK(mesh_stack_init(&init_params, NULL));
-}
-
-static void init_gap_params(void) {
-  ble_gap_conn_sec_mode_t sec_mode;
-
-  BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
-
-  APP_ERROR_CHECK(sd_ble_gap_device_name_set(
-      &sec_mode, (const uint8_t *)APP_DEVICE_NAME, strlen(APP_DEVICE_NAME)));
-}
-
-static void initialize(void) {
-  __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
-             log_callback_custom);
-  LOG_INFO("Bluetooth Mesh relay node is initializing. ");
-
-  init_softdevice();
-  init_mesh();
-  init_gap_params();
+  APP_ERROR_CHECK(mesh_stack_init(&init_params, NULL));
+  LOG_INFO("Mesh stack initialized.");
 }
 
 static void prov_complete_cb(void) {
@@ -89,10 +84,6 @@ static void prov_complete_cb(void) {
 }
 
 static void start() {
-  LOG_INFO("Bluetooth Mesh relay node is starting up. ");
-
-  APP_ERROR_CHECK(nrf_mesh_enable());
-
   if (!mesh_stack_is_device_provisioned()) {
     LOG_INFO("Starting the provisioning process. ");
 
@@ -102,15 +93,18 @@ static void start() {
     mesh_provisionee_start_params_t prov_start_params = {
         .p_static_data = static_auth_data,
         .prov_complete_cb = prov_complete_cb};
-    ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
+    APP_ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
   } else {
     LOG_INFO("Node is already provisioned. ");
   }
+
+  APP_ERROR_CHECK(mesh_stack_start());
+  LOG_INFO("Mesh stack started.");
 }
 
 int main(void) {
   initialize();
-  execution_start(start);
+  start();
 
   for (;;) {
     (void)sd_app_evt_wait();
