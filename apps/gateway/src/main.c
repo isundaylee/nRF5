@@ -108,7 +108,7 @@ static void prov_success_cb(uint16_t addr) {
           .params.model_publication_set.publish_address.value = 0xCAFE,
           .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
           .params.model_publication_set.publish_ttl = 1,
-          .params.model_publication_set.publish_period.step_num = 0,
+          .params.model_publication_set.publish_period.step_num = 1,
           .params.model_publication_set.publish_period.step_res =
               ACCESS_PUBLISH_RESOLUTION_1S,
       },
