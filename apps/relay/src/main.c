@@ -9,6 +9,7 @@
 #include "nrf_gpio.h"
 #include "nrf_mesh_config_examples.h"
 #include "nrf_mesh_configure.h"
+#include "app_timer.h"
 
 #include "nrf_delay.h"
 #include "nrf_sdh.h"
@@ -21,6 +22,7 @@
 #define APP_DEVICE_NAME "PROXYTEST"
 
 #define APP_PIN_LED_ERROR 27
+#define APP_PIN_CLEAR_CONFIG 7
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
@@ -83,7 +85,22 @@ static void prov_complete_cb(void) {
   LOG_INFO("Node Address: 0x%04x. ", node_address.address_start);
 }
 
+APP_TIMER_DEF(reset_timer);
+
+static void reset_timer_handler(void * context) {
+  LOG_INFO("Clearing config and resetting...");
+
+  mesh_stack_config_clear();
+  // This function may return if there are ongoing flash operations.
+  mesh_stack_device_reset();
+
+  while (true) {
+  }
+}
+
 static void start() {
+  nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLDOWN);
+
   if (!mesh_stack_is_device_provisioned()) {
     LOG_INFO("Starting the provisioning process. ");
 
@@ -96,6 +113,12 @@ static void start() {
     APP_ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
   } else {
     LOG_INFO("Node is already provisioned. ");
+
+    if (nrf_gpio_pin_read(APP_PIN_CLEAR_CONFIG)) {
+      APP_ERROR_CHECK(app_timer_create(&reset_timer, APP_TIMER_MODE_SINGLE_SHOT,
+                                       reset_timer_handler));
+      APP_ERROR_CHECK(app_timer_start(reset_timer, APP_TIMER_TICKS(100), NULL));
+    }
   }
 
   APP_ERROR_CHECK(mesh_stack_start());
