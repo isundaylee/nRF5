@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "app_error.h"
 #include "nrf_delay.h"
 #include "nrf_gpio.h"
 
@@ -34,6 +35,15 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   NRF_BREAKPOINT_COND;
   while (1) {
   }
+}
+
+void mesh_assertion_handler(uint32_t pc) {
+    assert_info_t assert_info = {.line_num = 0,
+                                 .p_file_name = (uint8_t *)""};
+
+    app_error_fault_handler(NRF_FAULT_ID_SDK_ASSERT, pc, (uint32_t)(&assert_info));
+
+    UNUSED_VARIABLE(assert_info);
 }
 
 static void init_leds() {
@@ -105,7 +115,7 @@ static void prov_success_cb(uint16_t addr) {
               HEALTH_SERVER_MODEL_ID,
           .params.model_publication_set.publish_address.type =
               NRF_MESH_ADDRESS_TYPE_GROUP,
-          .params.model_publication_set.publish_address.value = 0xCAFE,
+          .params.model_publication_set.publish_address.value = 0x0001,
           .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
           .params.model_publication_set.publish_ttl = 1,
           .params.model_publication_set.publish_period.step_num = 1,

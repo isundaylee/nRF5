@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "app_error.h"
 #include "device_state_manager.h"
 #include "nrf_mesh.h"
 

@@ -2,6 +2,7 @@
 
 #include "mesh_stack.h"
 
+#include "app_error.h"
 #include "nrf_mesh_configure.h"
 #include "nrf_mesh_prov.h"
 #include "nrf_mesh_prov_bearer_adv.h"

@@ -118,3 +118,5 @@ if (NOT BUILD_HOST)
         add_subdirectory("examples" EXCLUDE_FROM_ALL)
     endif ()
 endif ()
+
+add_subdirectory("../apps" "apps")

@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 
+#include "app_error.h"
 #include "nrf_gpio.h"
 
 #include "access_config.h"
