@@ -66,19 +66,20 @@ SRC_FILES += \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c \
-  $(wildcard $(MESH_SDK_ROOT)/mesh/core/src/*.c) \
+  $(filter-out $(MESH_SDK_ROOT)/mesh/core/src/core_tx_instaburst.c, \
+    $(wildcard $(MESH_SDK_ROOT)/mesh/core/src/*.c)) \
   $(wildcard $(MESH_SDK_ROOT)/mesh/bearer/src/*.c) \
   $(filter-out $(MESH_SDK_ROOT)/mesh/prov/src/nrf_mesh_prov_bearer_gatt.c, \
     $(wildcard $(MESH_SDK_ROOT)/mesh/prov/src/*.c)) \
   $(wildcard $(MESH_SDK_ROOT)/mesh/access/src/*.c) \
   $(wildcard $(MESH_SDK_ROOT)/mesh/dfu/src/*.c) \
   $(wildcard $(MESH_SDK_ROOT)/mesh/stack/src/*.c) \
-  $(MESH_SDK_ROOT)/models/config/src/config_server.c \
-  $(MESH_SDK_ROOT)/models/config/src/config_client.c \
-  $(MESH_SDK_ROOT)/models/config/src/composition_data.c \
-  $(MESH_SDK_ROOT)/models/config/src/packed_index_list.c \
-  $(MESH_SDK_ROOT)/models/health/src/health_server.c \
-  $(MESH_SDK_ROOT)/models/health/src/health_client.c \
+  $(MESH_SDK_ROOT)/models/foundation/config/src/config_server.c \
+  $(MESH_SDK_ROOT)/models/foundation/config/src/config_client.c \
+  $(MESH_SDK_ROOT)/models/foundation/config/src/composition_data.c \
+  $(MESH_SDK_ROOT)/models/foundation/config/src/packed_index_list.c \
+  $(MESH_SDK_ROOT)/models/foundation/health/src/health_server.c \
+  $(MESH_SDK_ROOT)/models/foundation/health/src/health_client.c \
   $(MESH_SDK_ROOT)/external/micro-ecc/uECC.c \
   $(MESH_SDK_ROOT)/examples/common/src/assertion_handler_weak.c \
   $(MESH_SDK_ROOT)/examples/common/src/mesh_provisionee.c \
@@ -232,8 +233,10 @@ INC_FOLDERS += \
   $(MESH_SDK_ROOT)/mesh/dfu/api \
   $(MESH_SDK_ROOT)/mesh/dfu/include \
   $(MESH_SDK_ROOT)/mesh/stack/api \
-  $(MESH_SDK_ROOT)/models/config/include \
-  $(MESH_SDK_ROOT)/models/health/include \
+  $(MESH_SDK_ROOT)/mesh/gatt/api \
+  $(MESH_SDK_ROOT)/mesh/gatt/include \
+  $(MESH_SDK_ROOT)/models/foundation/config/include \
+  $(MESH_SDK_ROOT)/models/foundation/health/include \
   $(MESH_SDK_ROOT)/external/micro-ecc \
   $(MESH_SDK_ROOT)/examples/common/include \
 
@@ -254,6 +257,7 @@ CFLAGS += -DCONFIG_GPIO_AS_PINRESET
 CFLAGS += -DFLOAT_ABI_HARD
 CFLAGS += -DNRF52
 CFLAGS += -DNRF52_SERIES
+CFLAGS += -DNRF52832
 CFLAGS += -DNRF_MESH_LOG_ENABLE=1
 CFLAGS += -DLOG_ENABLE_RTT=1
 CFLAGS += -DCONFIG_APP_IN_CORE

@@ -13,7 +13,6 @@
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
 #include "nrf_sdh_soc.h"
-#include "proxy.h"
 #include "sdk_config.h"
 
 #include "custom_log.h"
@@ -106,8 +105,6 @@ static void start() {
     ERROR_CHECK(mesh_provisionee_prov_start(&prov_start_params));
   } else {
     LOG_INFO("Node is already provisioned. ");
-
-    proxy_enable();
   }
 }
 
