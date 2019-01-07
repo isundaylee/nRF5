@@ -145,6 +145,8 @@
 
 #define ACCESS_MODEL_PUBLISH_PERIOD_RESTORE             (1)
 
+#define MESH_FEATURE_LPN_ENABLED                        (1)
+
 
 /** @} */
 

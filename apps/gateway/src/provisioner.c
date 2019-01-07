@@ -34,6 +34,7 @@ typedef struct {
   uint8_t public_key[NRF_MESH_PROV_PUBKEY_SIZE];
   uint8_t private_key[NRF_MESH_PROV_PRIVKEY_SIZE];
 
+  prov_start_cb_t start_cb;
   prov_success_cb_t success_cb;
   prov_failure_cb_t failure_cb;
 
@@ -64,6 +65,7 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
 
       LOG_INFO("Provisioner: Starting to provision a device to address %d.",
                prov.device_addr);
+      prov.start_cb(prov.device_addr);
 
       nrf_mesh_prov_provisioning_data_t prov_data = {
           .netkey_index = APP_NETKEY_IDX,
@@ -125,9 +127,16 @@ void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
   {
     LOG_INFO("Provisioner: Received capabilities from device with %d elements.",
              evt->params.oob_caps_received.oob_caps.num_elements);
+    LOG_INFO("Provisioner: Supported OOB static types: %d",
+             evt->params.oob_caps_received.oob_caps.oob_static_types);
 
-    uint32_t ret = nrf_mesh_prov_oob_use(
-        &prov.ctx, NRF_MESH_PROV_OOB_METHOD_STATIC, 0, NRF_MESH_KEY_SIZE);
+    bool use_static =
+        (evt->params.oob_caps_received.oob_caps.oob_static_types != 0);
+    uint32_t ret =
+        nrf_mesh_prov_oob_use(&prov.ctx,
+                              use_static ? NRF_MESH_PROV_OOB_METHOD_STATIC
+                                         : NRF_MESH_PROV_OOB_METHOD_NONE,
+                              0, use_static ? NRF_MESH_KEY_SIZE : 0);
 
     if (ret != NRF_SUCCESS) {
       LOG_ERROR("Provisioner: Static OOB rejected. ");
@@ -246,13 +255,14 @@ void prov_dump_secmat(void) {
   LOG_INFO("NID: 0x%02x", secmat->nid)
 }
 
-void prov_init(app_state_t *app_state, prov_success_cb_t success_cb,
-               prov_failure_cb_t failure_cb) {
+void prov_init(app_state_t *app_state, prov_start_cb_t start_cb,
+               prov_success_cb_t success_cb, prov_failure_cb_t failure_cb) {
   nrf_mesh_prov_oob_caps_t caps =
       NRF_MESH_PROV_OOB_CAPS_DEFAULT(ACCESS_ELEMENT_COUNT);
 
   prov.state = PROV_STATE_IDLE;
   prov.app_state = app_state;
+  prov.start_cb = start_cb;
   prov.success_cb = success_cb;
   prov.failure_cb = failure_cb;
 

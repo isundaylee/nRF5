@@ -11,6 +11,9 @@
 #include "nrf_mesh_config_examples.h"
 #include "nrf_mesh_configure.h"
 
+#include "mesh_friendship_types.h"
+#include "mesh_lpn.h"
+
 #include "nrf_delay.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
@@ -22,7 +25,7 @@
 #define APP_DEVICE_NAME "PROXYTEST"
 
 #define APP_PIN_LED_ERROR 27
-#define APP_PIN_CLEAR_CONFIG 7
+#define APP_PIN_CLEAR_CONFIG 20
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
@@ -57,6 +60,74 @@ void mesh_assertion_handler(uint32_t pc) {
   UNUSED_VARIABLE(assert_info);
 }
 
+static void mesh_core_event_handler(nrf_mesh_evt_t const *event) {
+  switch (event->type) {
+  case NRF_MESH_EVT_LPN_FRIEND_OFFER: {
+    const nrf_mesh_evt_lpn_friend_offer_t *offer = &event->params.friend_offer;
+
+    LOG_INFO("Received friend offer from 0x%04X.", offer->src);
+    LOG_INFO("Receive window: %d ms, RSSI: %d", offer->offer.receive_window_ms,
+             offer->offer.measured_rssi);
+
+    uint32_t status = mesh_lpn_friend_accept(offer);
+
+    switch (status) {
+    case NRF_SUCCESS:
+      LOG_INFO("Friendship offer successfully accepted.");
+      break;
+    case NRF_ERROR_INVALID_STATE:
+    case NRF_ERROR_INVALID_PARAM:
+      LOG_INFO("Could not accept friendship offer: %d.", status);
+      break;
+    default:
+      APP_ERROR_CHECK(status);
+      break;
+    }
+
+    break;
+  }
+
+  case NRF_MESH_EVT_LPN_FRIEND_REQUEST_TIMEOUT: {
+    LOG_ERROR("Friend request timed out.");
+    break;
+  }
+
+  case NRF_MESH_EVT_FRIENDSHIP_ESTABLISHED: {
+    LOG_INFO("Friendship established with 0x%04X.",
+             event->params.friendship_established.friend_src);
+    break;
+  }
+
+  case NRF_MESH_EVT_FRIENDSHIP_TERMINATED: {
+    LOG_ERROR("Friendship terminated with 0x%04X. Reason: %d.",
+              event->params.friendship_terminated.friend_src,
+              event->params.friendship_terminated.reason);
+    break;
+  }
+
+  case NRF_MESH_EVT_LPN_FRIEND_UPDATE: {
+    LOG_INFO("Received a Friend Update.");
+    break;
+  }
+
+  case NRF_MESH_EVT_LPN_FRIEND_POLL_COMPLETE: {
+    LOG_INFO("Friend poll completed.");
+    break;
+  }
+
+  case NRF_MESH_EVT_MESSAGE_RECEIVED:
+  case NRF_MESH_EVT_TX_COMPLETE:
+  case NRF_MESH_EVT_FLASH_STABLE:
+  case NRF_MESH_EVT_NET_BEACON_RECEIVED:
+    break;
+
+  default: {
+    LOG_INFO("Unexpected event: %d", event->type);
+    break;
+  }
+  }
+}
+
 static void initialize(void) {
   __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
              log_callback_custom);
@@ -76,6 +147,48 @@ static void initialize(void) {
                                           .core.lfclksrc = lfc_cfg};
   APP_ERROR_CHECK(mesh_stack_init(&init_params, NULL));
   LOG_INFO("Mesh stack initialized.");
+
+  // Add event handler
+  static nrf_mesh_evt_handler_t event_handler = {.evt_cb =
+                                                     mesh_core_event_handler};
+  nrf_mesh_evt_handler_add(&event_handler);
+
+  // Initialize LPN
+  mesh_lpn_init();
+}
+
+static void start_friendship() {
+  LOG_INFO("Starting making friends....");
+
+  mesh_lpn_friend_request_t req;
+
+  req.friend_criteria.friend_queue_size_min_log =
+      MESH_FRIENDSHIP_MIN_FRIEND_QUEUE_SIZE_16;
+  req.friend_criteria.receive_window_factor =
+      MESH_FRIENDSHIP_RECEIVE_WINDOW_FACTOR_1_0;
+  req.friend_criteria.rssi_factor = MESH_FRIENDSHIP_RSSI_FACTOR_2_0;
+  req.poll_timeout_ms = SEC_TO_MS(10);
+  req.receive_delay_ms = 100;
+
+  uint32_t status =
+      mesh_lpn_friend_request(req, MESH_LPN_FRIEND_REQUEST_TIMEOUT_MAX_MS);
+  switch (status) {
+  case NRF_SUCCESS:
+    LOG_INFO("Friend request succeeded.");
+    break;
+
+  case NRF_ERROR_INVALID_STATE:
+    LOG_INFO("Friend request failed: invalid state.");
+    break;
+
+  case NRF_ERROR_INVALID_PARAM:
+    LOG_INFO("Friend request failed: invalid param.");
+    break;
+
+  default:
+    APP_ERROR_CHECK(status);
+    break;
+  }
 }
 
 static void prov_complete_cb(void) {
@@ -83,6 +196,8 @@ static void prov_complete_cb(void) {
   LOG_INFO("Successfully provisioned. ");
   dsm_local_unicast_addresses_get(&node_address);
   LOG_INFO("Node Address: 0x%04x. ", node_address.address_start);
+
+  start_friendship();
 }
 
 APP_TIMER_DEF(reset_timer);
@@ -98,8 +213,10 @@ static void reset_timer_handler(void *context) {
   }
 }
 
+APP_TIMER_DEF(initiate_friendship_timer);
+
 static void start() {
-  nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLDOWN);
+  nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLUP);
 
   if (!mesh_stack_is_device_provisioned()) {
     LOG_INFO("Starting the provisioning process. ");
@@ -114,10 +231,16 @@ static void start() {
   } else {
     LOG_INFO("Node is already provisioned. ");
 
-    if (nrf_gpio_pin_read(APP_PIN_CLEAR_CONFIG)) {
+    if (!nrf_gpio_pin_read(APP_PIN_CLEAR_CONFIG)) {
       APP_ERROR_CHECK(app_timer_create(&reset_timer, APP_TIMER_MODE_SINGLE_SHOT,
                                        reset_timer_handler));
       APP_ERROR_CHECK(app_timer_start(reset_timer, APP_TIMER_TICKS(100), NULL));
+    } else {
+      APP_ERROR_CHECK(app_timer_create(&initiate_friendship_timer,
+                                       APP_TIMER_MODE_SINGLE_SHOT,
+                                       start_friendship));
+      APP_ERROR_CHECK(app_timer_start(initiate_friendship_timer,
+                                      APP_TIMER_TICKS(100), NULL));
     }
   }
 

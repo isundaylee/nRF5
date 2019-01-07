@@ -6,9 +6,9 @@
 
 #include "access_config.h"
 
+#include "ble_softdevice_support.h"
 #include "mesh_app_utils.h"
 #include "mesh_stack.h"
-#include "ble_softdevice_support.h"
 
 #include "nrf_mesh_events.h"
 
@@ -38,12 +38,12 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 }
 
 void mesh_assertion_handler(uint32_t pc) {
-    assert_info_t assert_info = {.line_num = 0,
-                                 .p_file_name = (uint8_t *)""};
+  assert_info_t assert_info = {.line_num = 0, .p_file_name = (uint8_t *)""};
 
-    app_error_fault_handler(NRF_FAULT_ID_SDK_ASSERT, pc, (uint32_t)(&assert_info));
+  app_error_fault_handler(NRF_FAULT_ID_SDK_ASSERT, pc,
+                          (uint32_t)(&assert_info));
 
-    UNUSED_VARIABLE(assert_info);
+  UNUSED_VARIABLE(assert_info);
 }
 
 static void init_leds() {
@@ -87,7 +87,13 @@ static void init_mesh() {
            addr.addr[5]);
 }
 
+static void prov_start_cb(uint16_t addr) {
+  nrf_gpio_pin_set(PIN_LED_INDICATION);
+}
+
 static void prov_success_cb(uint16_t addr) {
+  nrf_gpio_pin_clear(PIN_LED_INDICATION);
+
   static conf_step_t steps[] = {
       {
           .type = CONF_STEP_TYPE_COMPOSITION_GET,
@@ -118,7 +124,7 @@ static void prov_success_cb(uint16_t addr) {
           .params.model_publication_set.publish_address.value = 0x0001,
           .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
           .params.model_publication_set.publish_ttl = 1,
-          .params.model_publication_set.publish_period.step_num = 1,
+          .params.model_publication_set.publish_period.step_num = 10,
           .params.model_publication_set.publish_period.step_res =
               ACCESS_PUBLISH_RESOLUTION_1S,
       },
@@ -132,7 +138,11 @@ static void prov_success_cb(uint16_t addr) {
   conf_start(addr, steps);
 }
 
-static void prov_failure_cb() { prov_start_scan(); }
+static void prov_failure_cb() {
+  nrf_gpio_pin_clear(PIN_LED_INDICATION);
+
+  prov_start_scan();
+}
 
 static void conf_success_cb(uint16_t addr) { prov_start_scan(); }
 
@@ -145,11 +155,8 @@ static void start() {
   app_state_init();
 
   if (mesh_stack_is_device_provisioned()) {
-    nrf_gpio_pin_set(PIN_LED_INDICATION);
-
     LOG_ERROR("We have already been provisioned. ");
 
-    nrf_gpio_pin_set(PIN_LED_INDICATION);
     nrf_gpio_cfg_input(8, NRF_GPIO_PIN_PULLDOWN);
     bool should_reset = (nrf_gpio_pin_read(8) != 0);
 
@@ -169,7 +176,7 @@ static void start() {
     app_state_clear();
   }
 
-  prov_init(&app_state, prov_success_cb, prov_failure_cb);
+  prov_init(&app_state, prov_start_cb, prov_success_cb, prov_failure_cb);
   conf_init(&app_state, conf_success_cb, conf_failure_cb);
 
   prov_start_scan();
@@ -185,6 +192,6 @@ int main(void) {
   start();
 
   while (true) {
-    (void) sd_app_evt_wait();
+    (void)sd_app_evt_wait();
   }
 }
