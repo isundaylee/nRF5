@@ -203,7 +203,7 @@ void conf_execute_step() {
         .publish_ttl = current_step->params.model_publication_set.publish_ttl,
         .publish_period =
             current_step->params.model_publication_set.publish_period,
-        .retransmit_count = 1,
+        .retransmit_count = 0,
         .retransmit_interval = 0,
         .model_id = current_step->params.model_publication_set.model_id,
     };
