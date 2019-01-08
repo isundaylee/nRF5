@@ -241,7 +241,8 @@ static void mesh_msg_handle(const nrf_mesh_evt_message_t * p_evt)
     {
         return;
     }
-    __LOG(LOG_SRC_ACCESS, LOG_LEVEL_DBG1, "RX: [aop: 0x%04x]\n", opcode.opcode);
+    __LOG(LOG_SRC_ACCESS, LOG_LEVEL_DBG1, "RX: 0x%04x -> 0x%04x [aop: 0x%04x]\n",
+        p_evt->src.value, p_evt->dst.value, opcode.opcode);
 
     /*lint -save -e64 -e446 Side effects and type mismatches in initializer */
     dsm_handle_t appkey_handle = dsm_appkey_handle_get(p_evt->secmat.p_app);
