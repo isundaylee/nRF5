@@ -14,6 +14,8 @@
 #include "mesh_friendship_types.h"
 #include "mesh_lpn.h"
 
+#include "generic_onoff_server.h"
+
 #include "nrf_delay.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
@@ -24,7 +26,8 @@
 
 #define APP_DEVICE_NAME "PROXYTEST"
 
-#define APP_PIN_LED_ERROR 27
+#define APP_PIN_LED_ERROR 23
+#define APP_PIN_LED_INDICATION 24
 #define APP_PIN_CLEAR_CONFIG 20
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
@@ -128,6 +131,53 @@ static void mesh_core_event_handler(nrf_mesh_evt_t const *event) {
   }
 }
 
+static bool is_on = false;
+static generic_onoff_server_t onoff_server;
+
+static void generic_onoff_state_get_cb(const generic_onoff_server_t *p_self,
+                                       const access_message_rx_meta_t *p_meta,
+                                       generic_onoff_status_params_t *p_out) {
+  ASSERT(p_out != NULL);
+
+  p_out->present_on_off = is_on;
+  p_out->target_on_off = is_on;
+  p_out->remaining_time_ms = 0;
+}
+
+static void
+generic_onoff_state_set_cb(const generic_onoff_server_t *p_self,
+                           const access_message_rx_meta_t *p_meta,
+                           const generic_onoff_set_params_t *p_in,
+                           const model_transition_t *p_in_transition,
+                           generic_onoff_status_params_t *p_out) {
+  LOG_INFO("Received LED set request: %s", (p_in->on_off ? "ON" : "OFF"));
+
+  is_on = p_in->on_off;
+
+  nrf_gpio_pin_write(APP_PIN_LED_INDICATION, is_on);
+
+  if (p_out != NULL) {
+    p_out->present_on_off = is_on;
+    p_out->target_on_off = is_on;
+    p_out->remaining_time_ms = 0;
+  }
+}
+
+static void init_models(void) {
+  static generic_onoff_server_callbacks_t cbs = {
+      .onoff_cbs.set_cb = generic_onoff_state_set_cb,
+      .onoff_cbs.get_cb = generic_onoff_state_get_cb,
+  };
+
+  onoff_server.settings.force_segmented = false;
+  onoff_server.settings.transmic_size = NRF_MESH_TRANSMIC_SIZE_SMALL;
+  onoff_server.settings.p_callbacks = &cbs;
+
+  APP_ERROR_CHECK(generic_onoff_server_init(&onoff_server, 0));
+
+  LOG_INFO("OnOff server initialized.");
+}
+
 static void initialize(void) {
   __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
              log_callback_custom);
@@ -144,7 +194,8 @@ static void initialize(void) {
                                 .accuracy = NRF_CLOCK_LF_ACCURACY_20_PPM};
   mesh_stack_init_params_t init_params = {.core.irq_priority =
                                               NRF_MESH_IRQ_PRIORITY_LOWEST,
-                                          .core.lfclksrc = lfc_cfg};
+                                          .core.lfclksrc = lfc_cfg,
+                                          .models.models_init_cb = init_models};
   APP_ERROR_CHECK(mesh_stack_init(&init_params, NULL));
   LOG_INFO("Mesh stack initialized.");
 
@@ -216,6 +267,7 @@ static void reset_timer_handler(void *context) {
 APP_TIMER_DEF(initiate_friendship_timer);
 
 static void start() {
+  nrf_gpio_cfg_output(APP_PIN_LED_INDICATION);
   nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLUP);
 
   if (!mesh_stack_is_device_provisioned()) {

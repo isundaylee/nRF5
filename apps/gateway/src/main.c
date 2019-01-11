@@ -15,13 +15,21 @@
 #include "net_state.h"
 
 #include "configurator.h"
-#include "custom_log.h"
 #include "provisioner.h"
+
+#include "custom_log.h"
+#include "rtt_input.h"
+
+#include "app_timer.h"
+
+#include "generic_onoff_client.h"
 
 #include "debug_pins.h"
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
+
+APP_TIMER_DEF(onoff_client_toggle_timer);
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -57,7 +65,69 @@ static void init_logging() {
   LOG_INFO("Hello, world!");
 }
 
+static generic_onoff_client_t onoff_client;
+
+void send_onoff_request(bool value) {
+  static uint8_t tid = 0;
+  generic_onoff_set_params_t params;
+
+  params.tid = tid++;
+  params.on_off = (value ? 1 : 0);
+
+  APP_ERROR_CHECK(
+      generic_onoff_client_set_unack(&onoff_client, &params, NULL, 2));
+}
+
+static void rtt_input_handler(int key) {
+  switch (key) {
+  case '0':
+    LOG_INFO("Turning it OFF!");
+    send_onoff_request(false);
+    break;
+
+  case '1':
+    LOG_INFO("Turning it ON!");
+    send_onoff_request(true);
+    break;
+  }
+}
+
 static void config_server_evt_cb(config_server_evt_t const *evt) {}
+
+static void
+generic_onoff_client_publish_interval_cb(access_model_handle_t handle,
+                                         void *p_self) {
+  // TODO:
+}
+static void
+generic_onoff_client_status_cb(const generic_onoff_client_t *p_self,
+                               const access_message_rx_meta_t *p_meta,
+                               const generic_onoff_status_params_t *p_in) {
+  LOG_INFO("LED on node 0x%04x is: %s.", p_meta->src.value,
+           (p_in->present_on_off ? "ON" : "OFF"));
+}
+
+static void
+generic_onoff_client_transaction_status_cb(access_model_handle_t model_handle,
+                                           void *p_args,
+                                           access_reliable_status_t status) {
+  // TODO:
+}
+
+static void init_models(void) {
+  static const generic_onoff_client_callbacks_t cbs = {
+      .onoff_status_cb = generic_onoff_client_status_cb,
+      .ack_transaction_status_cb = generic_onoff_client_transaction_status_cb,
+      .periodic_publish_cb = generic_onoff_client_publish_interval_cb};
+
+  onoff_client.settings.p_callbacks = &cbs;
+  onoff_client.settings.timeout = 0;
+  onoff_client.settings.force_segmented = false;
+  onoff_client.settings.transmic_size = NRF_MESH_TRANSMIC_SIZE_SMALL;
+
+  APP_ERROR_CHECK(generic_onoff_client_init(&onoff_client, 0));
+  LOG_INFO("OnOff client initialized.");
+}
 
 static void init_mesh() {
   // Initialize the softdevice
@@ -72,7 +142,8 @@ static void init_mesh() {
   mesh_stack_init_params_t mesh_init_params = {
       .core.irq_priority = NRF_MESH_IRQ_PRIORITY_LOWEST,
       .core.lfclksrc = lfc_cfg,
-      .models.config_server_cb = config_server_evt_cb};
+      .models.config_server_cb = config_server_evt_cb,
+      .models.models_init_cb = init_models};
   bool provisioned;
   APP_ERROR_CHECK(mesh_stack_init(&mesh_init_params, &provisioned));
 
@@ -129,11 +200,37 @@ static void prov_success_cb(uint16_t addr) {
               ACCESS_PUBLISH_RESOLUTION_1S,
       },
       {
+          .type = CONF_STEP_TYPE_MODEL_APP_BIND,
+          .params.model_app_bind.element_addr = 0x00,
+          .params.model_app_bind.model_id.company_id = ACCESS_COMPANY_ID_NONE,
+          .params.model_app_bind.model_id.model_id =
+              0x1000, // Generic OnOff Server
+          .params.model_app_bind.appkey_index = APP_APPKEY_IDX,
+      },
+      {
+          .type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET,
+          .params.model_publication_set.element_addr = 0x00,
+          .params.model_publication_set.model_id.company_id =
+              ACCESS_COMPANY_ID_NONE,
+          .params.model_publication_set.model_id.model_id =
+              0x1000, // Generic OnOff Server
+          .params.model_publication_set.publish_address.type =
+              NRF_MESH_ADDRESS_TYPE_UNICAST,
+          .params.model_publication_set.publish_address.value = 0x0001,
+          .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
+          .params.model_publication_set.publish_ttl = 7,
+          .params.model_publication_set.publish_period.step_num = 1,
+          .params.model_publication_set.publish_period.step_res =
+              ACCESS_PUBLISH_RESOLUTION_1S,
+      },
+      {
           .type = CONF_STEP_TYPE_DONE,
       }};
 
   steps[2].params.model_app_bind.element_addr = addr;
-  steps[3].params.model_app_bind.element_addr = addr;
+  steps[3].params.model_publication_set.element_addr = addr;
+  steps[4].params.model_app_bind.element_addr = addr;
+  steps[5].params.model_publication_set.element_addr = addr;
 
   conf_start(addr, steps);
 }
@@ -144,11 +241,59 @@ static void prov_failure_cb() {
   prov_start_scan();
 }
 
-static void conf_success_cb(uint16_t addr) { prov_start_scan(); }
+void self_config(uint16_t node_addr) {
+  static conf_step_t steps[] = {
+      {
+          .type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET,
+          .params.model_publication_set.element_addr = APP_GATEWAY_ADDR,
+          .params.model_publication_set.model_id.company_id =
+              ACCESS_COMPANY_ID_NONE,
+          .params.model_publication_set.model_id.model_id =
+              GENERIC_ONOFF_CLIENT_MODEL_ID,
+          .params.model_publication_set.publish_address.type =
+              NRF_MESH_ADDRESS_TYPE_UNICAST,
+          .params.model_publication_set.publish_address.value = 0x0000,
+          .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
+          .params.model_publication_set.publish_ttl = 7,
+          .params.model_publication_set.publish_period.step_num = 1,
+          .params.model_publication_set.publish_period.step_res =
+              ACCESS_PUBLISH_RESOLUTION_1S,
+      },
+      {
+          .type = CONF_STEP_TYPE_DONE,
+      }};
+
+  steps[0].params.model_publication_set.publish_address.value = node_addr;
+
+  conf_start(APP_GATEWAY_ADDR, steps);
+}
+
+static void conf_success_cb(uint16_t addr) {
+  if (addr == APP_GATEWAY_ADDR) {
+    // We finished self-config. On to the next!
+
+    // APP_ERROR_CHECK(app_timer_start(onoff_client_toggle_timer,
+    //                                 APP_TIMER_TICKS(1000), NULL));
+
+    prov_start_scan();
+  } else {
+    // We should do self-config.
+    self_config(addr);
+  }
+}
 
 static void conf_failure_cb(uint16_t addr) { prov_start_scan(); }
 
+static void onoff_client_toggle_timer_handler(void *context) {
+  static bool value = false;
+
+  send_onoff_request(value);
+  value = !value;
+}
+
 static void start() {
+  rtt_input_enable(rtt_input_handler, 100);
+
   APP_ERROR_CHECK(mesh_stack_start());
   LOG_INFO("Mesh stack started.");
 
@@ -178,6 +323,10 @@ static void start() {
 
   prov_init(&app_state, prov_start_cb, prov_success_cb, prov_failure_cb);
   conf_init(&app_state, conf_success_cb, conf_failure_cb);
+
+  APP_ERROR_CHECK(app_timer_create(&onoff_client_toggle_timer,
+                                   APP_TIMER_MODE_REPEATED,
+                                   onoff_client_toggle_timer_handler));
 
   prov_start_scan();
 }

@@ -9,9 +9,11 @@ add_executable(${target}
     "${CMAKE_SOURCE_DIR}/../lib/custom_log/src/custom_log.c"
     "${CMAKE_SOURCE_DIR}/mesh/stack/src/mesh_stack.c"
     "${CMAKE_SOURCE_DIR}/examples/nrf_mesh_weak.c"
+    "${MBTLE_SOURCE_DIR}/examples/common/src/rtt_input.c"
     ${BLE_SOFTDEVICE_SUPPORT_SOURCE_FILES}
     ${MESH_CORE_SOURCE_FILES}
     ${MESH_BEARER_SOURCE_FILES}
+    ${GENERIC_ONOFF_CLIENT_SOURCE_FILES}
     ${CONFIG_CLIENT_SOURCE_FILES}
     ${CONFIG_SERVER_SOURCE_FILES}
     ${HEALTH_SERVER_SOURCE_FILES}
@@ -30,6 +32,7 @@ target_include_directories(${target} PUBLIC
     "${CMAKE_SOURCE_DIR}/../lib/custom_log/include"
     "${CMAKE_SOURCE_DIR}/examples/common/include"
     ${BLE_SOFTDEVICE_SUPPORT_INCLUDE_DIRS}
+    ${GENERIC_ONOFF_CLIENT_INCLUDE_DIRS}
     ${CONFIG_CLIENT_INCLUDE_DIRS}
     ${CONFIG_SERVER_INCLUDE_DIRS}
     ${HEALTH_SERVER_INCLUDE_DIRS}
