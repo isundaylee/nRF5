@@ -425,7 +425,7 @@ static uint32_t packet_tx(access_model_handle_t handle,
         status = nrf_mesh_packet_send(&tx_params, NULL);
         if (status == NRF_SUCCESS)
         {
-            __LOG(LOG_SRC_ACCESS, LOG_LEVEL_DBG1, "TX: [aop: 0x%04x] \n", p_tx_message->opcode.opcode);
+            __LOG(LOG_SRC_ACCESS, LOG_LEVEL_DBG1, "TX: 0x%04x -> 0x%04x [aop: 0x%04x] \n", src_address, dst_address.value, p_tx_message->opcode.opcode);
             __LOG_XB(LOG_SRC_ACCESS, LOG_LEVEL_DBG1, "TX: Msg", p_tx_message->p_buffer, p_tx_message->length);
         }
     }
