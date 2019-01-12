@@ -42,6 +42,7 @@ target_compile_options(${target} PUBLIC
 
 target_compile_definitions(${target} PUBLIC
     ${USER_DEFINITIONS}
+    -DDEBUG
     -DUSE_APP_CONFIG
     -DCONFIG_APP_IN_CORE
     ${${PLATFORM}_DEFINES}

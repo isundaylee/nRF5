@@ -30,6 +30,9 @@
 #define APP_PIN_LED_INDICATION 24
 #define APP_PIN_CLEAR_CONFIG 20
 
+APP_TIMER_DEF(reset_timer);
+APP_TIMER_DEF(initiate_friendship_timer);
+
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_pin_set(APP_PIN_LED_ERROR);
@@ -54,6 +57,20 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   }
 }
 
+void schedule_friend_request(uint32_t delay_ms) {
+  APP_ERROR_CHECK(app_timer_start(initiate_friendship_timer,
+                                  APP_TIMER_TICKS(delay_ms), NULL));
+}
+
+bool friendship_established = false;
+
+void set_friendship_status(bool established) {
+  ASSERT(established != friendship_established);
+
+  friendship_established = established;
+  nrf_gpio_pin_write(APP_PIN_LED_ERROR, !established);
+}
+
 void mesh_assertion_handler(uint32_t pc) {
   assert_info_t assert_info = {.line_num = 0, .p_file_name = (uint8_t *)""};
 
@@ -72,38 +89,31 @@ static void mesh_core_event_handler(nrf_mesh_evt_t const *event) {
     LOG_INFO("Receive window: %d ms, RSSI: %d", offer->offer.receive_window_ms,
              offer->offer.measured_rssi);
 
-    uint32_t status = mesh_lpn_friend_accept(offer);
-
-    switch (status) {
-    case NRF_SUCCESS:
-      LOG_INFO("Friendship offer successfully accepted.");
-      break;
-    case NRF_ERROR_INVALID_STATE:
-    case NRF_ERROR_INVALID_PARAM:
-      LOG_INFO("Could not accept friendship offer: %d.", status);
-      break;
-    default:
-      APP_ERROR_CHECK(status);
-      break;
-    }
+    APP_ERROR_CHECK(mesh_lpn_friend_accept(offer));
+    LOG_INFO("Friendship offer successfully accepted.");
 
     break;
   }
 
   case NRF_MESH_EVT_LPN_FRIEND_REQUEST_TIMEOUT: {
+    // TODO: Prove that we'll be in S_IDLE
+    ASSERT(!friendship_established);
+    schedule_friend_request(1000);
     LOG_ERROR("Friend request timed out.");
     break;
   }
 
   case NRF_MESH_EVT_FRIENDSHIP_ESTABLISHED: {
-    nrf_gpio_pin_clear(APP_PIN_LED_ERROR);
+    set_friendship_status(true);
     LOG_INFO("Friendship established with 0x%04X.",
              event->params.friendship_established.friend_src);
     break;
   }
 
   case NRF_MESH_EVT_FRIENDSHIP_TERMINATED: {
-    nrf_gpio_pin_set(APP_PIN_LED_ERROR);
+    // TODO: Prove that we'll be in S_IDLE
+    set_friendship_status(false);
+    schedule_friend_request(1000);
     LOG_ERROR("Friendship terminated with 0x%04X. Reason: %d.",
               event->params.friendship_terminated.friend_src,
               event->params.friendship_terminated.reason);
@@ -180,6 +190,35 @@ static void init_models(void) {
   LOG_INFO("OnOff server initialized.");
 }
 
+static void start_friendship() {
+  LOG_INFO("Starting making friends....");
+
+  mesh_lpn_friend_request_t req;
+
+  req.friend_criteria.friend_queue_size_min_log =
+      MESH_FRIENDSHIP_MIN_FRIEND_QUEUE_SIZE_16;
+  req.friend_criteria.receive_window_factor =
+      MESH_FRIENDSHIP_RECEIVE_WINDOW_FACTOR_1_0;
+  req.friend_criteria.rssi_factor = MESH_FRIENDSHIP_RSSI_FACTOR_2_0;
+  req.poll_timeout_ms = SEC_TO_MS(10);
+  req.receive_delay_ms = 100;
+
+  APP_ERROR_CHECK(
+      mesh_lpn_friend_request(req, MESH_LPN_FRIEND_REQUEST_TIMEOUT_MAX_MS));
+  LOG_INFO("Friend request sent.");
+}
+
+static void reset_timer_handler(void *context) {
+  LOG_INFO("Clearing config and resetting...");
+
+  mesh_stack_config_clear();
+  // This function may return if there are ongoing flash operations.
+  mesh_stack_device_reset();
+
+  while (true) {
+  }
+}
+
 static void initialize(void) {
   __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
              log_callback_custom);
@@ -206,44 +245,15 @@ static void initialize(void) {
                                                      mesh_core_event_handler};
   nrf_mesh_evt_handler_add(&event_handler);
 
+  // Initialize timers
+  APP_ERROR_CHECK(app_timer_create(&reset_timer, APP_TIMER_MODE_SINGLE_SHOT,
+                                   reset_timer_handler));
+  APP_ERROR_CHECK(app_timer_create(&initiate_friendship_timer,
+                                   APP_TIMER_MODE_SINGLE_SHOT,
+                                   start_friendship));
+
   // Initialize LPN
   mesh_lpn_init();
-}
-
-static void start_friendship() {
-  LOG_INFO("Starting making friends....");
-
-  nrf_gpio_pin_set(APP_PIN_LED_ERROR);
-
-  mesh_lpn_friend_request_t req;
-
-  req.friend_criteria.friend_queue_size_min_log =
-      MESH_FRIENDSHIP_MIN_FRIEND_QUEUE_SIZE_16;
-  req.friend_criteria.receive_window_factor =
-      MESH_FRIENDSHIP_RECEIVE_WINDOW_FACTOR_1_0;
-  req.friend_criteria.rssi_factor = MESH_FRIENDSHIP_RSSI_FACTOR_2_0;
-  req.poll_timeout_ms = SEC_TO_MS(10);
-  req.receive_delay_ms = 100;
-
-  uint32_t status =
-      mesh_lpn_friend_request(req, MESH_LPN_FRIEND_REQUEST_TIMEOUT_MAX_MS);
-  switch (status) {
-  case NRF_SUCCESS:
-    LOG_INFO("Friend request succeeded.");
-    break;
-
-  case NRF_ERROR_INVALID_STATE:
-    LOG_INFO("Friend request failed: invalid state.");
-    break;
-
-  case NRF_ERROR_INVALID_PARAM:
-    LOG_INFO("Friend request failed: invalid param.");
-    break;
-
-  default:
-    APP_ERROR_CHECK(status);
-    break;
-  }
 }
 
 static void prov_complete_cb(void) {
@@ -255,25 +265,12 @@ static void prov_complete_cb(void) {
   start_friendship();
 }
 
-APP_TIMER_DEF(reset_timer);
-
-static void reset_timer_handler(void *context) {
-  LOG_INFO("Clearing config and resetting...");
-
-  mesh_stack_config_clear();
-  // This function may return if there are ongoing flash operations.
-  mesh_stack_device_reset();
-
-  while (true) {
-  }
-}
-
-APP_TIMER_DEF(initiate_friendship_timer);
-
 static void start() {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_cfg_output(APP_PIN_LED_INDICATION);
   nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLUP);
+
+  set_friendship_status(false);
 
   if (!mesh_stack_is_device_provisioned()) {
     LOG_INFO("Starting the provisioning process. ");
@@ -289,13 +286,8 @@ static void start() {
     LOG_INFO("Node is already provisioned. ");
 
     if (!nrf_gpio_pin_read(APP_PIN_CLEAR_CONFIG)) {
-      APP_ERROR_CHECK(app_timer_create(&reset_timer, APP_TIMER_MODE_SINGLE_SHOT,
-                                       reset_timer_handler));
       APP_ERROR_CHECK(app_timer_start(reset_timer, APP_TIMER_TICKS(100), NULL));
     } else {
-      APP_ERROR_CHECK(app_timer_create(&initiate_friendship_timer,
-                                       APP_TIMER_MODE_SINGLE_SHOT,
-                                       start_friendship));
       APP_ERROR_CHECK(app_timer_start(initiate_friendship_timer,
                                       APP_TIMER_TICKS(100), NULL));
     }
