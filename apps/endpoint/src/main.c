@@ -96,12 +96,14 @@ static void mesh_core_event_handler(nrf_mesh_evt_t const *event) {
   }
 
   case NRF_MESH_EVT_FRIENDSHIP_ESTABLISHED: {
+    nrf_gpio_pin_clear(APP_PIN_LED_ERROR);
     LOG_INFO("Friendship established with 0x%04X.",
              event->params.friendship_established.friend_src);
     break;
   }
 
   case NRF_MESH_EVT_FRIENDSHIP_TERMINATED: {
+    nrf_gpio_pin_set(APP_PIN_LED_ERROR);
     LOG_ERROR("Friendship terminated with 0x%04X. Reason: %d.",
               event->params.friendship_terminated.friend_src,
               event->params.friendship_terminated.reason);
@@ -211,6 +213,8 @@ static void initialize(void) {
 static void start_friendship() {
   LOG_INFO("Starting making friends....");
 
+  nrf_gpio_pin_set(APP_PIN_LED_ERROR);
+
   mesh_lpn_friend_request_t req;
 
   req.friend_criteria.friend_queue_size_min_log =
@@ -267,6 +271,7 @@ static void reset_timer_handler(void *context) {
 APP_TIMER_DEF(initiate_friendship_timer);
 
 static void start() {
+  nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_cfg_output(APP_PIN_LED_INDICATION);
   nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLUP);
 
