@@ -23,6 +23,7 @@
 #include "app_timer.h"
 
 #include "generic_onoff_client.h"
+#include "health_client.h"
 
 #include "debug_pins.h"
 
@@ -30,6 +31,8 @@
 #define PIN_LED_INDICATION 28
 
 APP_TIMER_DEF(onoff_client_toggle_timer);
+
+health_client_t health_client;
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -114,7 +117,47 @@ generic_onoff_client_transaction_status_cb(access_model_handle_t model_handle,
   // TODO:
 }
 
+static void health_client_event_handler(health_client_t const *client,
+                                        health_client_evt_t const *event) {
+  switch (event->type) {
+  case HEALTH_CLIENT_EVT_TYPE_CURRENT_STATUS_RECEIVED: //
+  {
+    LOG_INFO("Health client: current status. %d fault(s).",
+             event->data.fault_status.fault_array_length);
+    break;
+  }
+
+  case HEALTH_CLIENT_EVT_TYPE_FAULT_STATUS_RECEIVED: //
+  {
+    LOG_INFO("Health client: fault status");
+    break;
+  }
+
+  case HEALTH_CLIENT_EVT_TYPE_PERIOD_STATUS_RECEIVED: //
+  {
+    LOG_INFO("Health client: period status");
+    break;
+  }
+
+  case HEALTH_CLIENT_EVT_TYPE_ATTENTION_STATUS_RECEIVED: //
+  {
+    LOG_INFO("Health client: attention status");
+    break;
+  }
+
+  default: //
+  {
+    LOG_ERROR("Unexpected health client event type: %d", event->type);
+    break;
+  }
+  }
+}
+
 static void init_models(void) {
+  APP_ERROR_CHECK(
+      health_client_init(&health_client, 0, health_client_event_handler));
+  LOG_INFO("Health client initialized.");
+
   static const generic_onoff_client_callbacks_t cbs = {
       .onoff_status_cb = generic_onoff_client_status_cb,
       .ack_transaction_status_cb = generic_onoff_client_transaction_status_cb,
@@ -258,6 +301,13 @@ void self_config(uint16_t node_addr) {
           .params.model_publication_set.publish_period.step_num = 1,
           .params.model_publication_set.publish_period.step_res =
               ACCESS_PUBLISH_RESOLUTION_1S,
+      },
+      {
+          .type = CONF_STEP_TYPE_MODEL_APP_BIND,
+          .params.model_app_bind.element_addr = APP_GATEWAY_ADDR,
+          .params.model_app_bind.model_id.company_id = ACCESS_COMPANY_ID_NONE,
+          .params.model_app_bind.model_id.model_id = HEALTH_CLIENT_MODEL_ID,
+          .params.model_app_bind.appkey_index = APP_APPKEY_IDX,
       },
       {
           .type = CONF_STEP_TYPE_DONE,

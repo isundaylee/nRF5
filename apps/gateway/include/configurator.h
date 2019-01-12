@@ -13,6 +13,7 @@ typedef enum {
   CONF_STEP_TYPE_APPKEY_ADD,
   CONF_STEP_TYPE_MODEL_APP_BIND,
   CONF_STEP_TYPE_MODEL_PUBLICATION_SET,
+  CONF_STEP_TYPE_MODEL_SUBSCRIPTION_ADD,
   CONF_STEP_TYPE_DONE,
 } conf_step_type_t;
 
@@ -41,6 +42,12 @@ typedef struct {
   access_publish_period_t publish_period;
 } conf_step_model_publication_set_t;
 
+typedef struct {
+  uint16_t element_addr;
+  access_model_id_t model_id;
+  nrf_mesh_address_t address;
+} conf_step_model_subscription_add_t;
+
 // Structure for a configuration step
 
 typedef struct {
@@ -51,6 +58,7 @@ typedef struct {
     conf_step_appkey_add_t appkey_add;
     conf_step_model_app_bind_t model_app_bind;
     conf_step_model_publication_set_t model_publication_set;
+    conf_step_model_subscription_add_t model_subscription_add;
   } params;
 } conf_step_t;
 

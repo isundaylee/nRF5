@@ -139,8 +139,7 @@ void conf_succeed() {
 }
 
 void conf_fail() {
-  LOG_INFO("Configurator: Configuration failed for node %d. ",
-           conf.node_addr);
+  LOG_INFO("Configurator: Configuration failed for node %d. ", conf.node_addr);
 
   // Bind the config client back to the gateway to avoid reboot crash in case a
   // previously provisioned device is removed from DSM.
@@ -211,6 +210,19 @@ void conf_execute_step() {
     APP_ERROR_CHECK(config_client_model_publication_set(&pub_state));
     static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
     conf_set_expected_status(CONFIG_OPCODE_MODEL_PUBLICATION_STATUS,
+                             sizeof(expected_statuses), expected_statuses);
+    break;
+  }
+
+  case CONF_STEP_TYPE_MODEL_SUBSCRIPTION_ADD: //
+  {
+    LOG_INFO("Configurator: Adding model subscription. ");
+    APP_ERROR_CHECK(config_client_model_subscription_add(
+        current_step->params.model_subscription_add.element_addr,
+        current_step->params.model_subscription_add.address,
+        current_step->params.model_subscription_add.model_id));
+    static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
+    conf_set_expected_status(CONFIG_OPCODE_MODEL_SUBSCRIPTION_STATUS,
                              sizeof(expected_statuses), expected_statuses);
     break;
   }
