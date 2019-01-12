@@ -34,6 +34,7 @@
     <folder Name="Application">
       <file file_name="src/main.c" />
       <file file_name="../common/src/simple_hal.c" />
+      <file file_name="../common/src/mesh_app_utils.c" />
       <file file_name="../common/src/mesh_adv.c" />
       <file file_name="../common/src/ble_softdevice_support.c" />
       <file file_name="../nrf_mesh_weak.c" />
@@ -118,6 +119,7 @@
     </folder>
     <folder Name="Access">
       <file file_name="../../mesh/access/src/access_publish.c" />
+      <file file_name="../../mesh/access/src/access_publish_retransmission.c" />
       <file file_name="../../mesh/access/src/access.c" />
       <file file_name="../../mesh/access/src/access_reliable.c" />
       <file file_name="../../mesh/access/src/access_loopback.c" />

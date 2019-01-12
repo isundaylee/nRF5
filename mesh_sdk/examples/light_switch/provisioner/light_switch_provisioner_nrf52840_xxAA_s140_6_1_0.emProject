@@ -105,6 +105,7 @@
     </folder>
     <folder Name="Access">
       <file file_name="../../../mesh/access/src/access_publish.c" />
+      <file file_name="../../../mesh/access/src/access_publish_retransmission.c" />
       <file file_name="../../../mesh/access/src/access.c" />
       <file file_name="../../../mesh/access/src/access_reliable.c" />
       <file file_name="../../../mesh/access/src/access_loopback.c" />

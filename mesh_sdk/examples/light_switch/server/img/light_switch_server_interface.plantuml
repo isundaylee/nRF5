@@ -5,7 +5,7 @@ participant a as "main.c"
 participant ah as "Application support\nmodules"
 end box
 participant c as "Mesh stack"
-participant s as "Generic OnOff client"
+participant s as "Generic OnOff server"
 box
 participant core as "Mesh core modules"
 end box
@@ -15,11 +15,11 @@ note over a: init_params defines UUID, core params\n and event callbacks
 a -> ah: ble_stack_init()
 a -> ah: gap_params_init()
 a -> ah: conn_params_init()
-a -> ah: mesh_app_uuid_gen(...)
 a -> c: mesh_stack_init(...)
 c -> core: Initialize: Mesh and Foundation models
 ... ...
-a -> s: generic_onoff_client_init(...) x 2
+a -> ah: app_onoff_init(...)
+ah -> s: generic_onoff_server_init(...)
 ... Start ...
 a -> c: mesh_stack_start()
 note over c: Start dynamic behavior
@@ -27,10 +27,11 @@ note over c: Start dynamic behavior
 
 alt
     ... Provisioned node ...
-    a <- s: onoff_status_cb(...)
-    a <- s: ack_transaction_status_cb(...)
-    a <- s: periodic_publish_cb(...)
-    a -> s: generic_onoff_client_set/set_unack(...)
+    ah <- s: Model APIs: get_cb(...), set_cb(...)
+    a <- ah: app_onoff_get/set_cb(...)
+    a -> ah: app_onoff_status_publish(...)
+    ah -> s: generic_onoff_server_status_publish(...)
+
 else
     ... Unprovisioned device ...
     a -> ah: mesh_provisionee_prov_start(...)
