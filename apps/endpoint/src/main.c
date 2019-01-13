@@ -203,6 +203,13 @@ static void init_models(void) {
 }
 
 static void start_friendship() {
+  static bool is_first = true;
+
+  if (is_first) {
+    set_friendship_status(false);
+    is_first = false;
+  }
+
   LOG_INFO("Starting making friends....");
 
   mesh_lpn_friend_request_t req;
@@ -319,8 +326,6 @@ static void start() {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_cfg_output(APP_PIN_LED_INDICATION);
   nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLUP);
-
-  set_friendship_status(false);
 
   if (!mesh_stack_is_device_provisioned()) {
     LOG_INFO("Starting the provisioning process. ");
