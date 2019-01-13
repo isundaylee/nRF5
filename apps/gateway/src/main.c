@@ -117,31 +117,36 @@ generic_onoff_client_transaction_status_cb(access_model_handle_t model_handle,
   // TODO:
 }
 
+char const *get_faults_description(health_client_evt_fault_status_t status) {
+  if (status.fault_array_length == 0) {
+    return "Healthy";
+  } else if (status.fault_array_length == 1) {
+    switch (status.p_fault_array[0]) {
+    case APP_FAULT_ID_FRIENDLESS:
+      return "Friendless";
+    default:
+      return "Unknown Fault";
+    }
+  } else {
+    return "UNIMPLEMENTED YET";
+  }
+}
+
 static void health_client_event_handler(health_client_t const *client,
                                         health_client_evt_t const *event) {
   switch (event->type) {
   case HEALTH_CLIENT_EVT_TYPE_CURRENT_STATUS_RECEIVED: //
+  case HEALTH_CLIENT_EVT_TYPE_FAULT_STATUS_RECEIVED:   //
   {
-    LOG_INFO("Health client: current status. %d fault(s).",
-             event->data.fault_status.fault_array_length);
-    break;
-  }
-
-  case HEALTH_CLIENT_EVT_TYPE_FAULT_STATUS_RECEIVED: //
-  {
-    LOG_INFO("Health client: fault status");
-    break;
-  }
-
-  case HEALTH_CLIENT_EVT_TYPE_PERIOD_STATUS_RECEIVED: //
-  {
-    LOG_INFO("Health client: period status");
-    break;
-  }
-
-  case HEALTH_CLIENT_EVT_TYPE_ATTENTION_STATUS_RECEIVED: //
-  {
-    LOG_INFO("Health client: attention status");
+    if (event->data.fault_status.fault_array_length == 0) {
+      LOG_INFO("Received health status from 0x%04x: %s.",
+               event->p_meta_data->src.value,
+               get_faults_description(event->data.fault_status));
+    } else {
+      LOG_ERROR("Received health status from 0x%04x: %s.",
+                event->p_meta_data->src.value,
+                get_faults_description(event->data.fault_status));
+    }
     break;
   }
 

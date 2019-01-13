@@ -69,6 +69,14 @@ void set_friendship_status(bool established) {
 
   friendship_established = established;
   nrf_gpio_pin_write(APP_PIN_LED_ERROR, !established);
+
+  if (established) {
+    health_server_fault_clear(mesh_stack_health_server_get(),
+                              APP_FAULT_ID_FRIENDLESS);
+  } else {
+    health_server_fault_register(mesh_stack_health_server_get(),
+                                 APP_FAULT_ID_FRIENDLESS);
+  }
 }
 
 void mesh_assertion_handler(uint32_t pc) {
@@ -219,6 +227,12 @@ static void reset_timer_handler(void *context) {
   }
 }
 
+void selftest_check_friend_status(health_server_t *server, uint16_t company_id,
+                                  uint8_t test_id) {
+  LOG_INFO("RUNNING SELF TESTS!!!");
+  health_server_fault_register(server, 1);
+}
+
 static void initialize(void) {
   __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
              log_callback_custom);
@@ -233,10 +247,11 @@ static void initialize(void) {
                                 .rc_ctiv = 0,
                                 .rc_temp_ctiv = 0,
                                 .accuracy = NRF_CLOCK_LF_ACCURACY_20_PPM};
-  mesh_stack_init_params_t init_params = {.core.irq_priority =
-                                              NRF_MESH_IRQ_PRIORITY_LOWEST,
-                                          .core.lfclksrc = lfc_cfg,
-                                          .models.models_init_cb = init_models};
+  mesh_stack_init_params_t init_params = {
+      .core.irq_priority = NRF_MESH_IRQ_PRIORITY_LOWEST,
+      .core.lfclksrc = lfc_cfg,
+      .models.models_init_cb = init_models,
+  };
   APP_ERROR_CHECK(mesh_stack_init(&init_params, NULL));
   LOG_INFO("Mesh stack initialized.");
 
