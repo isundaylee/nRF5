@@ -11,6 +11,8 @@
 #include "nrf_mesh_config_examples.h"
 #include "nrf_mesh_configure.h"
 
+#include "app_button.h"
+
 #include "mesh_friendship_types.h"
 #include "mesh_lpn.h"
 
@@ -29,6 +31,8 @@
 #define APP_PIN_LED_ERROR 23
 #define APP_PIN_LED_INDICATION 24
 #define APP_PIN_CLEAR_CONFIG 20
+
+#define APP_PIN_USER_BUTTON 7
 
 APP_TIMER_DEF(reset_timer);
 APP_TIMER_DEF(initiate_friendship_timer);
@@ -233,6 +237,26 @@ void selftest_check_friend_status(health_server_t *server, uint16_t company_id,
   health_server_fault_register(server, 1);
 }
 
+void button_handler(uint8_t pin_no, uint8_t button_action) {
+  if (button_action == 0) {
+    return;
+  }
+
+  switch (pin_no) {
+  case APP_PIN_USER_BUTTON: //
+  {
+    LOG_INFO("User button pressed.");
+    break;
+  }
+
+  default: //
+  {
+    LOG_ERROR("Unknown button pressed.");
+    break;
+  }
+  }
+}
+
 static void initialize(void) {
   __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
              log_callback_custom);
@@ -260,6 +284,17 @@ static void initialize(void) {
                                                      mesh_core_event_handler};
   nrf_mesh_evt_handler_add(&event_handler);
 
+  // Initialize buttons
+  static app_button_cfg_t buttons[] = {{
+      .pin_no = APP_PIN_USER_BUTTON,
+      .active_state = APP_BUTTON_ACTIVE_HIGH,
+      .pull_cfg = NRF_GPIO_PIN_PULLDOWN,
+      .button_handler = button_handler,
+  }};
+  APP_ERROR_CHECK(app_button_init(buttons, sizeof(buttons) / sizeof(buttons[0]),
+                                  APP_TIMER_TICKS(50)));
+  APP_ERROR_CHECK(app_button_enable());
+
   // Initialize timers
   APP_ERROR_CHECK(app_timer_create(&reset_timer, APP_TIMER_MODE_SINGLE_SHOT,
                                    reset_timer_handler));
@@ -277,7 +312,7 @@ static void prov_complete_cb(void) {
   dsm_local_unicast_addresses_get(&node_address);
   LOG_INFO("Node Address: 0x%04x. ", node_address.address_start);
 
-  start_friendship();
+  schedule_friend_request(3000);
 }
 
 static void start() {

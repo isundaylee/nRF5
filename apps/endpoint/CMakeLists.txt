@@ -18,7 +18,10 @@ add_executable(${target}
     ${PROV_COMMON_SOURCE_FILES}
     ${PROV_BEARER_ADV_SOURCE_FILES}
     ${${PLATFORM}_SOURCE_FILES}
-    ${${nRF5_SDK_VERSION}_SOURCE_FILES})
+    ${${nRF5_SDK_VERSION}_SOURCE_FILES}
+    "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_gpiote.c"
+    "${SDK_ROOT}/components/libraries/button/app_button.c"
+    )
 
 target_include_directories(${target} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -32,7 +35,12 @@ target_include_directories(${target} PUBLIC
     ${MESH_INCLUDE_DIRS}
     ${${SOFTDEVICE}_INCLUDE_DIRS}
     ${${PLATFORM}_INCLUDE_DIRS}
-    ${${nRF5_SDK_VERSION}_INCLUDE_DIRS})
+    ${${nRF5_SDK_VERSION}_INCLUDE_DIRS}
+    "${SDK_ROOT}/components/libraries/button"
+    "${SDK_ROOT}/integration/nrfx/legacy"
+    "${SDK_ROOT}/modules/nrfx/drivers/include"
+    )
+
 
 set_target_link_options(${target}
     ${CMAKE_CURRENT_SOURCE_DIR}/support/ble_app_uart_gcc_nrf52)

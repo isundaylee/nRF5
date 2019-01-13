@@ -25,10 +25,14 @@
 #include "generic_onoff_client.h"
 #include "health_client.h"
 
+#include "app_button.h"
+
 #include "debug_pins.h"
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
+
+#define APP_PIN_USER_BUTTON 7
 
 APP_TIMER_DEF(onoff_client_toggle_timer);
 
@@ -57,6 +61,58 @@ void mesh_assertion_handler(uint32_t pc) {
   UNUSED_VARIABLE(assert_info);
 }
 
+static generic_onoff_client_t onoff_client;
+
+static bool onoff_value = false;
+
+void send_onoff_request(bool value) {
+  static uint8_t tid = 0;
+  generic_onoff_set_params_t params;
+
+  params.tid = tid++;
+  params.on_off = (value ? 1 : 0);
+
+  onoff_value = value;
+
+  APP_ERROR_CHECK(
+      generic_onoff_client_set_unack(&onoff_client, &params, NULL, 2));
+}
+
+void button_handler(uint8_t pin_no, uint8_t button_action) {
+  if (button_action == 0) {
+    return;
+  }
+
+  switch (pin_no) {
+  case APP_PIN_USER_BUTTON: //
+  {
+    LOG_INFO("User button pressed.");
+    send_onoff_request(!onoff_value);
+    break;
+  }
+
+  default: //
+  {
+    LOG_ERROR("Unknown button pressed.");
+    break;
+  }
+  }
+}
+
+static void init_buttons() {
+  // Initialize buttons
+  static app_button_cfg_t buttons[] = {{
+      .pin_no = APP_PIN_USER_BUTTON,
+      .active_state = APP_BUTTON_ACTIVE_HIGH,
+      .pull_cfg = NRF_GPIO_PIN_PULLDOWN,
+      .button_handler = button_handler,
+  }};
+
+  APP_ERROR_CHECK(app_button_init(buttons, sizeof(buttons) / sizeof(buttons[0]),
+                                  APP_TIMER_TICKS(50)));
+  APP_ERROR_CHECK(app_button_enable());
+}
+
 static void init_leds() {
   nrf_gpio_cfg_output(PIN_LED_ERROR);
   nrf_gpio_cfg_output(PIN_LED_INDICATION);
@@ -66,19 +122,6 @@ static void init_logging() {
   __LOG_INIT(LOG_SRC_APP | LOG_SRC_BEARER | LOG_SRC_ACCESS, LOG_LEVEL_DBG1,
              log_callback_custom);
   LOG_INFO("Hello, world!");
-}
-
-static generic_onoff_client_t onoff_client;
-
-void send_onoff_request(bool value) {
-  static uint8_t tid = 0;
-  generic_onoff_set_params_t params;
-
-  params.tid = tid++;
-  params.on_off = (value ? 1 : 0);
-
-  APP_ERROR_CHECK(
-      generic_onoff_client_set_unack(&onoff_client, &params, NULL, 2));
 }
 
 static void rtt_input_handler(int key) {
@@ -392,6 +435,7 @@ int main(void) {
   init_leds();
   init_logging();
   init_mesh();
+  init_buttons();
 
   start();
 
