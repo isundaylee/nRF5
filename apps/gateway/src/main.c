@@ -181,14 +181,24 @@ static void health_client_event_handler(health_client_t const *client,
   case HEALTH_CLIENT_EVT_TYPE_CURRENT_STATUS_RECEIVED: //
   case HEALTH_CLIENT_EVT_TYPE_FAULT_STATUS_RECEIVED:   //
   {
+    nrf_mesh_rx_metadata_t const *core_metadata =
+        event->p_meta_data->p_core_metadata;
     if (event->data.fault_status.fault_array_length == 0) {
-      LOG_INFO("Received health status from 0x%04x: %s.",
-               event->p_meta_data->src.value,
-               get_faults_description(event->data.fault_status));
+      LOG_INFO(
+          "Received health status from 0x%04x: RSSI: %d. Fault status: %s.",
+          event->p_meta_data->src.value,
+          core_metadata->source == NRF_MESH_RX_SOURCE_SCANNER
+              ? core_metadata->params.scanner.rssi
+              : 0,
+          get_faults_description(event->data.fault_status));
     } else {
-      LOG_ERROR("Received health status from 0x%04x: %s.",
-                event->p_meta_data->src.value,
-                get_faults_description(event->data.fault_status));
+      LOG_ERROR(
+          "Received health status from 0x%04x: RSSI: %d. Fault status: %s.",
+          event->p_meta_data->src.value,
+          core_metadata->source == NRF_MESH_RX_SOURCE_SCANNER
+              ? core_metadata->params.scanner.rssi
+              : 0,
+          get_faults_description(event->data.fault_status));
     }
     break;
   }
