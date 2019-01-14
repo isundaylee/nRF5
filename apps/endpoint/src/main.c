@@ -246,21 +246,45 @@ static void start_friendship() {
     is_first = false;
   }
 
+  // Calculating interval
+  uint32_t period_ms;
+  access_publish_resolution_t res;
+  uint8_t steps;
+
+  APP_ERROR_CHECK(access_model_publish_period_get(
+      mesh_stack_health_server_get()->model_handle, &res, &steps));
+
+  switch (res) {
+  case ACCESS_PUBLISH_RESOLUTION_100MS:
+    period_ms = 100 * steps;
+    break;
+  case ACCESS_PUBLISH_RESOLUTION_1S:
+    period_ms = 1000 * steps;
+    break;
+  case ACCESS_PUBLISH_RESOLUTION_10S:
+    period_ms = 10 * 1000 * steps;
+    break;
+  case ACCESS_PUBLISH_RESOLUTION_10MIN:
+    period_ms = 10 * 60 * 1000 * steps;
+    break;
+  }
+
   LOG_INFO("Starting making friends....");
 
   mesh_lpn_friend_request_t req;
+  uint32_t poll_timeout_ms = MAX(2 * period_ms, 10 * 1000);
 
   req.friend_criteria.friend_queue_size_min_log =
       MESH_FRIENDSHIP_MIN_FRIEND_QUEUE_SIZE_16;
   req.friend_criteria.receive_window_factor =
       MESH_FRIENDSHIP_RECEIVE_WINDOW_FACTOR_1_0;
   req.friend_criteria.rssi_factor = MESH_FRIENDSHIP_RSSI_FACTOR_2_0;
-  req.poll_timeout_ms = SEC_TO_MS(10);
+  req.poll_timeout_ms = poll_timeout_ms;
   req.receive_delay_ms = 100;
 
   APP_ERROR_CHECK(
       mesh_lpn_friend_request(req, MESH_LPN_FRIEND_REQUEST_TIMEOUT_MAX_MS));
-  LOG_INFO("Friend request sent.");
+  LOG_INFO("Friend request sent. Poll timeout: %d ms.", poll_timeout_ms);
 }
 
 static void reset_timer_handler(void *context) {
@@ -313,6 +337,34 @@ void button_handler(uint8_t pin_no, uint8_t button_action) {
   }
 }
 
+static void config_server_event_handler(config_server_evt_t const *event) {
+  LOG_INFO("Received config server event of type %d.", event->type);
+
+  switch (event->type) {
+  case CONFIG_SERVER_EVT_MODEL_PUBLICATION_SET: //
+  {
+    config_server_evt_model_publication_set_t const *params =
+        &event->params.model_publication_set;
+
+    if (params->model_handle != mesh_stack_health_server_get()->model_handle) {
+      break;
+    }
+
+    LOG_INFO("Health server publication changed. ");
+
+    if (friendship_established) {
+      APP_ERROR_CHECK(mesh_lpn_friendship_terminate());
+      LOG_INFO("Terminated our precious friendship...");
+    }
+
+    break;
+  }
+
+  default:
+    break;
+  }
+}
+
 bool should_reset = false;
 
 static void initialize(void) {
@@ -332,6 +384,7 @@ static void initialize(void) {
   mesh_stack_init_params_t init_params = {
       .core.irq_priority = NRF_MESH_IRQ_PRIORITY_LOWEST,
       .core.lfclksrc = lfc_cfg,
+      .models.config_server_cb = config_server_event_handler,
       .models.models_init_cb = init_models,
   };
   APP_ERROR_CHECK(mesh_stack_init(&init_params, NULL));
@@ -344,12 +397,12 @@ static void initialize(void) {
 
   // Check reset status
   nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLUP);
-  __asm__ volatile ("nop");
-  __asm__ volatile ("nop");
-  __asm__ volatile ("nop");
-  __asm__ volatile ("nop");
-  __asm__ volatile ("nop");
-  __asm__ volatile ("nop");
+  __asm__ volatile("nop");
+  __asm__ volatile("nop");
+  __asm__ volatile("nop");
+  __asm__ volatile("nop");
+  __asm__ volatile("nop");
+  __asm__ volatile("nop");
   should_reset = (!nrf_gpio_pin_read(APP_PIN_CLEAR_CONFIG));
 
   // Initialize buttons
