@@ -94,6 +94,18 @@ static inline enc_nonce_t nonce_type_get(net_packet_kind_t packet_kind)
     }
 }
 
+static bool is_friendship_secmat(const network_packet_metadata_t * p_net_metadata)
+{
+    const nrf_mesh_network_secmat_t * p_frnd_secmat = NULL;
+    uint16_t local_address;
+    uint16_t local_address_count;
+    nrf_mesh_unicast_address_get(&local_address, &local_address_count);
+    nrf_mesh_friendship_secmat_get(local_address, &p_frnd_secmat);
+
+    return (p_frnd_secmat != NULL &&
+            (intptr_t) p_frnd_secmat == (intptr_t) p_net_metadata->p_security_material);
+}
+
 /**
  * Check whether the fields in the metadata that come from the obfuscated part of the packet can
  * represent a valid header.
@@ -118,6 +130,11 @@ static inline bool deobfuscated_header_is_valid(const network_packet_metadata_t 
     if (net_packet_len - PACKET_MESH_NET_PDU_OFFSET < net_packet_mic_size_get(p_net_metadata->control_packet))
     {
         return false;
+    }
+
+    if (is_friendship_secmat(p_net_metadata))
+    {
+        return true;
     }
 
     /* We check the message cache now, as we'll either have the right deobfuscation, and the
