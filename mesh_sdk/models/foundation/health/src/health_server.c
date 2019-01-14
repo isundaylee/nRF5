@@ -63,6 +63,10 @@ static void health_publish_timeout_handler(access_model_handle_t handle, void * 
 {
     health_server_t * p_server = p_args;
     send_fault_status(p_server, HEALTH_OPCODE_CURRENT_STATUS, NULL);
+
+    if (p_server->publish_timeout_handler != NULL) {
+        p_server->publish_timeout_handler(p_server);
+    }
 }
 
 static void attention_timer_handler(timestamp_t timestamp, void * p_context)
@@ -489,7 +493,8 @@ void health_server_attention_set(health_server_t * p_server, uint8_t attention)
 
 uint32_t health_server_init(health_server_t * p_server, uint16_t element_index, uint16_t company_id,
         health_server_attention_cb_t attention_cb,
-        const health_server_selftest_t * p_selftests, uint8_t num_selftests)
+        const health_server_selftest_t * p_selftests, uint8_t num_selftests,
+        health_server_publish_timeout_cb_t publish_timeout_handler)
 {
     p_server->attention_handler = attention_cb;
     p_server->p_selftests = p_selftests;
@@ -499,6 +504,7 @@ uint32_t health_server_init(health_server_t * p_server, uint16_t element_index, 
     p_server->attention_timer = 0;
     p_server->fast_period_divisor = 0;
     p_server->p_next = NULL;
+    p_server->publish_timeout_handler = publish_timeout_handler;
 
     /* Clear fault arrays: */
     bitfield_clear_all(p_server->registered_faults, HEALTH_SERVER_FAULT_ARRAY_SIZE);
@@ -515,4 +521,3 @@ uint32_t health_server_init(health_server_t * p_server, uint16_t element_index, 
     };
     return access_model_add(&add_params, &p_server->model_handle);
 }
-

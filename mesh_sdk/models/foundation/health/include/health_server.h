@@ -84,6 +84,8 @@ typedef void (*health_server_attention_cb_t)(const health_server_t * p_server, b
  */
 typedef void (*health_server_selftest_cb_t)(health_server_t * p_server, uint16_t company_id, uint8_t test_id);
 
+typedef void (*health_server_publish_timeout_cb_t)(health_server_t *p_server);
+
 /**
  * Structure defining a self-test function.
  * An array of these structs should be passed to the health server on initialization if self-tests are
@@ -116,6 +118,7 @@ struct __health_server_t
     health_server_attention_cb_t     attention_handler;     /**< Handler for the attention state. If @c NULL, the attention state is unsupported. */
     uint8_t                          attention_timer;       /**< Timer for the attention state. */
     struct __health_server_t *       p_next;                /**< Pointer to the next instance. Used internally for supporting the attention timer. */
+    health_server_publish_timeout_cb_t publish_timeout_handler;
 };
 
 /**
@@ -199,9 +202,9 @@ void health_server_attention_set(health_server_t * p_server, uint8_t attention);
  */
 uint32_t health_server_init(health_server_t * p_server, uint16_t element_index, uint16_t company_id,
         health_server_attention_cb_t attention_cb,
-        const health_server_selftest_t * p_selftests, uint8_t num_selftests);
+        const health_server_selftest_t * p_selftests, uint8_t num_selftests,
+        health_server_publish_timeout_cb_t publish_timeout_handler);
 
 /** @} */
 
 #endif
-

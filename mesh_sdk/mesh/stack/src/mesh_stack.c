@@ -90,7 +90,8 @@ uint32_t mesh_stack_init(const mesh_stack_init_params_t * p_init_params,
     status = health_server_init(&m_health_server, 0, DEVICE_COMPANY_ID,
                                 p_init_params->models.health_server_attention_cb,
                                 p_init_params->models.p_health_server_selftest_array,
-                                p_init_params->models.health_server_num_selftests);
+                                p_init_params->models.health_server_num_selftests,
+                                p_init_params->models.health_server_publish_timeout_cb);
     if (status != NRF_SUCCESS)
     {
         return status;

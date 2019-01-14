@@ -113,6 +113,8 @@ typedef struct
          */
         uint8_t health_server_num_selftests;
 
+        health_server_publish_timeout_cb_t health_server_publish_timeout_cb;
+
         /**
          * Pointer to a function used to allow initialization of application-specific models.
          * Any models used by the application should be initialized in this callback function,
