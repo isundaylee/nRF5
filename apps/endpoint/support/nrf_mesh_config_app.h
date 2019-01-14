@@ -82,7 +82,7 @@
  * @note This value has to be greater than one to fit the configuration model plus the number of
  * models needed by the application.
  */
-#define ACCESS_MODEL_COUNT (3)
+#define ACCESS_MODEL_COUNT (4)
 
 /**
  * The number of elements in the application.

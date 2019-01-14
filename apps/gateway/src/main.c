@@ -326,6 +326,22 @@ static void prov_success_cb(uint16_t addr) {
           .params.model_subscription_add.address.value = APP_LED_ADDR,
       },
       {
+          .type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET,
+          .params.model_publication_set.element_addr = 0x00,
+          .params.model_publication_set.model_id.company_id =
+              ACCESS_COMPANY_ID_NONE,
+          .params.model_publication_set.model_id.model_id =
+              GENERIC_ONOFF_CLIENT_MODEL_ID,
+          .params.model_publication_set.publish_address.type =
+              NRF_MESH_ADDRESS_TYPE_GROUP,
+          .params.model_publication_set.publish_address.value = APP_LED_ADDR,
+          .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
+          .params.model_publication_set.publish_ttl = 7,
+          .params.model_publication_set.publish_period.step_num = 0,
+          .params.model_publication_set.publish_period.step_res =
+              ACCESS_PUBLISH_RESOLUTION_100MS,
+      },
+      {
           .type = CONF_STEP_TYPE_DONE,
       }};
 
@@ -334,6 +350,7 @@ static void prov_success_cb(uint16_t addr) {
   steps[4].params.model_app_bind.element_addr = addr;
   steps[5].params.model_publication_set.element_addr = addr;
   steps[6].params.model_subscription_add.element_addr = addr;
+  steps[7].params.model_subscription_add.element_addr = addr;
 
   conf_start(addr, steps);
 }

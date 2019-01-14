@@ -11,12 +11,12 @@
 #include "nrf_mesh_config_examples.h"
 #include "nrf_mesh_configure.h"
 
-#include "app_button.h"
-
 #include "mesh_friendship_types.h"
 #include "mesh_lpn.h"
 
 #include "generic_onoff_server.h"
+
+#include "generic_onoff_client.h"
 
 #include "nrf_delay.h"
 #include "nrf_sdh.h"
@@ -26,13 +26,15 @@
 
 #include "custom_log.h"
 
+#include "app_button.h"
+
 #define APP_DEVICE_NAME "PROXYTEST"
 
 #define APP_PIN_LED_ERROR 23
 #define APP_PIN_LED_INDICATION 24
 #define APP_PIN_CLEAR_CONFIG 20
 
-#define APP_PIN_USER_BUTTON 7
+#define APP_PIN_USER_BUTTON 20
 
 APP_TIMER_DEF(reset_timer);
 APP_TIMER_DEF(initiate_friendship_timer);
@@ -157,6 +159,7 @@ static void mesh_core_event_handler(nrf_mesh_evt_t const *event) {
 
 static bool is_on = false;
 static generic_onoff_server_t onoff_server;
+static generic_onoff_client_t onoff_client;
 
 static void generic_onoff_state_get_cb(const generic_onoff_server_t *p_self,
                                        const access_message_rx_meta_t *p_meta,
@@ -187,19 +190,52 @@ generic_onoff_state_set_cb(const generic_onoff_server_t *p_self,
   }
 }
 
+static void
+generic_onoff_client_publish_interval_cb(access_model_handle_t handle,
+                                         void *p_self) {
+  // TODO:
+}
+static void
+generic_onoff_client_status_cb(const generic_onoff_client_t *p_self,
+                               const access_message_rx_meta_t *p_meta,
+                               const generic_onoff_status_params_t *p_in) {
+  LOG_INFO("LED on node 0x%04x is: %s.", p_meta->src.value,
+           (p_in->present_on_off ? "ON" : "OFF"));
+}
+
+static void
+generic_onoff_client_transaction_status_cb(access_model_handle_t model_handle,
+                                           void *p_args,
+                                           access_reliable_status_t status) {
+  // TODO:
+}
+
 static void init_models(void) {
-  static generic_onoff_server_callbacks_t cbs = {
+  static generic_onoff_server_callbacks_t onoff_server_cbs = {
       .onoff_cbs.set_cb = generic_onoff_state_set_cb,
       .onoff_cbs.get_cb = generic_onoff_state_get_cb,
   };
 
   onoff_server.settings.force_segmented = false;
   onoff_server.settings.transmic_size = NRF_MESH_TRANSMIC_SIZE_SMALL;
-  onoff_server.settings.p_callbacks = &cbs;
+  onoff_server.settings.p_callbacks = &onoff_server_cbs;
 
   APP_ERROR_CHECK(generic_onoff_server_init(&onoff_server, 0));
 
   LOG_INFO("OnOff server initialized.");
+
+  static const generic_onoff_client_callbacks_t onoff_client_cbs = {
+      .onoff_status_cb = generic_onoff_client_status_cb,
+      .ack_transaction_status_cb = generic_onoff_client_transaction_status_cb,
+      .periodic_publish_cb = generic_onoff_client_publish_interval_cb};
+
+  onoff_client.settings.p_callbacks = &onoff_client_cbs;
+  onoff_client.settings.timeout = 0;
+  onoff_client.settings.force_segmented = false;
+  onoff_client.settings.transmic_size = NRF_MESH_TRANSMIC_SIZE_SMALL;
+
+  APP_ERROR_CHECK(generic_onoff_client_init(&onoff_client, 0));
+  LOG_INFO("OnOff client initialized.");
 }
 
 static void start_friendship() {
@@ -244,6 +280,21 @@ void selftest_check_friend_status(health_server_t *server, uint16_t company_id,
   health_server_fault_register(server, 1);
 }
 
+bool onoff_value = false;
+
+void send_onoff_request(bool value) {
+  static uint8_t tid = 0;
+  generic_onoff_set_params_t params;
+
+  params.tid = tid++;
+  params.on_off = (value ? 1 : 0);
+
+  onoff_value = value;
+
+  APP_ERROR_CHECK(
+      generic_onoff_client_set_unack(&onoff_client, &params, NULL, 2));
+}
+
 void button_handler(uint8_t pin_no, uint8_t button_action) {
   if (button_action == 0) {
     return;
@@ -253,6 +304,7 @@ void button_handler(uint8_t pin_no, uint8_t button_action) {
   case APP_PIN_USER_BUTTON: //
   {
     LOG_INFO("User button pressed.");
+    send_onoff_request(!onoff_value);
     break;
   }
 
@@ -263,6 +315,8 @@ void button_handler(uint8_t pin_no, uint8_t button_action) {
   }
   }
 }
+
+bool should_reset = false;
 
 static void initialize(void) {
   __LOG_INIT(LOG_SRC_APP | LOG_SRC_ACCESS | LOG_SRC_BEARER, LOG_LEVEL_DBG1,
@@ -291,11 +345,21 @@ static void initialize(void) {
                                                      mesh_core_event_handler};
   nrf_mesh_evt_handler_add(&event_handler);
 
+  // Check reset status
+  nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLUP);
+  __asm__ volatile ("nop");
+  __asm__ volatile ("nop");
+  __asm__ volatile ("nop");
+  __asm__ volatile ("nop");
+  __asm__ volatile ("nop");
+  __asm__ volatile ("nop");
+  should_reset = (!nrf_gpio_pin_read(APP_PIN_CLEAR_CONFIG));
+
   // Initialize buttons
   static app_button_cfg_t buttons[] = {{
       .pin_no = APP_PIN_USER_BUTTON,
-      .active_state = APP_BUTTON_ACTIVE_HIGH,
-      .pull_cfg = NRF_GPIO_PIN_PULLDOWN,
+      .active_state = APP_BUTTON_ACTIVE_LOW,
+      .pull_cfg = NRF_GPIO_PIN_PULLUP,
       .button_handler = button_handler,
   }};
   APP_ERROR_CHECK(app_button_init(buttons, sizeof(buttons) / sizeof(buttons[0]),
@@ -325,7 +389,6 @@ static void prov_complete_cb(void) {
 static void start() {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_cfg_output(APP_PIN_LED_INDICATION);
-  nrf_gpio_cfg_input(APP_PIN_CLEAR_CONFIG, NRF_GPIO_PIN_PULLUP);
 
   if (!mesh_stack_is_device_provisioned()) {
     LOG_INFO("Starting the provisioning process. ");
@@ -340,7 +403,7 @@ static void start() {
   } else {
     LOG_INFO("Node is already provisioned. ");
 
-    if (!nrf_gpio_pin_read(APP_PIN_CLEAR_CONFIG)) {
+    if (should_reset) {
       APP_ERROR_CHECK(app_timer_start(reset_timer, APP_TIMER_TICKS(100), NULL));
     } else {
       APP_ERROR_CHECK(app_timer_start(initiate_friendship_timer,
