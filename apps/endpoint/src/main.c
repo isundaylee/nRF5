@@ -269,9 +269,6 @@ static void reset_timer_handler(void *context) {
   mesh_stack_config_clear();
   // This function may return if there are ongoing flash operations.
   mesh_stack_device_reset();
-
-  while (true) {
-  }
 }
 
 void selftest_check_friend_status(health_server_t *server, uint16_t company_id,
