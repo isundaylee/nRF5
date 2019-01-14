@@ -306,13 +306,24 @@ static void prov_success_cb(uint16_t addr) {
           .params.model_publication_set.model_id.model_id =
               0x1000, // Generic OnOff Server
           .params.model_publication_set.publish_address.type =
-              NRF_MESH_ADDRESS_TYPE_UNICAST,
-          .params.model_publication_set.publish_address.value = 0x0001,
+              NRF_MESH_ADDRESS_TYPE_GROUP,
+          .params.model_publication_set.publish_address.value = APP_LED_ADDR,
           .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
           .params.model_publication_set.publish_ttl = 7,
           .params.model_publication_set.publish_period.step_num = 0,
           .params.model_publication_set.publish_period.step_res =
-              ACCESS_PUBLISH_RESOLUTION_1S,
+              ACCESS_PUBLISH_RESOLUTION_100MS,
+      },
+      {
+          .type = CONF_STEP_TYPE_MODEL_SUBSCRIPTION_ADD,
+          .params.model_subscription_add.element_addr = 0x00,
+          .params.model_subscription_add.model_id.company_id =
+              ACCESS_COMPANY_ID_NONE,
+          .params.model_subscription_add.model_id.model_id =
+              0x1000, // Generic OnOff Server
+          .params.model_subscription_add.address.type =
+              NRF_MESH_ADDRESS_TYPE_GROUP,
+          .params.model_subscription_add.address.value = APP_LED_ADDR,
       },
       {
           .type = CONF_STEP_TYPE_DONE,
@@ -322,6 +333,7 @@ static void prov_success_cb(uint16_t addr) {
   steps[3].params.model_publication_set.element_addr = addr;
   steps[4].params.model_app_bind.element_addr = addr;
   steps[5].params.model_publication_set.element_addr = addr;
+  steps[6].params.model_subscription_add.element_addr = addr;
 
   conf_start(addr, steps);
 }
@@ -343,7 +355,7 @@ void self_config(uint16_t node_addr) {
               GENERIC_ONOFF_CLIENT_MODEL_ID,
           .params.model_publication_set.publish_address.type =
               NRF_MESH_ADDRESS_TYPE_UNICAST,
-          .params.model_publication_set.publish_address.value = 0x0000,
+          .params.model_publication_set.publish_address.value = APP_LED_ADDR,
           .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
           .params.model_publication_set.publish_ttl = 7,
           .params.model_publication_set.publish_period.step_num = 1,
@@ -360,8 +372,6 @@ void self_config(uint16_t node_addr) {
       {
           .type = CONF_STEP_TYPE_DONE,
       }};
-
-  steps[0].params.model_publication_set.publish_address.value = node_addr;
 
   conf_start(APP_GATEWAY_ADDR, steps);
 }
