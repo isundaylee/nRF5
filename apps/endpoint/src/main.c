@@ -247,7 +247,7 @@ static void start_friendship() {
   }
 
   // Calculating interval
-  uint32_t period_ms;
+  uint32_t period_ms = 0;
   access_publish_resolution_t res;
   uint8_t steps;
 
@@ -365,6 +365,12 @@ static void config_server_event_handler(config_server_evt_t const *event) {
   }
 }
 
+void health_server_publish_timeout_handler(health_server_t *p_server) {
+  if (friendship_established) {
+    APP_ERROR_CHECK(mesh_lpn_friend_poll(0));
+  }
+}
+
 bool should_reset = false;
 
 static void initialize(void) {
@@ -386,6 +392,8 @@ static void initialize(void) {
       .core.lfclksrc = lfc_cfg,
       .models.config_server_cb = config_server_event_handler,
       .models.models_init_cb = init_models,
+      .models.health_server_publish_timeout_cb =
+          health_server_publish_timeout_handler,
   };
   APP_ERROR_CHECK(mesh_stack_init(&init_params, NULL));
   LOG_INFO("Mesh stack initialized.");
