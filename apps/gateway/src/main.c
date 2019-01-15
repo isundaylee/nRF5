@@ -37,6 +37,7 @@
 #define APP_PIN_USER_BUTTON 7
 
 APP_TIMER_DEF(onoff_client_toggle_timer);
+APP_TIMER_DEF(self_config_timer);
 
 health_client_t health_client;
 
@@ -323,7 +324,36 @@ conf_step_builder(uint16_t addr,
       break;
     }
 
-    case 0x1000: //
+    case HEALTH_CLIENT_MODEL_ID: //
+    {
+      LOG_INFO("Adding steps for Health Client...");
+
+      cursor->type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET;
+      cursor->params.model_publication_set.element_addr = APP_GATEWAY_ADDR;
+      cursor->params.model_publication_set.model_id.company_id =
+          ACCESS_COMPANY_ID_NONE;
+      cursor->params.model_publication_set.model_id.model_id =
+          GENERIC_ONOFF_CLIENT_MODEL_ID;
+      cursor->params.model_publication_set.publish_address.type =
+          NRF_MESH_ADDRESS_TYPE_UNICAST;
+      cursor->params.model_publication_set.publish_address.value = APP_LED_ADDR;
+      cursor->params.model_publication_set.appkey_index = APP_APPKEY_IDX;
+      cursor->params.model_publication_set.publish_ttl = 7;
+      cursor->params.model_publication_set.publish_period.step_num = 1;
+      cursor->params.model_publication_set.publish_period.step_res = cursor++;
+
+      cursor->type = CONF_STEP_TYPE_MODEL_APP_BIND;
+      cursor->params.model_app_bind.element_addr = APP_GATEWAY_ADDR;
+      cursor->params.model_app_bind.model_id.company_id =
+          ACCESS_COMPANY_ID_NONE;
+      cursor->params.model_app_bind.model_id.model_id = HEALTH_CLIENT_MODEL_ID;
+      cursor->params.model_app_bind.appkey_index = APP_APPKEY_IDX;
+      cursor++;
+
+      break;
+    }
+
+    case 0x1000: // Generic OnOff Server
     {
       LOG_INFO("Adding steps for Generic OnOff Server...");
 
@@ -412,51 +442,7 @@ static void prov_failure_cb() {
   prov_start_scan();
 }
 
-void self_config(uint16_t node_addr) {
-  static conf_step_t steps[] = {
-      {
-          .type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET,
-          .params.model_publication_set.element_addr = APP_GATEWAY_ADDR,
-          .params.model_publication_set.model_id.company_id =
-              ACCESS_COMPANY_ID_NONE,
-          .params.model_publication_set.model_id.model_id =
-              GENERIC_ONOFF_CLIENT_MODEL_ID,
-          .params.model_publication_set.publish_address.type =
-              NRF_MESH_ADDRESS_TYPE_UNICAST,
-          .params.model_publication_set.publish_address.value = APP_LED_ADDR,
-          .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
-          .params.model_publication_set.publish_ttl = 7,
-          .params.model_publication_set.publish_period.step_num = 1,
-          .params.model_publication_set.publish_period.step_res =
-              ACCESS_PUBLISH_RESOLUTION_1S,
-      },
-      {
-          .type = CONF_STEP_TYPE_MODEL_APP_BIND,
-          .params.model_app_bind.element_addr = APP_GATEWAY_ADDR,
-          .params.model_app_bind.model_id.company_id = ACCESS_COMPANY_ID_NONE,
-          .params.model_app_bind.model_id.model_id = HEALTH_CLIENT_MODEL_ID,
-          .params.model_app_bind.appkey_index = APP_APPKEY_IDX,
-      },
-      {
-          .type = CONF_STEP_TYPE_DONE,
-      }};
-
-  // conf_start(APP_GATEWAY_ADDR, steps);
-}
-
-static void conf_success_cb(uint16_t addr) {
-  // if (addr == APP_GATEWAY_ADDR) {
-  // We finished self-config. On to the next!
-
-  // APP_ERROR_CHECK(app_timer_start(onoff_client_toggle_timer,
-  //                                 APP_TIMER_TICKS(1000), NULL));
-
-  prov_start_scan();
-  // } else {
-  // We should do self-config.
-  // self_config(addr);
-  // }
-}
+static void conf_success_cb(uint16_t addr) { prov_start_scan(); }
 
 static void conf_failure_cb(uint16_t addr) { prov_start_scan(); }
 
@@ -467,6 +453,12 @@ static void onoff_client_toggle_timer_handler(void *context) {
   value = !value;
 }
 
+static void self_config_timer_handler(void *context) {
+  LOG_INFO("Starting self-configuration...");
+
+  conf_start(APP_GATEWAY_ADDR, conf_step_builder);
+}
+
 static void start() {
   rtt_input_enable(rtt_input_handler, 100);
 
@@ -475,7 +467,9 @@ static void start() {
 
   app_state_init();
 
-  if (mesh_stack_is_device_provisioned()) {
+  bool is_provisioned = mesh_stack_is_device_provisioned();
+
+  if (is_provisioned) {
     LOG_ERROR("We have already been provisioned. ");
 
     nrf_gpio_cfg_input(8, NRF_GPIO_PIN_PULLDOWN);
@@ -503,8 +497,16 @@ static void start() {
   APP_ERROR_CHECK(app_timer_create(&onoff_client_toggle_timer,
                                    APP_TIMER_MODE_REPEATED,
                                    onoff_client_toggle_timer_handler));
+  APP_ERROR_CHECK(app_timer_create(&self_config_timer,
+                                   APP_TIMER_MODE_SINGLE_SHOT,
+                                   self_config_timer_handler));
 
-  prov_start_scan();
+  if (!is_provisioned) {
+    APP_ERROR_CHECK(
+        app_timer_start(self_config_timer, APP_TIMER_TICKS(1000), NULL));
+  } else {
+    prov_start_scan();
+  }
 }
 
 int main(void) {
