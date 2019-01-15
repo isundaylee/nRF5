@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include "config_messages.h"
+
 #include "device_state_manager.h"
 
 #include "app_state.h"
@@ -67,6 +69,11 @@ typedef struct {
 typedef void (*conf_success_cb_t)(uint16_t node_addr);
 typedef void (*conf_failure_cb_t)(uint16_t node_addr);
 
+typedef void (*conf_step_builder_t)(
+    uint16_t node_addr,
+    config_msg_composition_data_status_t const *composition_data,
+    conf_step_t *steps_out);
+
 void conf_init(app_state_t *app_state, conf_success_cb_t success_cb,
                conf_failure_cb_t failure_cb);
-void conf_start(uint16_t node_addr, conf_step_t const *steps);
+void conf_start(uint16_t node_addr, conf_step_builder_t step_builder);

@@ -15,8 +15,11 @@
 #include "app_config.h"
 #include "custom_log.h"
 
+#define CONF_MAX_STEP_NUMBER 20
+
 typedef enum {
   CONF_STATE_IDLE,
+  CONF_STATE_GETTING_COMPOSITION_DATA,
   CONF_STATE_EXECUTING,
 } conf_state_t;
 
@@ -29,8 +32,10 @@ typedef struct {
   // Information about the current configuration process
   conf_state_t state;
 
+  conf_step_builder_t step_builder;
+
   uint16_t node_addr;
-  conf_step_t const *steps;
+  conf_step_t steps[CONF_MAX_STEP_NUMBER];
   conf_step_t const *current_step;
 
   uint32_t expected_opcode;
@@ -246,14 +251,17 @@ void conf_config_client_evt_cb(config_client_event_type_t evt_type,
 
   case CONFIG_CLIENT_EVENT_TYPE_MSG: //
   {
-    if (conf.state != CONF_STATE_EXECUTING) {
+    if ((conf.state != CONF_STATE_GETTING_COMPOSITION_DATA) &&
+        (conf.state != CONF_STATE_EXECUTING)) {
       LOG_ERROR("Configurator: Config client message received while the "
                 "configurator is not "
                 "executing. ");
       break;
     }
 
-    if (conf.status_checked || conf.current_step->type == CONF_STEP_TYPE_DONE) {
+    if (conf.status_checked ||
+        (conf.state == CONF_STATE_EXECUTING &&
+         conf.current_step->type == CONF_STEP_TYPE_DONE)) {
       LOG_ERROR("Configurator: Config client message received when it has "
                 "already been checked");
       break;
@@ -262,11 +270,21 @@ void conf_config_client_evt_cb(config_client_event_type_t evt_type,
     conf_check_result_t result = conf_check_status(evt->opcode, evt->p_msg);
 
     if (result == CONF_CHECK_RESULT_PASS) {
-      conf.current_step++;
-      if (conf.current_step->type == CONF_STEP_TYPE_DONE) {
-        conf_succeed();
-      } else {
+      if (conf.state == CONF_STATE_GETTING_COMPOSITION_DATA) {
+        conf.state = CONF_STATE_EXECUTING;
+        conf.step_builder(conf.node_addr, &evt->p_msg->composition_data_status,
+                          conf.steps);
+        conf.current_step = conf.steps;
         conf_execute_step();
+      } else {
+        ASSERT(conf.current_step == CONF_STATE_EXECUTING);
+
+        conf.current_step++;
+        if (conf.current_step->type == CONF_STEP_TYPE_DONE) {
+          conf_succeed();
+        } else {
+          conf_execute_step();
+        }
       }
     } else if (result == CONF_CHECK_RESULT_FAIL) {
       conf_fail();
@@ -284,7 +302,15 @@ void conf_config_client_evt_cb(config_client_event_type_t evt_type,
   }
 }
 
-void conf_start(uint16_t node_addr, conf_step_t const *steps) {
+void conf_get_composition_data() {
+  conf.state = CONF_STATE_GETTING_COMPOSITION_DATA;
+
+  LOG_INFO("Configurator: Getting composition data. ");
+  APP_ERROR_CHECK(config_client_composition_data_get(0));
+  conf_set_expected_status(CONFIG_OPCODE_COMPOSITION_DATA_STATUS, 0, NULL);
+}
+
+void conf_start(uint16_t node_addr, conf_step_builder_t step_builder) {
   LOG_INFO("Configurator: Starting to configure node at address %d", node_addr);
 
   if (conf.state != CONF_STATE_IDLE) {
@@ -293,15 +319,11 @@ void conf_start(uint16_t node_addr, conf_step_t const *steps) {
     return;
   }
 
-  conf.state = CONF_STATE_EXECUTING;
   conf.node_addr = node_addr;
+  conf.step_builder = step_builder;
 
   conf_bind(node_addr);
-
-  conf.steps = steps;
-  conf.current_step = conf.steps;
-
-  conf_execute_step();
+  conf_get_composition_data();
 }
 
 void conf_init(app_state_t *app_state, conf_success_cb_t success_cb,

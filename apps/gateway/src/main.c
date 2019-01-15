@@ -263,106 +263,99 @@ static void prov_start_cb(uint16_t addr) {
   nrf_gpio_pin_set(PIN_LED_INDICATION);
 }
 
+static void
+conf_step_builder(uint16_t addr,
+                  config_msg_composition_data_status_t const *composition_data,
+                  conf_step_t *steps_out) {
+  conf_step_t *cursor = steps_out;
+
+  cursor->type = CONF_STEP_TYPE_APPKEY_ADD;
+  cursor->params.appkey_add.netkey_index = APP_NETKEY_IDX;
+  cursor->params.appkey_add.appkey_index = APP_APPKEY_IDX;
+  cursor->params.appkey_add.appkey = app_state.persistent.network.appkey;
+  cursor++;
+
+  cursor->type = CONF_STEP_TYPE_MODEL_APP_BIND;
+  cursor->params.model_app_bind.element_addr = addr;
+  cursor->params.model_app_bind.model_id.company_id = ACCESS_COMPANY_ID_NONE;
+  cursor->params.model_app_bind.model_id.model_id = HEALTH_SERVER_MODEL_ID;
+  cursor->params.model_app_bind.appkey_index = APP_APPKEY_IDX;
+  cursor++;
+
+  cursor->type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET;
+  cursor->params.model_publication_set.element_addr = addr;
+  cursor->params.model_publication_set.model_id.company_id =
+      ACCESS_COMPANY_ID_NONE;
+  cursor->params.model_publication_set.model_id.model_id =
+      HEALTH_SERVER_MODEL_ID;
+  cursor->params.model_publication_set.publish_address.type =
+      NRF_MESH_ADDRESS_TYPE_UNICAST;
+  cursor->params.model_publication_set.publish_address.value = 0x0001;
+  cursor->params.model_publication_set.appkey_index = APP_APPKEY_IDX;
+  cursor->params.model_publication_set.publish_ttl = 7;
+  cursor->params.model_publication_set.publish_period.step_num = 10;
+  cursor->params.model_publication_set.publish_period.step_res =
+      ACCESS_PUBLISH_RESOLUTION_1S;
+  cursor++;
+
+  cursor->type = CONF_STEP_TYPE_MODEL_APP_BIND;
+  cursor->params.model_app_bind.element_addr = addr;
+  cursor->params.model_app_bind.model_id.company_id = ACCESS_COMPANY_ID_NONE;
+  cursor->params.model_app_bind.model_id.model_id =
+      0x1000, // Generic OnOff Server
+      cursor->params.model_app_bind.appkey_index = APP_APPKEY_IDX;
+  cursor++;
+
+  cursor->type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET;
+  cursor->params.model_publication_set.element_addr = addr;
+  cursor->params.model_publication_set.model_id.company_id =
+      ACCESS_COMPANY_ID_NONE;
+  cursor->params.model_publication_set.model_id.model_id =
+      0x1000, // Generic OnOff Server
+      cursor->params.model_publication_set.publish_address.type =
+          NRF_MESH_ADDRESS_TYPE_GROUP;
+  cursor->params.model_publication_set.publish_address.value = APP_LED_ADDR;
+  cursor->params.model_publication_set.appkey_index = APP_APPKEY_IDX;
+  cursor->params.model_publication_set.publish_ttl = 7;
+  cursor->params.model_publication_set.publish_period.step_num = 0;
+  cursor->params.model_publication_set.publish_period.step_res =
+      ACCESS_PUBLISH_RESOLUTION_100MS;
+  cursor++;
+
+  cursor->type = CONF_STEP_TYPE_MODEL_SUBSCRIPTION_ADD;
+  cursor->params.model_subscription_add.element_addr = addr;
+  cursor->params.model_subscription_add.model_id.company_id =
+      ACCESS_COMPANY_ID_NONE;
+  cursor->params.model_subscription_add.model_id.model_id =
+      0x1000, // Generic OnOff Server
+      cursor->params.model_subscription_add.address.type =
+          NRF_MESH_ADDRESS_TYPE_GROUP;
+  cursor->params.model_subscription_add.address.value = APP_LED_ADDR;
+  cursor++;
+
+  cursor->type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET;
+  cursor->params.model_publication_set.element_addr = addr;
+  cursor->params.model_publication_set.model_id.company_id =
+      ACCESS_COMPANY_ID_NONE;
+  cursor->params.model_publication_set.model_id.model_id =
+      GENERIC_ONOFF_CLIENT_MODEL_ID;
+  cursor->params.model_publication_set.publish_address.type =
+      NRF_MESH_ADDRESS_TYPE_GROUP;
+  cursor->params.model_publication_set.publish_address.value = APP_LED_ADDR;
+  cursor->params.model_publication_set.appkey_index = APP_APPKEY_IDX;
+  cursor->params.model_publication_set.publish_ttl = 7;
+  cursor->params.model_publication_set.publish_period.step_num = 0;
+  cursor->params.model_publication_set.publish_period.step_res =
+      ACCESS_PUBLISH_RESOLUTION_100MS;
+  cursor++;
+
+  cursor->type = CONF_STEP_TYPE_DONE;
+}
+
 static void prov_success_cb(uint16_t addr) {
   nrf_gpio_pin_clear(PIN_LED_INDICATION);
 
-  static conf_step_t steps[] = {
-      {
-          .type = CONF_STEP_TYPE_COMPOSITION_GET,
-          .params.composition_get.page_number = 0x00,
-      },
-      {
-          .type = CONF_STEP_TYPE_APPKEY_ADD,
-          .params.appkey_add.netkey_index = APP_NETKEY_IDX,
-          .params.appkey_add.appkey_index = APP_APPKEY_IDX,
-          .params.appkey_add.appkey = app_state.persistent.network.appkey,
-      },
-      {
-          .type = CONF_STEP_TYPE_MODEL_APP_BIND,
-          .params.model_app_bind.element_addr = 0x00,
-          .params.model_app_bind.model_id.company_id = ACCESS_COMPANY_ID_NONE,
-          .params.model_app_bind.model_id.model_id = HEALTH_SERVER_MODEL_ID,
-          .params.model_app_bind.appkey_index = APP_APPKEY_IDX,
-      },
-      {
-          .type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET,
-          .params.model_publication_set.element_addr = 0x00,
-          .params.model_publication_set.model_id.company_id =
-              ACCESS_COMPANY_ID_NONE,
-          .params.model_publication_set.model_id.model_id =
-              HEALTH_SERVER_MODEL_ID,
-          .params.model_publication_set.publish_address.type =
-              NRF_MESH_ADDRESS_TYPE_UNICAST,
-          .params.model_publication_set.publish_address.value = 0x0001,
-          .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
-          .params.model_publication_set.publish_ttl = 7,
-          .params.model_publication_set.publish_period.step_num = 10,
-          .params.model_publication_set.publish_period.step_res =
-              ACCESS_PUBLISH_RESOLUTION_1S,
-      },
-      {
-          .type = CONF_STEP_TYPE_MODEL_APP_BIND,
-          .params.model_app_bind.element_addr = 0x00,
-          .params.model_app_bind.model_id.company_id = ACCESS_COMPANY_ID_NONE,
-          .params.model_app_bind.model_id.model_id =
-              0x1000, // Generic OnOff Server
-          .params.model_app_bind.appkey_index = APP_APPKEY_IDX,
-      },
-      {
-          .type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET,
-          .params.model_publication_set.element_addr = 0x00,
-          .params.model_publication_set.model_id.company_id =
-              ACCESS_COMPANY_ID_NONE,
-          .params.model_publication_set.model_id.model_id =
-              0x1000, // Generic OnOff Server
-          .params.model_publication_set.publish_address.type =
-              NRF_MESH_ADDRESS_TYPE_GROUP,
-          .params.model_publication_set.publish_address.value = APP_LED_ADDR,
-          .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
-          .params.model_publication_set.publish_ttl = 7,
-          .params.model_publication_set.publish_period.step_num = 0,
-          .params.model_publication_set.publish_period.step_res =
-              ACCESS_PUBLISH_RESOLUTION_100MS,
-      },
-      {
-          .type = CONF_STEP_TYPE_MODEL_SUBSCRIPTION_ADD,
-          .params.model_subscription_add.element_addr = 0x00,
-          .params.model_subscription_add.model_id.company_id =
-              ACCESS_COMPANY_ID_NONE,
-          .params.model_subscription_add.model_id.model_id =
-              0x1000, // Generic OnOff Server
-          .params.model_subscription_add.address.type =
-              NRF_MESH_ADDRESS_TYPE_GROUP,
-          .params.model_subscription_add.address.value = APP_LED_ADDR,
-      },
-      {
-          .type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET,
-          .params.model_publication_set.element_addr = 0x00,
-          .params.model_publication_set.model_id.company_id =
-              ACCESS_COMPANY_ID_NONE,
-          .params.model_publication_set.model_id.model_id =
-              GENERIC_ONOFF_CLIENT_MODEL_ID,
-          .params.model_publication_set.publish_address.type =
-              NRF_MESH_ADDRESS_TYPE_GROUP,
-          .params.model_publication_set.publish_address.value = APP_LED_ADDR,
-          .params.model_publication_set.appkey_index = APP_APPKEY_IDX,
-          .params.model_publication_set.publish_ttl = 7,
-          .params.model_publication_set.publish_period.step_num = 0,
-          .params.model_publication_set.publish_period.step_res =
-              ACCESS_PUBLISH_RESOLUTION_100MS,
-      },
-      {
-          .type = CONF_STEP_TYPE_DONE,
-      }};
-
-  steps[2].params.model_app_bind.element_addr = addr;
-  steps[3].params.model_publication_set.element_addr = addr;
-  steps[4].params.model_app_bind.element_addr = addr;
-  steps[5].params.model_publication_set.element_addr = addr;
-  steps[6].params.model_subscription_add.element_addr = addr;
-  steps[7].params.model_subscription_add.element_addr = addr;
-
-  conf_start(addr, steps);
+  conf_start(addr, conf_step_builder);
 }
 
 static void prov_failure_cb() {
@@ -400,21 +393,21 @@ void self_config(uint16_t node_addr) {
           .type = CONF_STEP_TYPE_DONE,
       }};
 
-  conf_start(APP_GATEWAY_ADDR, steps);
+  // conf_start(APP_GATEWAY_ADDR, steps);
 }
 
 static void conf_success_cb(uint16_t addr) {
-  if (addr == APP_GATEWAY_ADDR) {
-    // We finished self-config. On to the next!
+  // if (addr == APP_GATEWAY_ADDR) {
+  // We finished self-config. On to the next!
 
-    // APP_ERROR_CHECK(app_timer_start(onoff_client_toggle_timer,
-    //                                 APP_TIMER_TICKS(1000), NULL));
+  // APP_ERROR_CHECK(app_timer_start(onoff_client_toggle_timer,
+  //                                 APP_TIMER_TICKS(1000), NULL));
 
-    prov_start_scan();
-  } else {
-    // We should do self-config.
-    self_config(addr);
-  }
+  prov_start_scan();
+  // } else {
+  // We should do self-config.
+  // self_config(addr);
+  // }
 }
 
 static void conf_failure_cb(uint16_t addr) { prov_start_scan(); }
