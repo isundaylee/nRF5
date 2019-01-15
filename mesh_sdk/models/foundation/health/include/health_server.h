@@ -181,6 +181,8 @@ uint8_t health_server_attention_get(const health_server_t * p_server);
  */
 void health_server_attention_set(health_server_t * p_server, uint8_t attention);
 
+void health_server_send_fault_status(health_server_t * p_server);
+
 /**
  * Initializes the health server model.
  *

@@ -491,6 +491,11 @@ void health_server_attention_set(health_server_t * p_server, uint8_t attention)
     attention_timer_set(p_server, attention);
 }
 
+void health_server_send_fault_status(health_server_t * p_server)
+{
+    send_fault_status(p_server, HEALTH_OPCODE_CURRENT_STATUS, NULL);
+}
+
 uint32_t health_server_init(health_server_t * p_server, uint16_t element_index, uint16_t company_id,
         health_server_attention_cb_t attention_cb,
         const health_server_selftest_t * p_selftests, uint8_t num_selftests,
