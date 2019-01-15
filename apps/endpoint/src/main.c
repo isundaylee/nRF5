@@ -83,6 +83,8 @@ void set_friendship_status(bool established) {
     health_server_fault_register(mesh_stack_health_server_get(),
                                  APP_FAULT_ID_FRIENDLESS);
   }
+
+  health_server_send_fault_status(mesh_stack_health_server_get());
 }
 
 void mesh_assertion_handler(uint32_t pc) {
