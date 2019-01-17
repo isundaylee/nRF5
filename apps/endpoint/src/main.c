@@ -36,7 +36,12 @@
 
 #define APP_PIN_USER_BUTTON 20
 
+#define APP_LED_BLINK_PERIOD_MS 3000
+#define APP_LED_BLINK_ON_MS 5
+#define APP_LED_BLINK_OFF_MS (APP_LED_BLINK_PERIOD_MS - APP_LED_BLINK_ON_MS)
+
 APP_TIMER_DEF(reset_timer);
+APP_TIMER_DEF(led_blink_timer);
 APP_TIMER_DEF(initiate_friendship_timer);
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
@@ -70,21 +75,48 @@ void schedule_friend_request(uint32_t delay_ms) {
 
 bool friendship_established = false;
 
+bool led_blink_value;
+
 void set_friendship_status(bool established) {
   ASSERT(established != friendship_established);
 
   friendship_established = established;
-  nrf_gpio_pin_write(APP_PIN_LED_ERROR, !established);
 
   if (established) {
     health_server_fault_clear(mesh_stack_health_server_get(),
                               APP_FAULT_ID_FRIENDLESS);
+    nrf_gpio_pin_clear(APP_PIN_LED_ERROR);
+    APP_ERROR_CHECK(app_timer_stop(led_blink_timer));
   } else {
     health_server_fault_register(mesh_stack_health_server_get(),
                                  APP_FAULT_ID_FRIENDLESS);
+    led_blink_value = false;
+    APP_ERROR_CHECK(app_timer_start(led_blink_timer, APP_TIMER_TICKS(1), NULL));
   }
 
   health_server_send_fault_status(mesh_stack_health_server_get());
+}
+
+void led_blink_timer_handler(void *context) {
+  if (friendship_established) {
+    // TODO: Figure out whether we can error out here.
+    return;
+  }
+
+  uint32_t next_timeout;
+
+  if (led_blink_value) {
+    nrf_gpio_pin_clear(APP_PIN_LED_ERROR);
+    next_timeout = APP_LED_BLINK_OFF_MS;
+  } else {
+    nrf_gpio_pin_set(APP_PIN_LED_ERROR);
+    next_timeout = APP_LED_BLINK_ON_MS;
+  }
+
+  led_blink_value = !led_blink_value;
+
+  APP_ERROR_CHECK(
+      app_timer_start(led_blink_timer, APP_TIMER_TICKS(next_timeout), NULL));
 }
 
 void mesh_assertion_handler(uint32_t pc) {
@@ -432,6 +464,8 @@ static void initialize(void) {
   APP_ERROR_CHECK(app_timer_create(&initiate_friendship_timer,
                                    APP_TIMER_MODE_SINGLE_SHOT,
                                    start_friendship));
+  APP_ERROR_CHECK(app_timer_create(&led_blink_timer, APP_TIMER_MODE_SINGLE_SHOT,
+                                   led_blink_timer_handler));
 
   // Initialize LPN
   mesh_lpn_init();
