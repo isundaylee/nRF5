@@ -328,20 +328,6 @@ conf_step_builder(uint16_t addr,
     {
       LOG_INFO("Adding steps for Health Client...");
 
-      cursor->type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET;
-      cursor->params.model_publication_set.element_addr = APP_GATEWAY_ADDR;
-      cursor->params.model_publication_set.model_id.company_id =
-          ACCESS_COMPANY_ID_NONE;
-      cursor->params.model_publication_set.model_id.model_id =
-          GENERIC_ONOFF_CLIENT_MODEL_ID;
-      cursor->params.model_publication_set.publish_address.type =
-          NRF_MESH_ADDRESS_TYPE_UNICAST;
-      cursor->params.model_publication_set.publish_address.value = APP_LED_ADDR;
-      cursor->params.model_publication_set.appkey_index = APP_APPKEY_IDX;
-      cursor->params.model_publication_set.publish_ttl = 7;
-      cursor->params.model_publication_set.publish_period.step_num = 1;
-      cursor->params.model_publication_set.publish_period.step_res = cursor++;
-
       cursor->type = CONF_STEP_TYPE_MODEL_APP_BIND;
       cursor->params.model_app_bind.element_addr = APP_GATEWAY_ADDR;
       cursor->params.model_app_bind.model_id.company_id =
