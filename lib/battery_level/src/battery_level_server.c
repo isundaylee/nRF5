@@ -35,7 +35,6 @@ static uint32_t status_send(battery_level_server_t *server,
 }
 
 static void periodic_publish_cb(access_model_handle_t handle, void *args) {
-  __LOG(LOG_SRC_APP, LOG_LEVEL_ERROR, "HHHAAAAAAAAAAAAAAAAAAAAAAAAAAA");
   battery_level_server_t *server = (battery_level_server_t *)args;
   battery_level_status_params_t out = {0};
 
