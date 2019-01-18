@@ -486,7 +486,7 @@ conf_step_builder(uint16_t addr,
       cursor->params.model_publication_set.publish_address.value = 0x0001;
       cursor->params.model_publication_set.appkey_index = APP_APPKEY_IDX;
       cursor->params.model_publication_set.publish_ttl = 7;
-      cursor->params.model_publication_set.publish_period.step_num = 1;
+      cursor->params.model_publication_set.publish_period.step_num = 10;
       cursor->params.model_publication_set.publish_period.step_res =
           ACCESS_PUBLISH_RESOLUTION_1S;
       cursor++;
