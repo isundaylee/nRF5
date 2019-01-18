@@ -277,7 +277,7 @@ void conf_config_client_evt_cb(config_client_event_type_t evt_type,
         conf.current_step = conf.steps;
         conf_execute_step();
       } else {
-        ASSERT(conf.current_step == CONF_STATE_EXECUTING);
+        ASSERT(conf.state == CONF_STATE_EXECUTING);
 
         conf.current_step++;
         if (conf.current_step->type == CONF_STEP_TYPE_DONE) {
