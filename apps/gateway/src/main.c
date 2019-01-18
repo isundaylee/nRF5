@@ -31,12 +31,18 @@
 
 #include "app_button.h"
 
+#include "app_uart.h"
+#include "nrf_uart.h"
+
 #include "debug_pins.h"
 
 #define PIN_LED_ERROR 27
 #define PIN_LED_INDICATION 28
 
 #define APP_PIN_USER_BUTTON 7
+
+#define APP_PIN_UART_TX 3
+#define APP_PIN_UART_RX 2
 
 APP_TIMER_DEF(onoff_client_toggle_timer);
 APP_TIMER_DEF(self_config_timer);
@@ -116,6 +122,31 @@ static void init_buttons() {
   APP_ERROR_CHECK(app_button_init(buttons, sizeof(buttons) / sizeof(buttons[0]),
                                   APP_TIMER_TICKS(50)));
   APP_ERROR_CHECK(app_button_enable());
+}
+
+static void uart_error_handler(app_uart_evt_t *event) {
+  if (event->evt_type == APP_UART_COMMUNICATION_ERROR) {
+    APP_ERROR_HANDLER(event->data.error_communication);
+  } else if (event->evt_type == APP_UART_FIFO_ERROR) {
+    APP_ERROR_HANDLER(event->data.error_code);
+  }
+}
+
+static void init_uart() {
+  const app_uart_comm_params_t comm_params = {APP_PIN_UART_RX,
+                                              APP_PIN_UART_TX,
+                                              0,
+                                              0,
+                                              APP_UART_FLOW_CONTROL_DISABLED,
+                                              false,
+                                              NRF_UART_BAUDRATE_115200};
+
+  uint32_t err_code;
+  APP_UART_FIFO_INIT(&comm_params, 512, 512, uart_error_handler,
+                     APP_IRQ_PRIORITY_LOWEST, err_code);
+  APP_ERROR_CHECK(err_code);
+
+  LOG_INFO("UART initialized.");
 }
 
 static void init_leds() {
@@ -595,6 +626,7 @@ int main(void) {
   init_logging();
   init_mesh();
   init_buttons();
+  init_uart();
 
   start();
 

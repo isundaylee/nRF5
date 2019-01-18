@@ -27,7 +27,13 @@ add_executable(${target}
     ${${PLATFORM}_SOURCE_FILES}
     ${${nRF5_SDK_VERSION}_SOURCE_FILES}
     "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_gpiote.c"
+    "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_uart.c"
+    "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_uarte.c"
+    "${SDK_ROOT}/modules/nrfx/drivers/src/prs/nrfx_prs.c"
+    "${SDK_ROOT}/integration/nrfx/legacy/nrf_drv_uart.c"
     "${SDK_ROOT}/components/libraries/button/app_button.c"
+    "${SDK_ROOT}/components/libraries/uart/app_uart_fifo.c"
+    "${SDK_ROOT}/components/libraries/fifo/app_fifo.c"
     )
 
 target_include_directories(${target} PUBLIC
@@ -47,6 +53,8 @@ target_include_directories(${target} PUBLIC
     ${${PLATFORM}_INCLUDE_DIRS}
     ${${nRF5_SDK_VERSION}_INCLUDE_DIRS}
     "${SDK_ROOT}/components/libraries/button"
+    "${SDK_ROOT}/components/libraries/uart"
+    "${SDK_ROOT}/components/libraries/fifo"
     "${SDK_ROOT}/integration/nrfx/legacy"
     "${SDK_ROOT}/modules/nrfx/drivers/include"
     )
