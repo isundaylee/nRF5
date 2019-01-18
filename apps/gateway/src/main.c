@@ -49,6 +49,36 @@ APP_TIMER_DEF(self_config_timer);
 
 health_client_t health_client;
 
+void protocol_send(char const *fmt, ...) {
+  static char buf[128];
+
+  va_list args;
+  va_start(args, fmt);
+
+  int len = vsnprintf(buf, sizeof(buf) - 2, fmt, args);
+  if ((len < 0) || (len >= sizeof(buf) - 2)) {
+    LOG_ERROR("Protocol sending failed with return code %d.", len);
+    va_end(args);
+    return;
+  }
+
+  buf[len++] = '\r';
+  buf[len++] = '\n';
+
+  for (int i = 0; i < len; i++) {
+    uint32_t err_code = app_uart_put(buf[i]);
+    if (err_code == NRF_ERROR_NO_MEM) {
+      LOG_ERROR("Protocol sending failed due to UART TX buffer overflow.");
+      va_end(args);
+      return;
+    }
+
+    APP_ERROR_CHECK(err_code);
+  }
+
+  va_end(args);
+}
+
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
 
@@ -246,10 +276,10 @@ static void health_client_event_handler(health_client_t const *client,
     nrf_mesh_rx_metadata_scanner_t const *scanner_metadata =
         &core_metadata->params.scanner;
 
-    LOG_INFO("Protocol: health %d %d %s", event->p_meta_data->src.value,
-             scanner_metadata->rssi,
-             to_hex(event->data.fault_status.p_fault_array,
-                    event->data.fault_status.fault_array_length));
+    protocol_send("health %d %d %s", event->p_meta_data->src.value,
+                  scanner_metadata->rssi,
+                  to_hex(event->data.fault_status.p_fault_array,
+                         event->data.fault_status.fault_array_length));
 
     break;
   }
@@ -274,8 +304,8 @@ void battery_level_client_status_handler(
   nrf_mesh_rx_metadata_scanner_t const *scanner_metadata =
       &core_metadata->params.scanner;
 
-  LOG_INFO("Protocol: battery %d %d %d", meta->src.value,
-           scanner_metadata->rssi, in->level);
+  protocol_send("battery %d %d %d", meta->src.value, scanner_metadata->rssi,
+                in->level);
 }
 
 battery_level_client_t bl_client;
