@@ -24,6 +24,7 @@
 
 #include "app_timer.h"
 
+#include "battery_level_server.h"
 #include "generic_onoff_client.h"
 #include "health_client.h"
 
@@ -425,6 +426,46 @@ conf_step_builder(uint16_t addr,
       LOG_INFO("Unknown SIG model: %d.", sig_model_id);
       break;
     }
+    }
+  }
+
+  uint32_t const *vendor_model_ids =
+      (uint32_t const
+           *)(&data[sizeof(config_composition_data_header_t) +
+                    sizeof(config_composition_element_header_t) +
+                    element_header->sig_model_count * sizeof(uint16_t)]);
+  for (size_t i = 0; i < element_header->vendor_model_count; i++) {
+    uint32_t vendor_model_id = vendor_model_ids[i];
+
+    if (vendor_model_id == 0x0001BEEE) {
+      LOG_INFO("Adding steps for Battery Level Server...");
+
+      cursor->type = CONF_STEP_TYPE_MODEL_APP_BIND;
+      cursor->params.model_app_bind.element_addr = addr;
+      cursor->params.model_app_bind.model_id.company_id =
+          BATTERY_LEVEL_COMPANY_ID;
+      cursor->params.model_app_bind.model_id.model_id =
+          BATTERY_LEVEL_SERVER_MODEL_ID;
+      cursor->params.model_app_bind.appkey_index = APP_APPKEY_IDX;
+      cursor++;
+
+      cursor->type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET;
+      cursor->params.model_publication_set.element_addr = addr;
+      cursor->params.model_publication_set.model_id.company_id =
+          BATTERY_LEVEL_COMPANY_ID;
+      cursor->params.model_publication_set.model_id.model_id =
+          BATTERY_LEVEL_SERVER_MODEL_ID;
+      cursor->params.model_publication_set.publish_address.type =
+          NRF_MESH_ADDRESS_TYPE_UNICAST;
+      cursor->params.model_publication_set.publish_address.value = 0x0001;
+      cursor->params.model_publication_set.appkey_index = APP_APPKEY_IDX;
+      cursor->params.model_publication_set.publish_ttl = 7;
+      cursor->params.model_publication_set.publish_period.step_num = 1;
+      cursor->params.model_publication_set.publish_period.step_res =
+          ACCESS_PUBLISH_RESOLUTION_1S;
+      cursor++;
+    } else {
+      LOG_ERROR("Unknown vendor model: 0x%08x.", vendor_model_id);
     }
   }
 

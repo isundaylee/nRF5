@@ -40,6 +40,7 @@ target_include_directories(${target} PUBLIC
     ${CONFIG_SERVER_INCLUDE_DIRS}
     ${HEALTH_SERVER_INCLUDE_DIRS}
     ${HEALTH_CLIENT_INCLUDE_DIRS}
+    "${CMAKE_SOURCE_DIR}/../lib/battery_level/include"
     ${MESH_INCLUDE_DIRS}
     ${${SOFTDEVICE}_INCLUDE_DIRS}
     ${${PLATFORM}_INCLUDE_DIRS}
