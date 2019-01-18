@@ -18,6 +18,8 @@
 
 #include "generic_onoff_client.h"
 
+#include "battery_level_server.h"
+
 #include "nrf_delay.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
@@ -244,6 +246,14 @@ generic_onoff_client_transaction_status_cb(access_model_handle_t model_handle,
   // TODO:
 }
 
+battery_level_server_t bl_server;
+
+void battery_level_server_get_handler(battery_level_server_t const *server,
+                                      access_message_rx_meta_t const *meta,
+                                      battery_level_status_params_t *out) {
+  out->level = 1928;
+}
+
 static void init_models(void) {
   static generic_onoff_server_callbacks_t onoff_server_cbs = {
       .onoff_cbs.set_cb = generic_onoff_state_set_cb,
@@ -270,6 +280,13 @@ static void init_models(void) {
 
   APP_ERROR_CHECK(generic_onoff_client_init(&onoff_client, 0));
   LOG_INFO("OnOff client initialized.");
+
+  bl_server.settings.force_segmented = false;
+  bl_server.settings.transmic_size = NRF_MESH_TRANSMIC_SIZE_SMALL;
+  bl_server.settings.get_cb = battery_level_server_get_handler;
+
+  APP_ERROR_CHECK(battery_level_server_init(&bl_server, 0));
+  LOG_INFO("Battery Level server initialized.");
 }
 
 static void start_friendship() {

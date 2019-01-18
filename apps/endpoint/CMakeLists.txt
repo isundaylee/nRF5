@@ -13,6 +13,7 @@ add_executable(${target}
     ${GENERIC_ONOFF_CLIENT_SOURCE_FILES}
     ${CONFIG_SERVER_SOURCE_FILES}
     ${HEALTH_SERVER_SOURCE_FILES}
+    "${CMAKE_SOURCE_DIR}/../lib/battery_level/src/battery_level_server.c"
     ${ACCESS_SOURCE_FILES}
     ${MESH_APP_TIMER_SOURCE_FILES}
     ${PROV_PROVISIONEE_SOURCE_FILES}
@@ -34,6 +35,7 @@ target_include_directories(${target} PUBLIC
     ${GENERIC_ONOFF_CLIENT_INCLUDE_DIRS}
     ${CONFIG_SERVER_INCLUDE_DIRS}
     ${HEALTH_SERVER_INCLUDE_DIRS}
+    "${CMAKE_SOURCE_DIR}/../lib/battery_level/include"
     ${MESH_INCLUDE_DIRS}
     ${${SOFTDEVICE}_INCLUDE_DIRS}
     ${${PLATFORM}_INCLUDE_DIRS}
