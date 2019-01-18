@@ -509,7 +509,17 @@ static void start() {
   LOG_INFO("Mesh stack started.");
 }
 
+bool is_in_debug_mode() { return ((CoreDebug->DHCSR & 0x0001) != 0); }
+
 int main(void) {
+  // if (is_in_debug_mode()) {
+  //   nrf_gpio_cfg_output(APP_PIN_LED_INDICATION);
+  //   nrf_gpio_pin_set(APP_PIN_LED_INDICATION);
+  // }
+  //
+  // while (true) {
+  // }
+
   initialize();
   start();
 

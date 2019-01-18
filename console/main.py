@@ -11,9 +11,9 @@ FAULT_MAP = {
 }
 
 NODE_MAP = {
-    0x0003: "LPN PCB",
+    0x000D: "LPN PCB",
     0x0005: "LPN Ant",
-    0x0008: "Friend",
+    0x0010: "Friend",
 }
 
 RSSI_AVG_ALPHA = 0.95
@@ -53,13 +53,19 @@ def update_rssi(addr, rssi):
 
 
 async def update():
-    async with aiofiles.open('/tmp/bhome.console', 'r') as f:
+    async with aiofiles.open('/tmp/rtt.log', 'r') as f:
         while True:
-            line = (await f.readline())[LEFT_MARGIN:-1]
+            line = await f.readline()
 
             if len(line) == 0:
                 await asyncio.sleep(0.1)
                 continue
+
+            found = line.find("Protocol: ")
+            if found == -1:
+                continue
+
+            line = line[found+len("Protocol: "):-1]
 
             op, *params = line.split(' ')
 
