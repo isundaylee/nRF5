@@ -21,9 +21,11 @@
 #include "battery_level_server.h"
 
 #include "nrf_delay.h"
+#include "nrf_drv_saadc.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
 #include "nrf_sdh_soc.h"
+
 #include "sdk_config.h"
 
 #include "custom_log.h"
@@ -251,7 +253,12 @@ battery_level_server_t bl_server;
 void battery_level_server_get_handler(battery_level_server_t const *server,
                                       access_message_rx_meta_t const *meta,
                                       battery_level_status_params_t *out) {
-  out->level = 1928;
+  nrf_saadc_value_t vdd_value;
+  APP_ERROR_CHECK(nrfx_saadc_sample_convert(0, &vdd_value));
+
+  LOG_INFO("VDD measurement: %d.", vdd_value);
+
+  out->level = vdd_value;
 }
 
 static void init_models(void) {
@@ -422,6 +429,10 @@ void health_server_publish_timeout_handler(health_server_t *p_server) {
   }
 }
 
+void saadc_event_handler(nrf_drv_saadc_evt_t const *event) {
+  LOG_INFO("Received SAADC event of type %d.", event->type);
+}
+
 bool should_reset = false;
 
 static void initialize(void) {
@@ -483,6 +494,13 @@ static void initialize(void) {
                                    start_friendship));
   APP_ERROR_CHECK(app_timer_create(&led_blink_timer, APP_TIMER_MODE_SINGLE_SHOT,
                                    led_blink_timer_handler));
+
+  // Initialize SAADC
+  APP_ERROR_CHECK(nrf_drv_saadc_init(NULL, saadc_event_handler));
+
+  nrf_saadc_channel_config_t saadc_channel_config =
+      NRF_DRV_SAADC_DEFAULT_CHANNEL_CONFIG_SE(NRF_SAADC_INPUT_VDD);
+  APP_ERROR_CHECK(nrf_drv_saadc_channel_init(0, &saadc_channel_config));
 
   // Initialize LPN
   mesh_lpn_init();

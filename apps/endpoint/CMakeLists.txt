@@ -22,6 +22,7 @@ add_executable(${target}
     ${${PLATFORM}_SOURCE_FILES}
     ${${nRF5_SDK_VERSION}_SOURCE_FILES}
     "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_gpiote.c"
+    "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_saadc.c"
     "${SDK_ROOT}/components/libraries/button/app_button.c"
     )
 
