@@ -24,6 +24,7 @@
 
 #include "app_timer.h"
 
+#include "battery_level_client.h"
 #include "battery_level_server.h"
 #include "generic_onoff_client.h"
 #include "health_client.h"
@@ -230,6 +231,24 @@ static void health_client_event_handler(health_client_t const *client,
   }
 }
 
+void battery_level_client_status_handler(
+    battery_level_client_t const *client, access_message_rx_meta_t const *meta,
+    battery_level_status_params_t const *in) {
+  nrf_mesh_rx_metadata_t const *core_metadata = meta->p_core_metadata;
+
+  if (core_metadata->source != NRF_MESH_RX_SOURCE_SCANNER) {
+    return;
+  }
+
+  nrf_mesh_rx_metadata_scanner_t const *scanner_metadata =
+      &core_metadata->params.scanner;
+
+  LOG_INFO("Protocol: battery %d %d %d", meta->src.value,
+           scanner_metadata->rssi, in->level);
+}
+
+battery_level_client_t bl_client;
+
 static void init_models(void) {
   APP_ERROR_CHECK(
       health_client_init(&health_client, 0, health_client_event_handler));
@@ -247,6 +266,13 @@ static void init_models(void) {
 
   APP_ERROR_CHECK(generic_onoff_client_init(&onoff_client, 0));
   LOG_INFO("OnOff client initialized.");
+
+  bl_client.settings.force_segmented = false;
+  bl_client.settings.transmic_size = NRF_MESH_TRANSMIC_SIZE_SMALL;
+  bl_client.settings.status_cb = battery_level_client_status_handler;
+
+  APP_ERROR_CHECK(battery_level_client_init(&bl_client, 0));
+  LOG_INFO("Battery Level client initialized.");
 }
 
 static void init_mesh() {
@@ -463,6 +489,17 @@ conf_step_builder(uint16_t addr,
       cursor->params.model_publication_set.publish_period.step_num = 1;
       cursor->params.model_publication_set.publish_period.step_res =
           ACCESS_PUBLISH_RESOLUTION_1S;
+      cursor++;
+    } else if (vendor_model_id == 0x0002BEEE) {
+      LOG_INFO("Adding steps for Battery Level Client...");
+
+      cursor->type = CONF_STEP_TYPE_MODEL_APP_BIND;
+      cursor->params.model_app_bind.element_addr = APP_GATEWAY_ADDR;
+      cursor->params.model_app_bind.model_id.company_id =
+          BATTERY_LEVEL_COMPANY_ID;
+      cursor->params.model_app_bind.model_id.model_id =
+          BATTERY_LEVEL_CLIENT_MODEL_ID;
+      cursor->params.model_app_bind.appkey_index = APP_APPKEY_IDX;
       cursor++;
     } else {
       LOG_ERROR("Unknown vendor model: 0x%08x.", vendor_model_id);

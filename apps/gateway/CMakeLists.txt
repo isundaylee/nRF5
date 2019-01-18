@@ -18,6 +18,7 @@ add_executable(${target}
     ${CONFIG_SERVER_SOURCE_FILES}
     ${HEALTH_SERVER_SOURCE_FILES}
     ${HEALTH_CLIENT_SOURCE_FILES}
+    "${CMAKE_SOURCE_DIR}/../lib/battery_level/src/battery_level_client.c"
     ${ACCESS_SOURCE_FILES}
     ${MESH_APP_TIMER_SOURCE_FILES}
     ${PROV_PROVISIONER_SOURCE_FILES}
