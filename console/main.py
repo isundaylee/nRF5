@@ -17,7 +17,7 @@ NODE_MAP = {
 }
 
 RSSI_AVG_ALPHA = 0.95
-
+BATTERY_AVG_ALPHA = 0.95
 
 nodes = {}
 
@@ -29,7 +29,8 @@ def add_node(addr):
     nodes[addr] = {
         'last_seen': time.time(),
         'faults': [],
-        'avg_rssi': None}
+        'avg_rssi': None,
+        'battery': None}
 
 
 def touch(addr):
@@ -49,6 +50,15 @@ def update_rssi(addr, rssi):
     else:
         nodes[addr]['avg_rssi'] = RSSI_AVG_ALPHA * nodes[addr]['avg_rssi'] + \
             (1 - RSSI_AVG_ALPHA) * rssi
+    touch(addr)
+
+
+def update_battery(addr, battery):
+    if nodes[addr]['battery'] is None:
+        nodes[addr]['battery'] = battery
+    else:
+        nodes[addr]['battery'] = BATTERY_AVG_ALPHA * nodes[addr]['battery'] + \
+            (1 - BATTERY_AVG_ALPHA) * battery
     touch(addr)
 
 
@@ -78,6 +88,16 @@ async def update():
                 add_node(addr)
                 update_faults(addr, faults)
                 update_rssi(addr, rssi)
+            elif op == 'battery':
+                addr, rssi, battery = params
+
+                addr = int(addr)
+                rssi = float(rssi)
+                battery = (float(battery) * 6.0 * 0.6) / float(1 << 14)
+
+                add_node(addr)
+                update_rssi(addr, rssi)
+                update_battery(addr, battery)
             else:
                 raise RuntimeError("Unknown op: " + op)
 
@@ -105,13 +125,28 @@ def format_last_seen(data):
         return "%d seconds ago" % seconds
 
 
+def format_rssi(data):
+    if data['avg_rssi'] is None:
+        return 'N/A'
+    else:
+        return "%3.1f dB" % data['avg_rssi']
+
+
+def format_battery(data):
+    if data['battery'] is None:
+        return 'N/A'
+    else:
+        return "%.5f V" % data['battery']
+
+
 async def display():
     while True:
         for addr, data in nodes.items():
-            print("%-15s | %-30s Avg %.1f dB | %-20s" % (
+            print("%-15s | %-30s %-10s %-9s | %-20s" % (
                 node_name(addr),
                 format_faults(data),
-                data['avg_rssi'],
+                format_rssi(data),
+                format_battery(data),
                 format_last_seen(data)))
 
         print('=' * 80)
