@@ -1,1 +1,2 @@
 aiofiles==0.4.0
+pyserial_asyncio==0.4

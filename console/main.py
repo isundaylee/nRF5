@@ -2,6 +2,7 @@ import asyncio
 import time
 import aiofiles
 import textwrap
+import serial_asyncio
 
 
 LEFT_MARGIN = 38
@@ -11,9 +12,9 @@ FAULT_MAP = {
 }
 
 NODE_MAP = {
-    0x000D: "LPN PCB",
-    0x0005: "LPN Ant",
-    0x0010: "Friend",
+    0x0004: "LPN PCB",
+    0x0003: "LPN Ant",
+    0x0002: "Friend",
 }
 
 RSSI_AVG_ALPHA = 0.95
@@ -62,44 +63,30 @@ def update_battery(addr, battery):
     touch(addr)
 
 
-async def update():
-    async with aiofiles.open('/tmp/rtt.log', 'r') as f:
-        while True:
-            line = await f.readline()
+def process(line):
+    op, *params = line.split(' ')
 
-            if len(line) == 0:
-                await asyncio.sleep(0.1)
-                continue
+    if op == 'health':
+        addr, rssi, faults = params
 
-            found = line.find("Protocol: ")
-            if found == -1:
-                continue
+        addr = int(addr)
+        rssi = float(rssi)
 
-            line = line[found+len("Protocol: "):-1]
+        add_node(addr)
+        update_faults(addr, faults)
+        update_rssi(addr, rssi)
+    elif op == 'battery':
+        addr, rssi, battery = params
 
-            op, *params = line.split(' ')
+        addr = int(addr)
+        rssi = float(rssi)
+        battery = (float(battery) * 6.0 * 0.6) / float(1 << 14)
 
-            if op == 'health':
-                addr, rssi, faults = params
-
-                addr = int(addr)
-                rssi = float(rssi)
-
-                add_node(addr)
-                update_faults(addr, faults)
-                update_rssi(addr, rssi)
-            elif op == 'battery':
-                addr, rssi, battery = params
-
-                addr = int(addr)
-                rssi = float(rssi)
-                battery = (float(battery) * 6.0 * 0.6) / float(1 << 14)
-
-                add_node(addr)
-                update_rssi(addr, rssi)
-                update_battery(addr, battery)
-            else:
-                raise RuntimeError("Unknown op: " + op)
+        add_node(addr)
+        update_rssi(addr, rssi)
+        update_battery(addr, battery)
+    else:
+        raise RuntimeError("Unknown op: " + op)
 
 
 def node_name(addr):
@@ -154,9 +141,29 @@ async def display():
         await asyncio.sleep(1.0)
 
 
+class ConsoleSerial(asyncio.Protocol):
+    def connection_made(self, transport):
+        self.transport = transport
+        self.buffer = b''
+
+    def data_received(self, data):
+        self.buffer += data
+
+        while True:
+            found = self.buffer.find(b'\r\n')
+            if found < 0:
+                break
+
+            process(self.buffer[:found].decode())
+            self.buffer = self.buffer[found + 2:]
+
+
 async def main():
     await asyncio.gather(
-        update(),
+        serial_asyncio.create_serial_connection(loop,
+                                                ConsoleSerial,
+                                                '/dev/cu.usbserial-A9M9DV3R',
+                                                baudrate=115200),
         display())
 
 
