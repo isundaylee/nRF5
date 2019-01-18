@@ -178,6 +178,25 @@ char const *get_faults_description(health_client_evt_fault_status_t status) {
   }
 }
 
+char const *to_hex(uint8_t const *data, size_t len) {
+  static char buf[259];
+  static char hex[17] = "0123456789abcdef";
+
+  size_t actual_len = MIN(len, (sizeof(buf) - 1) / 2);
+
+  buf[0] = '[';
+
+  for (size_t i = 0; i < actual_len; i++) {
+    buf[2 * i + 1] = hex[(data[i] & 0xF0) >> 4];
+    buf[2 * i + 2] = hex[(data[i] & 0x0F) >> 0];
+  }
+
+  buf[2 * actual_len + 1] = ']';
+  buf[2 * actual_len + 2] = '\0';
+
+  return buf;
+}
+
 static void health_client_event_handler(health_client_t const *client,
                                         health_client_evt_t const *event) {
   switch (event->type) {
@@ -186,23 +205,19 @@ static void health_client_event_handler(health_client_t const *client,
   {
     nrf_mesh_rx_metadata_t const *core_metadata =
         event->p_meta_data->p_core_metadata;
-    if (event->data.fault_status.fault_array_length == 0) {
-      LOG_INFO(
-          "Received health status from 0x%04x: RSSI: %d. Fault status: %s.",
-          event->p_meta_data->src.value,
-          core_metadata->source == NRF_MESH_RX_SOURCE_SCANNER
-              ? core_metadata->params.scanner.rssi
-              : 0,
-          get_faults_description(event->data.fault_status));
-    } else {
-      LOG_ERROR(
-          "Received health status from 0x%04x: RSSI: %d. Fault status: %s.",
-          event->p_meta_data->src.value,
-          core_metadata->source == NRF_MESH_RX_SOURCE_SCANNER
-              ? core_metadata->params.scanner.rssi
-              : 0,
-          get_faults_description(event->data.fault_status));
+
+    if (core_metadata->source != NRF_MESH_RX_SOURCE_SCANNER) {
+      break;
     }
+
+    nrf_mesh_rx_metadata_scanner_t const *scanner_metadata =
+        &core_metadata->params.scanner;
+
+    LOG_INFO("Protocol: health %d %d %s", event->p_meta_data->src.value,
+             scanner_metadata->rssi,
+             to_hex(event->data.fault_status.p_fault_array,
+                    event->data.fault_status.fault_array_length));
+
     break;
   }
 
