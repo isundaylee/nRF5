@@ -44,10 +44,16 @@
 #define APP_LED_BLINK_ON_MS 5
 #define APP_LED_BLINK_OFF_MS (APP_LED_BLINK_PERIOD_MS - APP_LED_BLINK_ON_MS)
 
+#define APP_ATTENTION_LED_BLINK_PERIOD_MS 1000
+#define APP_ATTENTION_LED_BLINK_ON_MS 500
+#define APP_ATTENTION_LED_BLINK_OFF_MS                                         \
+  (APP_ATTENTION_LED_BLINK_PERIOD_MS - APP_ATTENTION_LED_BLINK_ON_MS)
+
 APP_TIMER_DEF(reset_timer);
 APP_TIMER_DEF(led_blink_timer);
 APP_TIMER_DEF(initiate_friendship_timer);
 APP_TIMER_DEF(dummy_timer);
+APP_TIMER_DEF(attention_led_blink_timer);
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
@@ -122,6 +128,25 @@ void led_blink_timer_handler(void *context) {
 
   APP_ERROR_CHECK(
       app_timer_start(led_blink_timer, APP_TIMER_TICKS(next_timeout), NULL));
+}
+
+void attention_led_blink_timer_handler(void *context) {
+  static bool value = true;
+
+  uint32_t next_timeout;
+
+  if (value) {
+    nrf_gpio_pin_clear(APP_PIN_LED_INDICATION);
+    next_timeout = APP_ATTENTION_LED_BLINK_OFF_MS;
+  } else {
+    nrf_gpio_pin_set(APP_PIN_LED_INDICATION);
+    next_timeout = APP_ATTENTION_LED_BLINK_ON_MS;
+  }
+
+  value = !value;
+
+  APP_ERROR_CHECK(app_timer_start(attention_led_blink_timer,
+                                  APP_TIMER_TICKS(next_timeout), NULL));
 }
 
 void mesh_assertion_handler(uint32_t pc) {
@@ -440,8 +465,14 @@ static void dummy_timer_handler(void *context) {
 }
 
 void health_server_attention_handler(health_server_t const *server,
-                                      bool attention_state) {
-  nrf_gpio_pin_write(APP_PIN_LED_INDICATION, attention_state);
+                                     bool attention_state) {
+  APP_ERROR_CHECK(app_timer_stop(attention_led_blink_timer));
+  nrf_gpio_pin_clear(APP_PIN_LED_INDICATION);
+
+  if (attention_state) {
+    APP_ERROR_CHECK(
+        app_timer_start(attention_led_blink_timer, APP_TIMER_TICKS(1), NULL));
+  }
 }
 
 bool should_reset = false;
@@ -506,6 +537,9 @@ static void initialize(void) {
                                    start_friendship));
   APP_ERROR_CHECK(app_timer_create(&led_blink_timer, APP_TIMER_MODE_SINGLE_SHOT,
                                    led_blink_timer_handler));
+  APP_ERROR_CHECK(app_timer_create(&attention_led_blink_timer,
+                                   APP_TIMER_MODE_SINGLE_SHOT,
+                                   attention_led_blink_timer_handler));
   APP_ERROR_CHECK(app_timer_create(&dummy_timer, APP_TIMER_MODE_REPEATED,
                                    dummy_timer_handler));
 
