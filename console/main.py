@@ -6,9 +6,12 @@ import serial_asyncio
 import sys
 import os
 import shutil
+import pickle
 
 
 OUTPUT_DIR = 'output'
+OUTPUT_DASHBOARD_PATH = os.path.join(OUTPUT_DIR, 'dashboard')
+OUTPUT_NODE_MAP_PATH = os.path.join(OUTPUT_DIR, 'node_map')
 
 LEFT_MARGIN = 38
 
@@ -16,7 +19,11 @@ FAULT_MAP = {
     0x0001: "Friendless"
 }
 
-node_map = {}
+try:
+    with open(OUTPUT_NODE_MAP_PATH, 'rb') as f:
+        node_map = pickle.load(f)
+except FileNotFoundError:
+    node_map = {}
 
 RSSI_AVG_ALPHA = 0.95
 BATTERY_AVG_ALPHA = 0.95
@@ -129,7 +136,7 @@ def format_battery(data):
 
 async def display():
     while True:
-        with open(os.path.join(OUTPUT_DIR, 'dashboard'), 'w') as f:
+        with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
             for addr, data in nodes.items():
                 f.write("%-15s | %-30s %-10s %-9s | %-20s\n" % (
                     node_name(addr),
@@ -190,6 +197,8 @@ def handle_name(request):
     name = ' '.join(rest)
 
     node_map[addr] = name
+    with open(OUTPUT_NODE_MAP_PATH, 'wb') as f:
+        pickle.dump(node_map, f)
 
     print('Set the name of node 0x{:02X} to "{}"\n'.format(addr, name))
 
