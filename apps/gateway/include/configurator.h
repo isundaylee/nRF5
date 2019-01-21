@@ -67,7 +67,7 @@ typedef struct {
 // Configurator interface
 
 typedef void (*conf_success_cb_t)(uint16_t node_addr);
-typedef void (*conf_failure_cb_t)(uint16_t node_addr);
+typedef void (*conf_failure_cb_t)(uint16_t node_addr, uint32_t err);
 
 typedef void (*conf_step_builder_t)(
     uint16_t node_addr,
@@ -76,4 +76,4 @@ typedef void (*conf_step_builder_t)(
 
 void conf_init(app_state_t *app_state, conf_success_cb_t success_cb,
                conf_failure_cb_t failure_cb);
-void conf_start(uint16_t node_addr, conf_step_builder_t step_builder);
+uint32_t conf_start(uint16_t node_addr, conf_step_builder_t step_builder);

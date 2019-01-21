@@ -52,6 +52,25 @@ APP_TIMER_DEF(pong_timer);
 
 health_client_t health_client;
 
+typedef struct {
+  int addr;
+} protocol_id_request_t;
+
+typedef enum {
+  PROTOCOL_ID_REQUEST = 0,
+
+  PROTOCOL_NO_REQUEST = 100,
+} protocol_request_type_t;
+
+typedef struct {
+  protocol_request_type_t type;
+  union {
+    protocol_id_request_t id_request;
+  } request;
+} protocol_request_t;
+
+protocol_request_t pending_request = {.type = PROTOCOL_NO_REQUEST};
+
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
 
@@ -131,6 +150,35 @@ static void pong_timer_handler(void *ctx) {
   protocol_reply(NRF_SUCCESS, "pong");
 }
 
+static void health_client_bind_step_builder(
+    uint16_t addr, config_msg_composition_data_status_t const *composition_data,
+    conf_step_t *steps_out) {
+  conf_step_t *cursor = steps_out;
+
+  if (pending_request.type == PROTOCOL_ID_REQUEST) {
+    cursor->type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET;
+    cursor->params.model_publication_set.element_addr = addr;
+    cursor->params.model_publication_set.model_id.company_id =
+        ACCESS_COMPANY_ID_NONE;
+    cursor->params.model_publication_set.model_id.model_id =
+        HEALTH_CLIENT_MODEL_ID;
+    cursor->params.model_publication_set.publish_address.type =
+        NRF_MESH_ADDRESS_TYPE_UNICAST;
+    cursor->params.model_publication_set.publish_address.value =
+        pending_request.request.id_request.addr;
+    cursor->params.model_publication_set.appkey_index = APP_APPKEY_IDX;
+    cursor->params.model_publication_set.publish_ttl = 7;
+    cursor->params.model_publication_set.publish_period.step_num = 0;
+    cursor->params.model_publication_set.publish_period.step_res =
+        ACCESS_PUBLISH_RESOLUTION_100MS;
+    cursor++;
+  } else {
+    LOG_ERROR("Unexpected invocation of health_client_bind_step_builder.");
+  }
+
+  cursor->type = CONF_STEP_TYPE_DONE;
+}
+
 static void protocol_request_handler(char const *op, char const *params) {
   if (strcmp(op, "ping") == 0) {
     if (strlen(params) == 0) {
@@ -143,6 +191,17 @@ static void protocol_request_handler(char const *op, char const *params) {
       if (err != NRF_SUCCESS) {
         protocol_reply(err, "delayed ping failed");
       }
+    }
+  } else if (strcmp(op, "id") == 0) {
+    uint32_t addr = strtol(params, NULL, 16);
+    uint32_t err =
+        conf_start(APP_GATEWAY_ADDR, health_client_bind_step_builder);
+
+    if (err != NRF_SUCCESS) {
+      protocol_reply(err, "health client config failed");
+    } else {
+      pending_request.type = PROTOCOL_ID_REQUEST;
+      pending_request.request.id_request.addr = addr;
     }
   } else {
     protocol_reply(NRF_ERROR_NOT_FOUND, "invalid op '%s'", op);
@@ -257,6 +316,32 @@ static void health_client_event_handler(health_client_t const *client,
                   scanner_metadata->rssi,
                   to_hex(event->data.fault_status.p_fault_array,
                          event->data.fault_status.fault_array_length));
+
+    break;
+  }
+
+  case HEALTH_CLIENT_EVT_TYPE_ATTENTION_STATUS_RECEIVED: //
+  {
+    if (pending_request.type != PROTOCOL_ID_REQUEST) {
+      LOG_ERROR("Unexpected health client attention status received.");
+      return;
+    }
+
+    protocol_reply(NRF_SUCCESS, "");
+    pending_request.type = PROTOCOL_NO_REQUEST;
+
+    break;
+  }
+
+  case HEALTH_CLIENT_EVT_TYPE_TIMEOUT: //
+  {
+    if (pending_request.type != PROTOCOL_ID_REQUEST) {
+      LOG_ERROR("Unexpected health client timeout received.");
+      return;
+    }
+
+    protocol_reply(NRF_ERROR_TIMEOUT, "timed out");
+    pending_request.type = PROTOCOL_NO_REQUEST;
 
     break;
   }
@@ -550,7 +635,7 @@ conf_step_builder(uint16_t addr,
 static void prov_success_cb(uint16_t addr) {
   nrf_gpio_pin_clear(PIN_LED_INDICATION);
 
-  conf_start(addr, conf_step_builder);
+  APP_ERROR_CHECK(conf_start(addr, conf_step_builder));
 }
 
 static void prov_failure_cb() {
@@ -559,9 +644,43 @@ static void prov_failure_cb() {
   prov_start_scan();
 }
 
-static void conf_success_cb(uint16_t addr) { prov_start_scan(); }
+static void conf_success_cb(uint16_t addr) {
+  switch (pending_request.type) {
+  case PROTOCOL_ID_REQUEST: //
+  {
+    uint32_t err = health_client_attention_set(&health_client, 10, true);
 
-static void conf_failure_cb(uint16_t addr) { prov_start_scan(); }
+    if (err != NRF_SUCCESS) {
+      protocol_reply(err, "failed to set attention timer");
+      return;
+    }
+
+    return;
+  }
+
+  case PROTOCOL_NO_REQUEST:
+  default:
+    break;
+  }
+
+  prov_start_scan();
+}
+
+static void conf_failure_cb(uint16_t addr, uint32_t err) {
+  switch (pending_request.type) {
+  case PROTOCOL_ID_REQUEST: //
+  {
+    protocol_reply(err, "failed to config health client");
+    return;
+  }
+
+  case PROTOCOL_NO_REQUEST:
+  default:
+    break;
+  }
+
+  prov_start_scan();
+}
 
 static void onoff_client_toggle_timer_handler(void *context) {
   static bool value = false;

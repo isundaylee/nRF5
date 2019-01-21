@@ -143,14 +143,14 @@ void conf_succeed() {
   conf.success_cb(conf.node_addr);
 }
 
-void conf_fail() {
+void conf_fail(uint32_t err) {
   LOG_INFO("Configurator: Configuration failed for node %d. ", conf.node_addr);
 
   // Bind the config client back to the gateway to avoid reboot crash in case a
   // previously provisioned device is removed from DSM.
   conf_bind(APP_GATEWAY_ADDR);
   conf.state = CONF_STATE_IDLE;
-  conf.failure_cb(conf.node_addr);
+  conf.failure_cb(conf.node_addr, err);
 }
 
 void conf_execute_step() {
@@ -244,7 +244,7 @@ void conf_config_client_evt_cb(config_client_event_type_t evt_type,
   case CONFIG_CLIENT_EVENT_TYPE_TIMEOUT: //
   {
     LOG_ERROR("Configurator: Received config timeout message. ");
-    conf_fail();
+    conf_fail(NRF_ERROR_TIMEOUT);
 
     break;
   }
@@ -287,7 +287,7 @@ void conf_config_client_evt_cb(config_client_event_type_t evt_type,
         }
       }
     } else if (result == CONF_CHECK_RESULT_FAIL) {
-      conf_fail();
+      conf_fail(NRF_ERROR_INVALID_STATE);
     }
 
     break;
@@ -310,13 +310,12 @@ void conf_get_composition_data() {
   conf_set_expected_status(CONFIG_OPCODE_COMPOSITION_DATA_STATUS, 0, NULL);
 }
 
-void conf_start(uint16_t node_addr, conf_step_builder_t step_builder) {
+uint32_t conf_start(uint16_t node_addr, conf_step_builder_t step_builder) {
   LOG_INFO("Configurator: Starting to configure node at address %d", node_addr);
 
   if (conf.state != CONF_STATE_IDLE) {
     LOG_ERROR("Configurator: Configurator currently busy. ");
-    NRF_MESH_ASSERT(false);
-    return;
+    return NRF_ERROR_INVALID_STATE;
   }
 
   conf.node_addr = node_addr;
@@ -324,6 +323,8 @@ void conf_start(uint16_t node_addr, conf_step_builder_t step_builder) {
 
   conf_bind(node_addr);
   conf_get_composition_data();
+
+  return NRF_SUCCESS;
 }
 
 void conf_init(app_state_t *app_state, conf_success_cb_t success_cb,
