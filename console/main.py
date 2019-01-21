@@ -12,6 +12,8 @@ OUTPUT_DASHBOARD_PATH = os.path.join(OUTPUT_DIR, 'dashboard')
 OUTPUT_NODES_PATH = os.path.join(OUTPUT_DIR, 'nodes')
 OUTPUT_TRANSCRIPT_PATH = os.path.join(OUTPUT_DIR, 'transcript')
 
+PRUNE_TIMEOUT = 30
+
 LEFT_MARGIN = 38
 
 FAULT_MAP = {
@@ -207,6 +209,17 @@ def handle_name(request):
     print('Set the name of node 0x{:04X} to "{}"\n'.format(addr, name))
 
 
+def handle_prune(request):
+    for addr in list(nodes.keys()):
+        if nodes[addr]['last_seen'] <= time.time() - PRUNE_TIMEOUT:
+            del(nodes[addr])
+            print('Pruned node 0x{:04X}.'.format(addr))
+
+    save_nodes()
+
+    print()
+
+
 async def interact(tx_queue, rx_queue):
     while True:
         sys.stdout.write('> ')
@@ -218,6 +231,9 @@ async def interact(tx_queue, rx_queue):
 
         if request.startswith("name "):
             handle_name(request[5:])
+            continue
+        elif request.startswith("prune"):
+            handle_prune(request[5:])
             continue
 
         await tx_queue.put('req ' + request)
