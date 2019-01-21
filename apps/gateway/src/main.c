@@ -17,6 +17,8 @@
 #include "configurator.h"
 #include "provisioner.h"
 
+#include "protocol.h"
+
 #include "composition_data.h"
 
 #include "custom_log.h"
@@ -48,36 +50,6 @@ APP_TIMER_DEF(onoff_client_toggle_timer);
 APP_TIMER_DEF(self_config_timer);
 
 health_client_t health_client;
-
-void protocol_send(char const *fmt, ...) {
-  static char buf[128];
-
-  va_list args;
-  va_start(args, fmt);
-
-  int len = vsnprintf(buf, sizeof(buf) - 2, fmt, args);
-  if ((len < 0) || (len >= sizeof(buf) - 2)) {
-    LOG_ERROR("Protocol sending failed with return code %d.", len);
-    va_end(args);
-    return;
-  }
-
-  buf[len++] = '\r';
-  buf[len++] = '\n';
-
-  for (int i = 0; i < len; i++) {
-    uint32_t err_code = app_uart_put(buf[i]);
-    if (err_code == NRF_ERROR_NO_MEM) {
-      LOG_ERROR("Protocol sending failed due to UART TX buffer overflow.");
-      va_end(args);
-      return;
-    }
-
-    APP_ERROR_CHECK(err_code);
-  }
-
-  va_end(args);
-}
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   error_info_t *error_info = (error_info_t *)info;
@@ -154,27 +126,8 @@ static void init_buttons() {
   APP_ERROR_CHECK(app_button_enable());
 }
 
-static void uart_error_handler(app_uart_evt_t *event) {
-  if (event->evt_type == APP_UART_COMMUNICATION_ERROR) {
-    APP_ERROR_HANDLER(event->data.error_communication);
-  } else if (event->evt_type == APP_UART_FIFO_ERROR) {
-    APP_ERROR_HANDLER(event->data.error_code);
-  }
-}
-
 static void init_uart() {
-  const app_uart_comm_params_t comm_params = {APP_PIN_UART_RX,
-                                              APP_PIN_UART_TX,
-                                              0,
-                                              0,
-                                              APP_UART_FLOW_CONTROL_DISABLED,
-                                              false,
-                                              NRF_UART_BAUDRATE_115200};
-
-  uint32_t err_code;
-  APP_UART_FIFO_INIT(&comm_params, 512, 512, uart_error_handler,
-                     APP_IRQ_PRIORITY_LOWEST, err_code);
-  APP_ERROR_CHECK(err_code);
+  APP_ERROR_CHECK(protocol_init(APP_PIN_UART_TX, APP_PIN_UART_RX));
 
   LOG_INFO("UART initialized.");
 }
