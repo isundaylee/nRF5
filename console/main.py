@@ -128,15 +128,14 @@ def format_battery(data):
 
 async def display():
     while True:
-        for addr, data in nodes.items():
-            print("%-15s | %-30s %-10s %-9s | %-20s" % (
-                node_name(addr),
-                format_faults(data),
-                format_rssi(data),
-                format_battery(data),
-                format_last_seen(data)))
-
-        print('=' * 80)
+        with open('/tmp/bhome_console', 'w') as f:
+            for addr, data in nodes.items():
+                f.write("%-15s | %-30s %-10s %-9s | %-20s\n" % (
+                    node_name(addr),
+                    format_faults(data),
+                    format_rssi(data),
+                    format_battery(data),
+                    format_last_seen(data)))
 
         await asyncio.sleep(1.0)
 
