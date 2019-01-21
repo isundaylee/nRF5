@@ -4,7 +4,11 @@ import aiofiles
 import textwrap
 import serial_asyncio
 import sys
+import os
+import shutil
 
+
+OUTPUT_DIR = 'output'
 
 LEFT_MARGIN = 38
 
@@ -125,7 +129,7 @@ def format_battery(data):
 
 async def display():
     while True:
-        with open('/tmp/bhome_console', 'w') as f:
+        with open(os.path.join(OUTPUT_DIR, 'dashboard'), 'w') as f:
             for addr, data in nodes.items():
                 f.write("%-15s | %-30s %-10s %-9s | %-20s\n" % (
                     node_name(addr),
@@ -216,6 +220,8 @@ async def interact(tx_queue, rx_queue):
 
 
 async def main():
+    os.makedirs(OUTPUT_DIR, 0o777, True)
+
     tx_queue = asyncio.Queue()
     rx_queue = asyncio.Queue()
 
