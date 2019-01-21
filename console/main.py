@@ -142,9 +142,15 @@ async def display():
 
 
 class ConsoleSerial(asyncio.Protocol):
+    def __init__(self, tx_queue, rx_queue):
+        self.tx_queue = tx_queue
+        self.rx_queue = rx_queue
+
     def connection_made(self, transport):
         self.transport = transport
         self.buffer = b''
+
+        asyncio.get_event_loop().create_task(self._process_outgoing())
 
     def data_received(self, data):
         self.buffer += data
@@ -157,27 +163,42 @@ class ConsoleSerial(asyncio.Protocol):
             process(self.buffer[:found].decode())
             self.buffer = self.buffer[found + 2:]
 
+    async def _process_outgoing(self):
+        while True:
+            request = await self.tx_queue.get()
 
-async def interact():
+            self.transport.write((request + '\n').encode())
+
+            await self.rx_queue.put('GOT IT!')
+
+
+async def interact(tx_queue, rx_queue):
     while True:
         sys.stdout.write('> ')
         sys.stdout.flush()
 
-        command = await (asyncio.get_event_loop()
+        request = await (asyncio.get_event_loop()
                                 .run_in_executor(None, sys.stdin.readline))
-        command = command[:-1]
+        request = request[:-1]
 
-        print('Command: ' + command)
+        await tx_queue.put(request)
+        reply = await rx_queue.get()
+
+        print(reply + '\n')
 
 
 async def main():
+    tx_queue = asyncio.Queue()
+    rx_queue = asyncio.Queue()
+
     await asyncio.gather(
-        serial_asyncio.create_serial_connection(loop,
-                                                ConsoleSerial,
-                                                '/dev/cu.usbserial-A9M9DV3R',
-                                                baudrate=115200),
+        serial_asyncio.create_serial_connection(
+            loop,
+            lambda: ConsoleSerial(tx_queue, rx_queue),
+            '/dev/cu.usbserial-A9M9DV3R',
+            baudrate=115200),
         display(),
-        interact())
+        interact(tx_queue, rx_queue))
 
 
 loop = asyncio.get_event_loop()
