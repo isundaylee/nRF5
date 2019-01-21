@@ -47,6 +47,7 @@
 APP_TIMER_DEF(reset_timer);
 APP_TIMER_DEF(led_blink_timer);
 APP_TIMER_DEF(initiate_friendship_timer);
+APP_TIMER_DEF(dummy_timer);
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
@@ -433,6 +434,11 @@ void saadc_event_handler(nrf_drv_saadc_evt_t const *event) {
   LOG_INFO("Received SAADC event of type %d.", event->type);
 }
 
+static void dummy_timer_handler(void *context) {
+  // No need to do anything here.
+  // Used only to make sure app_timer tracks m_latest_ticks correctly.
+}
+
 bool should_reset = false;
 
 static void initialize(void) {
@@ -494,6 +500,8 @@ static void initialize(void) {
                                    start_friendship));
   APP_ERROR_CHECK(app_timer_create(&led_blink_timer, APP_TIMER_MODE_SINGLE_SHOT,
                                    led_blink_timer_handler));
+  APP_ERROR_CHECK(app_timer_create(&dummy_timer, APP_TIMER_MODE_REPEATED,
+                                   dummy_timer_handler));
 
   // Initialize SAADC
   APP_ERROR_CHECK(nrf_drv_saadc_init(NULL, saadc_event_handler));
@@ -539,6 +547,8 @@ static void start() {
                                       APP_TIMER_TICKS(100), NULL));
     }
   }
+
+  APP_ERROR_CHECK(app_timer_start(dummy_timer, APP_TIMER_TICKS(200000), NULL));
 
   APP_ERROR_CHECK(mesh_stack_start());
   LOG_INFO("Mesh stack started.");
