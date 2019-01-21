@@ -3,6 +3,7 @@ import time
 import aiofiles
 import textwrap
 import serial_asyncio
+import sys
 
 
 LEFT_MARGIN = 38
@@ -157,13 +158,26 @@ class ConsoleSerial(asyncio.Protocol):
             self.buffer = self.buffer[found + 2:]
 
 
+async def interact():
+    while True:
+        sys.stdout.write('> ')
+        sys.stdout.flush()
+
+        command = await (asyncio.get_event_loop()
+                                .run_in_executor(None, sys.stdin.readline))
+        command = command[:-1]
+
+        print('Command: ' + command)
+
+
 async def main():
     await asyncio.gather(
         serial_asyncio.create_serial_connection(loop,
                                                 ConsoleSerial,
                                                 '/dev/cu.usbserial-A9M9DV3R',
                                                 baudrate=115200),
-        display())
+        display(),
+        interact())
 
 
 loop = asyncio.get_event_loop()
