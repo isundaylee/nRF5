@@ -41,7 +41,7 @@ static void uart_rx() {
 
         char *space = strchr(buf + 4, ' ');
 
-        if (space == cursor) {
+        if (space == NULL) {
           // Only opcode, no params
           request_handler(buf + 4, cursor);
         } else {

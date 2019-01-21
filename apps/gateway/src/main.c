@@ -48,6 +48,7 @@
 
 APP_TIMER_DEF(onoff_client_toggle_timer);
 APP_TIMER_DEF(self_config_timer);
+APP_TIMER_DEF(pong_timer);
 
 health_client_t health_client;
 
@@ -126,9 +127,23 @@ static void init_buttons() {
   APP_ERROR_CHECK(app_button_enable());
 }
 
+static void pong_timer_handler(void *ctx) {
+  protocol_reply(NRF_SUCCESS, "pong");
+}
+
 static void protocol_request_handler(char const *op, char const *params) {
   if (strcmp(op, "ping") == 0) {
-    protocol_reply(NRF_SUCCESS, "pong");
+    if (strlen(params) == 0) {
+      protocol_reply(NRF_SUCCESS, "pong");
+    } else {
+      int delay_ms = atoi(params);
+      uint32_t err =
+          app_timer_start(pong_timer, APP_TIMER_TICKS(delay_ms), NULL);
+
+      if (err != NRF_SUCCESS) {
+        protocol_reply(err, "delayed ping failed");
+      }
+    }
   } else {
     protocol_reply(NRF_ERROR_NOT_FOUND, "invalid op '%s'", op);
   }
@@ -602,6 +617,8 @@ static void start() {
   APP_ERROR_CHECK(app_timer_create(&self_config_timer,
                                    APP_TIMER_MODE_SINGLE_SHOT,
                                    self_config_timer_handler));
+  APP_ERROR_CHECK(app_timer_create(&pong_timer, APP_TIMER_MODE_SINGLE_SHOT,
+                                   pong_timer_handler));
 
   if (!is_provisioned) {
     APP_ERROR_CHECK(
