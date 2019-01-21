@@ -12,6 +12,7 @@ import pickle
 OUTPUT_DIR = 'output'
 OUTPUT_DASHBOARD_PATH = os.path.join(OUTPUT_DIR, 'dashboard')
 OUTPUT_NODE_MAP_PATH = os.path.join(OUTPUT_DIR, 'node_map')
+OUTPUT_TRANSCRIPT_PATH = os.path.join(OUTPUT_DIR, 'transcript')
 
 LEFT_MARGIN = 38
 
@@ -169,6 +170,9 @@ class ConsoleSerial(asyncio.Protocol):
                 break
 
             message = self.buffer[:found].decode()
+
+            with open(OUTPUT_TRANSCRIPT_PATH, 'a') as f:
+                f.write('{} {}\n'.format(str(time.time()), message))
 
             if message[:4] == 'rep ':
                 if self.reply_pending:
