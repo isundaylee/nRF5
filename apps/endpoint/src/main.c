@@ -37,6 +37,8 @@
 #define APP_PIN_LED_ERROR 23
 #define APP_PIN_LED_INDICATION 24
 #define APP_PIN_CLEAR_CONFIG 20
+#define APP_PIN_VIRTUAL_GROUND 13
+#define APP_PIN_HALL_SENSOR 14
 
 #define APP_PIN_USER_BUTTON 20
 
@@ -401,15 +403,29 @@ void send_onoff_request(bool value) {
 }
 
 void button_handler(uint8_t pin_no, uint8_t button_action) {
-  if (button_action == 0) {
-    return;
-  }
 
   switch (pin_no) {
   case APP_PIN_USER_BUTTON: //
   {
+    if (button_action == 0) {
+      return;
+    }
+
     LOG_INFO("User button pressed.");
     send_onoff_request(!onoff_value);
+    break;
+  }
+
+  case APP_PIN_HALL_SENSOR: //
+  {
+    if (button_action == 1) {
+      LOG_INFO("Hall sensor is on.");
+    } else {
+      LOG_INFO("Hall sensor is off.");
+    }
+
+    send_onoff_request(!button_action);
+
     break;
   }
 
@@ -519,12 +535,19 @@ static void initialize(void) {
   should_reset = (!nrf_gpio_pin_read(APP_PIN_CLEAR_CONFIG));
 
   // Initialize buttons
-  static app_button_cfg_t buttons[] = {{
-      .pin_no = APP_PIN_USER_BUTTON,
-      .active_state = APP_BUTTON_ACTIVE_LOW,
-      .pull_cfg = NRF_GPIO_PIN_PULLUP,
-      .button_handler = button_handler,
-  }};
+  static app_button_cfg_t buttons[] = {
+      {
+          .pin_no = APP_PIN_USER_BUTTON,
+          .active_state = APP_BUTTON_ACTIVE_LOW,
+          .pull_cfg = NRF_GPIO_PIN_PULLUP,
+          .button_handler = button_handler,
+      },
+      {
+          .pin_no = APP_PIN_HALL_SENSOR,
+          .active_state = APP_BUTTON_ACTIVE_LOW,
+          .pull_cfg = NRF_GPIO_PIN_PULLUP,
+          .button_handler = button_handler,
+      }};
   APP_ERROR_CHECK(app_button_init(buttons, sizeof(buttons) / sizeof(buttons[0]),
                                   APP_TIMER_TICKS(50)));
   APP_ERROR_CHECK(app_button_enable());
@@ -566,6 +589,9 @@ static void prov_complete_cb(void) {
 static void start() {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
   nrf_gpio_cfg_output(APP_PIN_LED_INDICATION);
+  nrf_gpio_cfg_output(APP_PIN_VIRTUAL_GROUND);
+
+  nrf_gpio_pin_clear(APP_PIN_VIRTUAL_GROUND);
 
   if (!mesh_stack_is_device_provisioned()) {
     LOG_INFO("Starting the provisioning process. ");
