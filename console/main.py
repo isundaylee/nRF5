@@ -12,11 +12,7 @@ FAULT_MAP = {
     0x0001: "Friendless"
 }
 
-NODE_MAP = {
-    0x0004: "LPN PCB",
-    0x0003: "LPN Ant",
-    0x0002: "Friend",
-}
+node_map = {}
 
 RSSI_AVG_ALPHA = 0.95
 BATTERY_AVG_ALPHA = 0.95
@@ -91,8 +87,8 @@ def process(line):
 
 
 def node_name(addr):
-    if addr in NODE_MAP:
-        return NODE_MAP[addr]
+    if addr in node_map:
+        return node_map[addr]
     else:
         return "Node 0x%04x" % addr
 
@@ -183,6 +179,17 @@ class ConsoleSerial(asyncio.Protocol):
             self.transport.write((request + '\n').encode())
 
 
+def handle_name(request):
+    addr, *rest = request.split()
+
+    addr = int(addr, 16)
+    name = ' '.join(rest)
+
+    node_map[addr] = name
+
+    print('Set the name of node 0x{:02X} to "{}"\n'.format(addr, name))
+
+
 async def interact(tx_queue, rx_queue):
     while True:
         sys.stdout.write('> ')
@@ -191,6 +198,10 @@ async def interact(tx_queue, rx_queue):
         request = await (asyncio.get_event_loop()
                                 .run_in_executor(None, sys.stdin.readline))
         request = request[:-1]
+
+        if request.startswith("name "):
+            handle_name(request[5:])
+            continue
 
         await tx_queue.put('req ' + request)
         reply = await rx_queue.get()
