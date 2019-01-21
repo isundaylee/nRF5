@@ -2,11 +2,56 @@
 
 #include <stdarg.h>
 
+#include "custom_log.h"
+
+static bool request_pending = false;
+
+static void uart_rx() {
+  static char buf[256];
+  static char *cursor = buf;
+
+  for (;;) {
+    uint32_t err = app_uart_get((uint8_t *)cursor);
+
+    if (err == NRF_ERROR_NOT_FOUND) {
+      // We'll be back -- later.
+      return;
+    }
+
+    if (request_pending) {
+      // We are currently processing a request.
+      // Just discard what we just read.
+
+      LOG_INFO("Protocol: Discarding byte '%c' due to pending request.", *cursor);
+
+      continue;
+    }
+
+    if (*cursor == '\n') {
+      request_pending = true;
+      *cursor = '\0';
+
+      LOG_INFO("Protocol: Received command \"%s\"", buf);
+    }
+
+    cursor++;
+
+    if (cursor == buf + sizeof(buf)) {
+      // Out of space! Just clear the buffer and start over.
+      cursor = buf;
+
+      LOG_INFO("Protocol: RX buffer overflown.", buf);
+    }
+  }
+}
+
 static void uart_error_handler(app_uart_evt_t *event) {
   if (event->evt_type == APP_UART_COMMUNICATION_ERROR) {
     APP_ERROR_HANDLER(event->data.error_communication);
   } else if (event->evt_type == APP_UART_FIFO_ERROR) {
     APP_ERROR_HANDLER(event->data.error_code);
+  } else if (event->evt_type == APP_UART_DATA_READY) {
+    uart_rx();
   }
 }
 
