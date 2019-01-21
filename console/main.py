@@ -145,6 +145,7 @@ class ConsoleSerial(asyncio.Protocol):
     def __init__(self, tx_queue, rx_queue):
         self.tx_queue = tx_queue
         self.rx_queue = rx_queue
+        self.reply_pending = False
 
     def connection_made(self, transport):
         self.transport = transport
@@ -160,16 +161,26 @@ class ConsoleSerial(asyncio.Protocol):
             if found < 0:
                 break
 
-            process(self.buffer[:found].decode())
+            message = self.buffer[:found].decode()
+
+            if message[:4] == 'rep ':
+                if self.reply_pending:
+                    self.reply_pending = False
+                    self.rx_queue.put_nowait(message[4:])
+                else:
+                    print('Received unexpected reply: "{}"'.format(
+                        message[4:]))
+            else:
+                process(message)
+
             self.buffer = self.buffer[found + 2:]
 
     async def _process_outgoing(self):
         while True:
             request = await self.tx_queue.get()
 
+            self.reply_pending = True
             self.transport.write((request + '\n').encode())
-
-            await self.rx_queue.put('GOT IT!')
 
 
 async def interact(tx_queue, rx_queue):
@@ -181,10 +192,16 @@ async def interact(tx_queue, rx_queue):
                                 .run_in_executor(None, sys.stdin.readline))
         request = request[:-1]
 
-        await tx_queue.put(request)
+        await tx_queue.put('req ' + request)
         reply = await rx_queue.get()
 
-        print(reply + '\n')
+        err, *rest = reply.split()
+        err = int(err)
+
+        if err == 0:
+            print('Success: {}\n'.format(' '.join(rest)))
+        else:
+            print('Error {}: {}\n'.format(err, ' '.join(rest)))
 
 
 async def main():

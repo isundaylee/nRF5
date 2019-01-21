@@ -126,8 +126,17 @@ static void init_buttons() {
   APP_ERROR_CHECK(app_button_enable());
 }
 
+static void protocol_request_handler(char const *op, char const *params) {
+  if (strcmp(op, "ping") == 0) {
+    protocol_reply(NRF_SUCCESS, "pong");
+  } else {
+    protocol_reply(NRF_ERROR_NOT_FOUND, "invalid op '%s'", op);
+  }
+}
+
 static void init_uart() {
-  APP_ERROR_CHECK(protocol_init(APP_PIN_UART_TX, APP_PIN_UART_RX));
+  APP_ERROR_CHECK(protocol_init(APP_PIN_UART_TX, APP_PIN_UART_RX,
+                                protocol_request_handler));
 
   LOG_INFO("UART initialized.");
 }

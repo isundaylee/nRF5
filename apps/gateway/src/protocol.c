@@ -1,10 +1,13 @@
 #include "protocol.h"
 
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "custom_log.h"
 
 static bool request_pending = false;
+
+static protocol_request_handler_t request_handler;
 
 static void uart_rx() {
   static char buf[256];
@@ -22,16 +25,37 @@ static void uart_rx() {
       // We are currently processing a request.
       // Just discard what we just read.
 
-      LOG_INFO("Protocol: Discarding byte '%c' due to pending request.", *cursor);
+      LOG_INFO("Protocol: Discarding byte '%c' due to pending request.",
+               *cursor);
 
       continue;
     }
 
     if (*cursor == '\n') {
-      request_pending = true;
       *cursor = '\0';
 
-      LOG_INFO("Protocol: Received command \"%s\"", buf);
+      if ((buf[0] == 'r') && (buf[1] == 'e') && (buf[2] == 'q') &&
+          (buf[3] == ' ')) {
+        request_pending = true;
+        LOG_INFO("Protocol: Received command \"%s\"", buf + 4);
+
+        char *space = strchr(buf + 4, ' ');
+
+        if (space == cursor) {
+          // Only opcode, no params
+          request_handler(buf + 4, cursor);
+        } else {
+          // Both opcode and params
+          *space = '\0';
+          request_handler(buf + 4, space + 1);
+        }
+      } else {
+        LOG_ERROR("Protocol: Received unexpected message \"%s\"", buf);
+      }
+
+      cursor = buf;
+
+      continue;
     }
 
     cursor++;
@@ -55,7 +79,10 @@ static void uart_error_handler(app_uart_evt_t *event) {
   }
 }
 
-uint32_t protocol_init(uint32_t tx_pin, uint32_t rx_pin) {
+uint32_t protocol_init(uint32_t tx_pin, uint32_t rx_pin,
+                       protocol_request_handler_t req_handler) {
+  request_handler = req_handler;
+
   const app_uart_comm_params_t comm_params = {rx_pin,
                                               tx_pin,
                                               0,
@@ -71,30 +98,51 @@ uint32_t protocol_init(uint32_t tx_pin, uint32_t rx_pin) {
   return err_code;
 }
 
-void protocol_send(char const *fmt, ...) {
-  static char buf[128];
+static void send_raw(char const *buf, size_t len) {
+  for (int i = 0; i < len; i++) {
+    uint32_t err_code = app_uart_put(buf[i]);
+    if (err_code == NRF_ERROR_NO_MEM) {
+      return;
+    }
 
-  va_list args;
-  va_start(args, fmt);
+    APP_ERROR_CHECK(err_code);
+  }
+}
+
+static void send_vararg(char const *fmt, va_list args) {
+  static char buf[128];
 
   int len = vsnprintf(buf, sizeof(buf) - 2, fmt, args);
   if ((len < 0) || (len >= sizeof(buf) - 2)) {
-    va_end(args);
     return;
   }
 
   buf[len++] = '\r';
   buf[len++] = '\n';
 
-  for (int i = 0; i < len; i++) {
-    uint32_t err_code = app_uart_put(buf[i]);
-    if (err_code == NRF_ERROR_NO_MEM) {
-      va_end(args);
-      return;
-    }
+  send_raw(buf, len);
+}
 
-    APP_ERROR_CHECK(err_code);
-  }
-
+void protocol_send(char const *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  send_vararg(fmt, args);
   va_end(args);
+}
+
+void protocol_reply(uint32_t err, char const *fmt, ...) {
+  static char buf[10];
+
+  send_raw("rep ", 4);
+
+  itoa(err, buf, 10);
+  send_raw(buf, strlen(buf));
+  send_raw(" ", 1);
+
+  va_list args;
+  va_start(args, fmt);
+  send_vararg(fmt, args);
+  va_end(args);
+
+  request_pending = false;
 }
