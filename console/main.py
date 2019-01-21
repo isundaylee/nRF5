@@ -1,17 +1,15 @@
 import asyncio
 import time
-import aiofiles
 import textwrap
 import serial_asyncio
 import sys
 import os
-import shutil
 import pickle
 
 
 OUTPUT_DIR = 'output'
 OUTPUT_DASHBOARD_PATH = os.path.join(OUTPUT_DIR, 'dashboard')
-OUTPUT_NODE_MAP_PATH = os.path.join(OUTPUT_DIR, 'node_map')
+OUTPUT_NODES_PATH = os.path.join(OUTPUT_DIR, 'nodes')
 OUTPUT_TRANSCRIPT_PATH = os.path.join(OUTPUT_DIR, 'transcript')
 
 LEFT_MARGIN = 38
@@ -21,15 +19,13 @@ FAULT_MAP = {
 }
 
 try:
-    with open(OUTPUT_NODE_MAP_PATH, 'rb') as f:
-        node_map = pickle.load(f)
+    with open(OUTPUT_NODES_PATH, 'rb') as f:
+        nodes = pickle.load(f)
 except FileNotFoundError:
-    node_map = {}
+    nodes = {}
 
 RSSI_AVG_ALPHA = 0.95
 BATTERY_AVG_ALPHA = 0.95
-
-nodes = {}
 
 
 def add_node(addr):
@@ -40,7 +36,8 @@ def add_node(addr):
         'last_seen': time.time(),
         'faults': [],
         'avg_rssi': None,
-        'battery': None}
+        'battery': None,
+        'name': 'Node 0x{:04X}'.format(addr)}
 
 
 def touch(addr):
@@ -97,12 +94,7 @@ def process(line):
     else:
         raise RuntimeError("Unknown op: " + op)
 
-
-def node_name(addr):
-    if addr in node_map:
-        return node_map[addr]
-    else:
-        return "Node 0x%04x" % addr
+    save_nodes()
 
 
 def format_faults(data):
@@ -140,7 +132,7 @@ async def display():
         with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
             for addr, data in nodes.items():
                 f.write("%-15s | %-30s %-10s %-9s | %-20s\n" % (
-                    node_name(addr),
+                    data['name'],
                     format_faults(data),
                     format_rssi(data),
                     format_battery(data),
@@ -194,17 +186,25 @@ class ConsoleSerial(asyncio.Protocol):
             self.transport.write((request + '\n').encode())
 
 
+def save_nodes():
+    with open(OUTPUT_NODES_PATH, 'wb') as f:
+        pickle.dump(nodes, f)
+
+
 def handle_name(request):
     addr, *rest = request.split()
 
     addr = int(addr, 16)
     name = ' '.join(rest)
 
-    node_map[addr] = name
-    with open(OUTPUT_NODE_MAP_PATH, 'wb') as f:
-        pickle.dump(node_map, f)
+    if addr not in nodes:
+        print('Error: unknown address 0x{:04x}.'.format(addr))
+        return
 
-    print('Set the name of node 0x{:02X} to "{}"\n'.format(addr, name))
+    nodes[addr]['name'] = name
+    save_nodes()
+
+    print('Set the name of node 0x{:04X} to "{}"\n'.format(addr, name))
 
 
 async def interact(tx_queue, rx_queue):
