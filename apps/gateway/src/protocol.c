@@ -28,6 +28,10 @@ static void uart_rx() {
       LOG_INFO("Protocol: Discarding byte '%c' due to pending request.",
                *cursor);
 
+      if (*cursor == '\n') {
+        protocol_reply(NRF_ERROR_INVALID_STATE, "last request still pending");
+      }
+
       continue;
     }
 
