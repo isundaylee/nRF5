@@ -439,6 +439,11 @@ static void dummy_timer_handler(void *context) {
   // Used only to make sure app_timer tracks m_latest_ticks correctly.
 }
 
+void health_server_attention_handler(health_server_t const *server,
+                                      bool attention_state) {
+  nrf_gpio_pin_write(APP_PIN_LED_INDICATION, attention_state);
+}
+
 bool should_reset = false;
 
 static void initialize(void) {
@@ -460,6 +465,7 @@ static void initialize(void) {
       .core.lfclksrc = lfc_cfg,
       .models.config_server_cb = config_server_event_handler,
       .models.models_init_cb = init_models,
+      .models.health_server_attention_cb = health_server_attention_handler,
       .models.health_server_publish_timeout_cb =
           health_server_publish_timeout_handler,
   };
