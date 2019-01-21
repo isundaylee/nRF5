@@ -425,6 +425,7 @@ void button_handler(uint8_t pin_no, uint8_t button_action) {
     }
 
     send_onoff_request(!button_action);
+    nrf_gpio_pin_write(APP_PIN_LED_INDICATION, !button_action);
 
     break;
   }
