@@ -49,11 +49,14 @@
 #define APP_ATTENTION_LED_BLINK_OFF_MS                                         \
   (APP_ATTENTION_LED_BLINK_PERIOD_MS - APP_ATTENTION_LED_BLINK_ON_MS)
 
+#define APP_LED_OFF_DELAY_MS 3000
+
 APP_TIMER_DEF(reset_timer);
 APP_TIMER_DEF(led_blink_timer);
 APP_TIMER_DEF(initiate_friendship_timer);
 APP_TIMER_DEF(dummy_timer);
 APP_TIMER_DEF(attention_led_blink_timer);
+APP_TIMER_DEF(led_off_timer);
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(APP_PIN_LED_ERROR);
@@ -354,6 +357,10 @@ static void reset_timer_handler(void *context) {
   mesh_stack_device_reset();
 }
 
+static void led_off_timer_handler(void *context) {
+  nrf_gpio_pin_clear(APP_PIN_LED_INDICATION);
+}
+
 void selftest_check_friend_status(health_server_t *server, uint16_t company_id,
                                   uint8_t test_id) {
   LOG_INFO("RUNNING SELF TESTS!!!");
@@ -378,12 +385,17 @@ void button_handler(uint8_t pin_no, uint8_t button_action) {
   {
     if (button_action == 1) {
       LOG_INFO("Hall sensor is on.");
+      nrf_gpio_pin_clear(APP_PIN_LED_INDICATION);
     } else {
       LOG_INFO("Hall sensor is off.");
+      nrf_gpio_pin_set(APP_PIN_LED_INDICATION);
+
+      APP_ERROR_CHECK(app_timer_stop(led_off_timer));
+      APP_ERROR_CHECK(app_timer_start(
+          led_off_timer, APP_TIMER_TICKS(APP_LED_OFF_DELAY_MS), NULL));
     }
 
     set_onoff_status(!button_action);
-    nrf_gpio_pin_write(APP_PIN_LED_INDICATION, !button_action);
 
     break;
   }
@@ -524,6 +536,8 @@ static void initialize(void) {
                                    attention_led_blink_timer_handler));
   APP_ERROR_CHECK(app_timer_create(&dummy_timer, APP_TIMER_MODE_REPEATED,
                                    dummy_timer_handler));
+  APP_ERROR_CHECK(app_timer_create(&led_off_timer, APP_TIMER_MODE_SINGLE_SHOT,
+                                   led_off_timer_handler));
 
   // Initialize SAADC
   APP_ERROR_CHECK(nrf_drv_saadc_init(NULL, saadc_event_handler));
