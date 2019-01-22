@@ -117,7 +117,9 @@ async def replay(processor):
                 await processor.protocol_rx_queue.put((timestamp, message))
                 await processor.protocol_rx_queue.join()
         elif source == 'console':
-            await processor.process_console_message(timestamp, message)
+            op = message.split()[0]
+            if op in COMMAND_LIST:
+                await processor.process_console_message(timestamp, message)
 
     print('Replayed {} entries in {:.1f} seconds.\n'.format(
         len(entries),
