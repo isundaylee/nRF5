@@ -71,14 +71,25 @@ typedef struct {
 
 protocol_request_t pending_request = {.type = PROTOCOL_NO_REQUEST};
 
-void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
-  error_info_t *error_info = (error_info_t *)info;
-
+__attribute__((optimize(0))) void
+app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(PIN_LED_ERROR);
   nrf_gpio_pin_set(PIN_LED_ERROR);
 
-  LOG_ERROR("Encountered error %d on line %d in file %s", error_info->err_code,
-            error_info->line_num, error_info->p_file_name);
+  error_info_t *error_info = (error_info_t *)info;
+  assert_info_t *assert_info = (assert_info_t *)info;
+
+  switch (id) {
+  case NRF_FAULT_ID_SDK_ERROR:
+    LOG_ERROR("Encountered error %d on line %d in file %s",
+              error_info->err_code, error_info->line_num,
+              error_info->p_file_name);
+    break;
+  case NRF_FAULT_ID_SDK_ASSERT:
+    LOG_ERROR("Encountered assertion error on line %d in file %s on pc 0x%x",
+              assert_info->line_num, assert_info->p_file_name, pc);
+    break;
+  }
 
   NRF_BREAKPOINT_COND;
   while (1) {
