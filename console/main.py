@@ -38,6 +38,9 @@ def add_node(addr):
         'faults': [],
         'avg_rssi': None,
         'avg_ttl': None,
+        'avg_rssi_by_ttl': {},
+        'msg_count': 0,
+        'msg_count_by_ttl': {},
         'battery': None,
         'name': 'Node 0x{:04X}'.format(addr),
         'onoff_status': None}
@@ -68,6 +71,22 @@ def update_packet_metadata(addr, ttl, rssi):
     else:
         nodes[addr]['avg_rssi'] = RSSI_AVG_ALPHA * nodes[addr]['avg_rssi'] + \
             (1 - RSSI_AVG_ALPHA) * rssi
+
+    # Average RSSI grouped by TTL
+    if ttl not in nodes[addr]['avg_rssi_by_ttl']:
+        nodes[addr]['avg_rssi_by_ttl'][ttl] = rssi
+    else:
+        nodes[addr]['avg_rssi_by_ttl'][ttl] = RSSI_AVG_ALPHA * \
+            nodes[addr]['avg_rssi_by_ttl'][ttl] + (1 - RSSI_AVG_ALPHA) * rssi
+
+    # Message count
+    nodes[addr]['msg_count'] += 1
+
+    # Message count grouped by TTL
+    if ttl not in nodes[addr]['msg_count_by_ttl']:
+        nodes[addr]['msg_count_by_ttl'][ttl] = 1
+    else:
+        nodes[addr]['msg_count_by_ttl'][ttl] += 1
 
     touch(addr)
 
@@ -143,46 +162,67 @@ def format_last_seen(data):
         return "%d seconds ago" % seconds
 
 
-def format_ttl(data):
-    if data['avg_ttl'] is None:
+def format_ttl(ttl):
+    if ttl is None:
         return 'N/A'
     else:
-        return "%.1f hops" % data['avg_ttl']
+        return "%.1f hops" % ttl
 
 
-def format_rssi(data):
-    if data['avg_rssi'] is None:
+def format_rssi(rssi):
+    if rssi is None:
         return 'N/A'
     else:
-        return "%3.1f dB" % data['avg_rssi']
+        return "%3.1f dB" % rssi
 
 
-def format_onoff_status(data):
-    if data['onoff_status'] is None:
+def format_onoff_status(status):
+    if status is None:
         return 'N/A'
     else:
-        return ('On' if data['onoff_status'] else '')
+        return ('On' if status else '')
 
 
-def format_battery(data):
-    if data['battery'] is None:
+def format_battery(battery):
+    if battery is None:
         return 'N/A'
     else:
-        return "%.5f V" % data['battery']
+        return "%.5f V" % battery
+
+
+def format_percentage(ratio):
+    return "%.1f %%" % (100.0 * ratio)
 
 
 async def display():
     while True:
         with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
             for addr, data in nodes.items():
-                f.write("%-15s | %-30s %-10s %-10s %-9s | %-3s | %-20s\n" % (
+                f.write(('-' * 110) + '\n')
+
+                f.write("%-15s | %-30s %9s %10s %10s %7s | %-3s | %-20s\n" % (
                     data['name'],
                     format_faults(data),
-                    format_ttl(data),
-                    format_rssi(data),
-                    format_battery(data),
-                    format_onoff_status(data),
+                    format_battery(data['battery']),
+                    format_ttl(data['avg_ttl']),
+                    format_rssi(data['avg_rssi']),
+                    '',
+                    format_onoff_status(data['onoff_status']),
                     format_last_seen(data)))
+
+                for ttl in sorted(data['avg_rssi_by_ttl'].keys(), reverse=True):
+                    f.write("%-15s | %-30s %9s %10s %10s %7s | %-3s | %-20s\n" %(
+                            '',
+                            '',
+                            '',
+                            format_ttl(ttl),
+                            format_rssi(data['avg_rssi_by_ttl'][ttl]),
+                            format_percentage(1.0 * data['msg_count_by_ttl'][ttl] / data['msg_count']),
+                            '',
+                            '',
+                        ))
+
+            f.write(('-' * 110) + '\n')
 
         await asyncio.sleep(1.0)
 
