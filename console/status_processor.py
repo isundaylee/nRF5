@@ -7,8 +7,8 @@ BATTERY_AVG_ALPHA = 0.95
 
 
 class StatusProcessor:
-    def __init__(self):
-        self.nodes = {}
+    def __init__(self, nodes):
+        self.nodes = nodes
 
     def process_status(self, status):
         op, *params = status.split(' ')

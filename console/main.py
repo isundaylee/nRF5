@@ -8,8 +8,7 @@ import pickle
 
 
 from display import render
-from status_processor import StatusProcessor
-from command_processor import CommandProcessor
+from processor import Processor
 
 
 OUTPUT_DIR = 'output'
@@ -21,23 +20,13 @@ LEFT_MARGIN = 38
 
 REPLAY = True
 
-status_processor = StatusProcessor()
-command_processor = CommandProcessor(status_processor.nodes)
-
-
-async def display():
-    while True:
-        with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
-            f.write(render(status_processor.nodes))
-
-        await asyncio.sleep(1.0)
-
 
 class ConsoleSerial(asyncio.Protocol):
-    def __init__(self, tx_queue, rx_queue):
+    def __init__(self, tx_queue, rx_queue, processor):
         self.tx_queue = tx_queue
         self.rx_queue = rx_queue
         self.reply_pending = False
+        self.processor = processor
 
     def connection_made(self, transport):
         self.transport = transport
@@ -58,60 +47,37 @@ class ConsoleSerial(asyncio.Protocol):
             with open(OUTPUT_TRANSCRIPT_PATH, 'a') as f:
                 f.write('{} {}\n'.format(str(time.time()), message))
 
-            if message.startswith('sta '):
-                status_processor.process_status(message[4:])
-            elif message.startswith('rep '):
-                if self.reply_pending:
-                    self.reply_pending = False
-                    self.rx_queue.put_nowait(message[4:])
-                else:
-                    print('Received unexpected reply: "{}"'.format(
-                        message[4:]))
-            else:
-                print('Received unexpected message: "{}"'.format(message))
+            self.rx_queue.put_nowait(message)
 
             self.buffer = self.buffer[found + 2:]
 
     async def _process_outgoing(self):
         while True:
             request = await self.tx_queue.get()
-
-            self.reply_pending = True
             self.transport.write((request + '\n').encode())
 
 
-def save_nodes():
-    with open(OUTPUT_NODES_PATH, 'wb') as f:
-        pickle.dump(nodes, f)
-
-
-async def interact(tx_queue, rx_queue):
+async def interact(processor):
     while True:
         sys.stdout.write('> ')
         sys.stdout.flush()
 
-        request = await (asyncio.get_event_loop()
+        message = await (asyncio.get_event_loop()
                                 .run_in_executor(None, sys.stdin.readline))
-        request = request[:-1]
+        message = message[:-1]
 
-        op = request.split()[0]
-        if op in ('name', 'prune'):
-            command_processor.process_command(request)
-            continue
-
-        await tx_queue.put('req ' + request)
-        reply = await rx_queue.get()
-
-        err, *rest = reply.split()
-        err = int(err)
-
-        if err == 0:
-            print('Success: {}\n'.format(' '.join(rest)))
-        else:
-            print('Error {}: {}\n'.format(err, ' '.join(rest)))
+        await processor.process_console_message(message)
 
 
-def replay():
+async def display(processor):
+    while True:
+        with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
+            f.write(render(processor.nodes))
+
+        await asyncio.sleep(1.0)
+
+
+async def replay(processor):
     if not os.path.exists(OUTPUT_TRANSCRIPT_PATH):
         return
 
@@ -121,42 +87,35 @@ def replay():
         for line in f:
             timestamp, *rest = line.split()
             timestamp = float(timestamp)
-            command = ' '.join(rest)
 
-            if not command.startswith("sta "):
-                continue
+            message = ' '.join(rest)
 
-            status_processor.process_status(command[4:])
+            if message.startswith("sta "):
+                await processor.protocol_rx_queue.put(message)
 
     print()
 
 
 async def main():
-    global nodes
-
-    if REPLAY:
-        nodes = {}
-        replay()
-    else:
-        try:
-            with open(OUTPUT_NODES_PATH, 'rb') as f:
-                nodes = pickle.load(f)
-        except FileNotFoundError:
-            nodes = {}
-
-    os.makedirs(OUTPUT_DIR, 0o777, True)
-
     tx_queue = asyncio.Queue()
     rx_queue = asyncio.Queue()
+
+    processor = Processor(tx_queue, rx_queue)
+    processor.start()
+
+    if REPLAY:
+        await replay(processor)
+
+    os.makedirs(OUTPUT_DIR, 0o777, True)
 
     await asyncio.gather(
         serial_asyncio.create_serial_connection(
             loop,
-            lambda: ConsoleSerial(tx_queue, rx_queue),
+            lambda: ConsoleSerial(tx_queue, rx_queue, processor),
             '/dev/cu.usbserial-A9M9DV3R',
             baudrate=115200),
-        display(),
-        interact(tx_queue, rx_queue))
+        display(processor),
+        interact(processor))
 
 
 loop = asyncio.get_event_loop()
