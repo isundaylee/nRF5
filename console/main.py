@@ -20,15 +20,13 @@ FAULT_MAP = {
     0x0001: "Friendless"
 }
 
-try:
-    with open(OUTPUT_NODES_PATH, 'rb') as f:
-        nodes = pickle.load(f)
-except FileNotFoundError:
-    nodes = {}
+REPLAY = True
 
 RSSI_AVG_ALPHA = 0.95
 TTL_AVG_ALPHA = 0.95
 BATTERY_AVG_ALPHA = 0.95
+
+nodes = {}
 
 
 def add_node(addr):
@@ -88,7 +86,7 @@ def update_onoff(addr, onoff):
     touch(addr)
 
 
-def process(line):
+def process_status(line):
     op, *params = line.split(' ')
 
     if op == 'health':
@@ -217,7 +215,9 @@ class ConsoleSerial(asyncio.Protocol):
             with open(OUTPUT_TRANSCRIPT_PATH, 'a') as f:
                 f.write('{} {}\n'.format(str(time.time()), message))
 
-            if message[:4] == 'rep ':
+            if message.startswith('sta '):
+                process_status(message[4:])
+            elif message.startswith('rep '):
                 if self.reply_pending:
                     self.reply_pending = False
                     self.rx_queue.put_nowait(message[4:])
@@ -225,7 +225,7 @@ class ConsoleSerial(asyncio.Protocol):
                     print('Received unexpected reply: "{}"'.format(
                         message[4:]))
             else:
-                process(message)
+                print('Received unexpected message: "{}"'.format(message))
 
             self.buffer = self.buffer[found + 2:]
 
@@ -297,7 +297,39 @@ async def interact(tx_queue, rx_queue):
             print('Error {}: {}\n'.format(err, ' '.join(rest)))
 
 
+def replay():
+    if not os.path.exists(OUTPUT_TRANSCRIPT_PATH):
+        return
+
+    print("Replaying transcript...")
+
+    with open(OUTPUT_TRANSCRIPT_PATH, 'r') as f:
+        for line in f:
+            timestamp, *rest = line.split()
+            timestamp = float(timestamp)
+            command = ' '.join(rest)
+
+            if not command.startswith("sta "):
+                continue
+
+            process_status(command[4:])
+
+    print()
+
+
 async def main():
+    global nodes
+
+    if REPLAY:
+        nodes = {}
+        replay()
+    else:
+        try:
+            with open(OUTPUT_NODES_PATH, 'rb') as f:
+                nodes = pickle.load(f)
+        except FileNotFoundError:
+            nodes = {}
+
     os.makedirs(OUTPUT_DIR, 0o777, True)
 
     tx_queue = asyncio.Queue()

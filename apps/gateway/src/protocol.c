@@ -128,6 +128,8 @@ static void send_vararg(char const *fmt, va_list args) {
 }
 
 void protocol_send(char const *fmt, ...) {
+  send_raw("sta ", 4);
+
   va_list args;
   va_start(args, fmt);
   send_vararg(fmt, args);
