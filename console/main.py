@@ -54,21 +54,21 @@ def update_faults(addr, faults):
     touch(addr)
 
 
-def update_ttl(addr, ttl):
+def update_packet_metadata(addr, ttl, rssi):
+    # Average TTL
     if nodes[addr]['avg_ttl'] is None:
         nodes[addr]['avg_ttl'] = ttl
     else:
         nodes[addr]['avg_ttl'] = TTL_AVG_ALPHA * nodes[addr]['avg_ttl'] + \
             (1 - TTL_AVG_ALPHA) * ttl
-    touch(addr)
 
-
-def update_rssi(addr, rssi):
+    # Average RSSI
     if nodes[addr]['avg_rssi'] is None:
         nodes[addr]['avg_rssi'] = rssi
     else:
         nodes[addr]['avg_rssi'] = RSSI_AVG_ALPHA * nodes[addr]['avg_rssi'] + \
             (1 - RSSI_AVG_ALPHA) * rssi
+
     touch(addr)
 
 
@@ -98,8 +98,7 @@ def process_status(line):
 
         add_node(addr)
         update_faults(addr, faults)
-        update_ttl(addr, ttl)
-        update_rssi(addr, rssi)
+        update_packet_metadata(addr, ttl, rssi)
     elif op == 'battery':
         addr, ttl, rssi, battery = params
 
@@ -109,8 +108,7 @@ def process_status(line):
         battery = (float(battery) * 6.0 * 0.6) / float(1 << 14)
 
         add_node(addr)
-        update_ttl(addr, ttl)
-        update_rssi(addr, rssi)
+        update_packet_metadata(addr, ttl, rssi)
         update_battery(addr, battery)
     elif op == 'onoff':
         addr, ttl, rssi, onoff = params
@@ -121,8 +119,7 @@ def process_status(line):
         onoff = bool(int(onoff))
 
         add_node(addr)
-        update_ttl(addr, ttl)
-        update_rssi(addr, rssi)
+        update_packet_metadata(addr, ttl, rssi)
         update_onoff(addr, onoff)
     else:
         raise RuntimeError("Unknown op: " + op)
