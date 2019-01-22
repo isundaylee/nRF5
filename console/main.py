@@ -8,6 +8,7 @@ import pickle
 
 
 from display import render
+from status_processor import StatusProcessor
 
 
 OUTPUT_DIR = 'output'
@@ -21,134 +22,13 @@ LEFT_MARGIN = 38
 
 REPLAY = True
 
-RSSI_AVG_ALPHA = 0.95
-TTL_AVG_ALPHA = 0.95
-BATTERY_AVG_ALPHA = 0.95
-
-nodes = {}
-
-
-def add_node(addr):
-    if addr in nodes:
-        return
-
-    nodes[addr] = {
-        'last_seen': time.time(),
-        'faults': [],
-        'avg_rssi': None,
-        'avg_ttl': None,
-        'avg_rssi_by_ttl': {},
-        'msg_count': 0,
-        'msg_count_by_ttl': {},
-        'battery': None,
-        'name': 'Node 0x{:04X}'.format(addr),
-        'onoff_status': None}
-
-
-def touch(addr):
-    nodes[addr]['last_seen'] = time.time()
-
-
-def update_faults(addr, faults):
-    nodes[addr]['faults'] = list(map(
-        lambda h: int(h, 16),
-        textwrap.wrap(faults[1:-1], 2)))
-    touch(addr)
-
-
-def update_packet_metadata(addr, ttl, rssi):
-    # Average TTL
-    if nodes[addr]['avg_ttl'] is None:
-        nodes[addr]['avg_ttl'] = ttl
-    else:
-        nodes[addr]['avg_ttl'] = TTL_AVG_ALPHA * nodes[addr]['avg_ttl'] + \
-            (1 - TTL_AVG_ALPHA) * ttl
-
-    # Average RSSI
-    if nodes[addr]['avg_rssi'] is None:
-        nodes[addr]['avg_rssi'] = rssi
-    else:
-        nodes[addr]['avg_rssi'] = RSSI_AVG_ALPHA * nodes[addr]['avg_rssi'] + \
-            (1 - RSSI_AVG_ALPHA) * rssi
-
-    # Average RSSI grouped by TTL
-    if ttl not in nodes[addr]['avg_rssi_by_ttl']:
-        nodes[addr]['avg_rssi_by_ttl'][ttl] = rssi
-    else:
-        nodes[addr]['avg_rssi_by_ttl'][ttl] = RSSI_AVG_ALPHA * \
-            nodes[addr]['avg_rssi_by_ttl'][ttl] + (1 - RSSI_AVG_ALPHA) * rssi
-
-    # Message count
-    nodes[addr]['msg_count'] += 1
-
-    # Message count grouped by TTL
-    if ttl not in nodes[addr]['msg_count_by_ttl']:
-        nodes[addr]['msg_count_by_ttl'][ttl] = 1
-    else:
-        nodes[addr]['msg_count_by_ttl'][ttl] += 1
-
-    touch(addr)
-
-
-def update_battery(addr, battery):
-    if nodes[addr]['battery'] is None:
-        nodes[addr]['battery'] = battery
-    else:
-        nodes[addr]['battery'] = BATTERY_AVG_ALPHA * nodes[addr]['battery'] + \
-            (1 - BATTERY_AVG_ALPHA) * battery
-    touch(addr)
-
-
-def update_onoff(addr, onoff):
-    nodes[addr]['onoff_status'] = onoff
-    touch(addr)
-
-
-def process_status(line):
-    op, *params = line.split(' ')
-
-    if op == 'health':
-        addr, ttl, rssi, faults = params
-
-        addr = int(addr)
-        ttl = int(ttl)
-        rssi = float(rssi)
-
-        add_node(addr)
-        update_faults(addr, faults)
-        update_packet_metadata(addr, ttl, rssi)
-    elif op == 'battery':
-        addr, ttl, rssi, battery = params
-
-        addr = int(addr)
-        ttl = int(ttl)
-        rssi = float(rssi)
-        battery = (float(battery) * 6.0 * 0.6) / float(1 << 14)
-
-        add_node(addr)
-        update_packet_metadata(addr, ttl, rssi)
-        update_battery(addr, battery)
-    elif op == 'onoff':
-        addr, ttl, rssi, onoff = params
-
-        addr = int(addr)
-        ttl = int(ttl)
-        rssi = float(rssi)
-        onoff = bool(int(onoff))
-
-        add_node(addr)
-        update_packet_metadata(addr, ttl, rssi)
-        update_onoff(addr, onoff)
-    else:
-        raise RuntimeError("Unknown op: " + op)
-
-    save_nodes()
+status_processor = StatusProcessor()
 
 
 async def display():
     while True:
         with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
-            f.write(render(nodes))
+            f.write(render(status_processor.nodes))
 
         await asyncio.sleep(1.0)
 
@@ -179,7 +59,7 @@ class ConsoleSerial(asyncio.Protocol):
                 f.write('{} {}\n'.format(str(time.time()), message))
 
             if message.startswith('sta '):
-                process_status(message[4:])
+                status_processor.process_status(message[4:])
             elif message.startswith('rep '):
                 if self.reply_pending:
                     self.reply_pending = False
@@ -275,7 +155,7 @@ def replay():
             if not command.startswith("sta "):
                 continue
 
-            process_status(command[4:])
+            status_processor.process_status(command[4:])
 
     print()
 
