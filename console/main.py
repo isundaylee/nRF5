@@ -111,7 +111,7 @@ def process(line):
         battery = (float(battery) * 6.0 * 0.6) / float(1 << 14)
 
         add_node(addr)
-        update_rssi(addr, ttl)
+        update_ttl(addr, ttl)
         update_rssi(addr, rssi)
         update_battery(addr, battery)
     elif op == 'onoff':
