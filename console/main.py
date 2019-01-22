@@ -39,8 +39,10 @@ def add_node(addr):
         'last_seen': time.time(),
         'faults': [],
         'avg_rssi': None,
+        'avg_ttl': None,
         'battery': None,
-        'name': 'Node 0x{:04X}'.format(addr)}
+        'name': 'Node 0x{:04X}'.format(addr),
+        'onoff_status': None}
 
 
 def touch(addr):
@@ -81,6 +83,11 @@ def update_battery(addr, battery):
     touch(addr)
 
 
+def update_onoff(addr, onoff):
+    nodes[addr]['onoff_status'] = onoff
+    touch(addr)
+
+
 def process(line):
     op, *params = line.split(' ')
 
@@ -107,6 +114,18 @@ def process(line):
         update_rssi(addr, ttl)
         update_rssi(addr, rssi)
         update_battery(addr, battery)
+    elif op == 'onoff':
+        addr, ttl, rssi, onoff = params
+
+        addr = int(addr)
+        ttl = int(ttl)
+        rssi = float(rssi)
+        onoff = bool(int(onoff))
+
+        add_node(addr)
+        update_ttl(addr, ttl)
+        update_rssi(addr, rssi)
+        update_onoff(addr, onoff)
     else:
         raise RuntimeError("Unknown op: " + op)
 
@@ -143,6 +162,13 @@ def format_rssi(data):
         return "%3.1f dB" % data['avg_rssi']
 
 
+def format_onoff_status(data):
+    if data['onoff_status'] is None:
+        return 'N/A'
+    else:
+        return ('On' if data['onoff_status'] else '')
+
+
 def format_battery(data):
     if data['battery'] is None:
         return 'N/A'
@@ -154,12 +180,13 @@ async def display():
     while True:
         with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
             for addr, data in nodes.items():
-                f.write("%-15s | %-30s %-10s %-10s %-9s | %-20s\n" % (
+                f.write("%-15s | %-30s %-10s %-10s %-9s | %-2s | %-20s\n" % (
                     data['name'],
                     format_faults(data),
                     format_ttl(data),
                     format_rssi(data),
                     format_battery(data),
+                    format_onoff_status(data),
                     format_last_seen(data)))
 
         await asyncio.sleep(1.0)

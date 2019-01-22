@@ -16,8 +16,6 @@
 
 #include "generic_onoff_server.h"
 
-#include "generic_onoff_client.h"
-
 #include "battery_level_server.h"
 
 #include "nrf_delay.h"
@@ -223,17 +221,16 @@ static void mesh_core_event_handler(nrf_mesh_evt_t const *event) {
   }
 }
 
-static bool is_on = false;
+static bool onoff_value = false;
 static generic_onoff_server_t onoff_server;
-static generic_onoff_client_t onoff_client;
 
 static void generic_onoff_state_get_cb(const generic_onoff_server_t *p_self,
                                        const access_message_rx_meta_t *p_meta,
                                        generic_onoff_status_params_t *p_out) {
   ASSERT(p_out != NULL);
 
-  p_out->present_on_off = is_on;
-  p_out->target_on_off = is_on;
+  p_out->present_on_off = onoff_value;
+  p_out->target_on_off = onoff_value;
   p_out->remaining_time_ms = 0;
 }
 
@@ -243,37 +240,26 @@ generic_onoff_state_set_cb(const generic_onoff_server_t *p_self,
                            const generic_onoff_set_params_t *p_in,
                            const model_transition_t *p_in_transition,
                            generic_onoff_status_params_t *p_out) {
-  LOG_INFO("Received LED set request: %s", (p_in->on_off ? "ON" : "OFF"));
-
-  is_on = p_in->on_off;
-
-  nrf_gpio_pin_write(APP_PIN_LED_INDICATION, is_on);
+  LOG_ERROR("Received OnOff server set request: %s. Should NOT happen!",
+            (p_in->on_off ? "ON" : "OFF"));
 
   if (p_out != NULL) {
-    p_out->present_on_off = is_on;
-    p_out->target_on_off = is_on;
+    p_out->present_on_off = onoff_value;
+    p_out->target_on_off = onoff_value;
     p_out->remaining_time_ms = 0;
   }
 }
 
-static void
-generic_onoff_client_publish_interval_cb(access_model_handle_t handle,
-                                         void *p_self) {
-  // TODO:
-}
-static void
-generic_onoff_client_status_cb(const generic_onoff_client_t *p_self,
-                               const access_message_rx_meta_t *p_meta,
-                               const generic_onoff_status_params_t *p_in) {
-  LOG_INFO("LED on node 0x%04x is: %s.", p_meta->src.value,
-           (p_in->present_on_off ? "ON" : "OFF"));
-}
+void set_onoff_status(bool value) {
+  generic_onoff_status_params_t params;
 
-static void
-generic_onoff_client_transaction_status_cb(access_model_handle_t model_handle,
-                                           void *p_args,
-                                           access_reliable_status_t status) {
-  // TODO:
+  onoff_value = value;
+
+  params.present_on_off = (value ? 1 : 0);
+  params.target_on_off = params.present_on_off;
+  params.remaining_time_ms = 0;
+
+  APP_ERROR_CHECK(generic_onoff_server_status_publish(&onoff_server, &params));
 }
 
 battery_level_server_t bl_server;
@@ -302,19 +288,6 @@ static void init_models(void) {
   APP_ERROR_CHECK(generic_onoff_server_init(&onoff_server, 0));
 
   LOG_INFO("OnOff server initialized.");
-
-  static const generic_onoff_client_callbacks_t onoff_client_cbs = {
-      .onoff_status_cb = generic_onoff_client_status_cb,
-      .ack_transaction_status_cb = generic_onoff_client_transaction_status_cb,
-      .periodic_publish_cb = generic_onoff_client_publish_interval_cb};
-
-  onoff_client.settings.p_callbacks = &onoff_client_cbs;
-  onoff_client.settings.timeout = 0;
-  onoff_client.settings.force_segmented = false;
-  onoff_client.settings.transmic_size = NRF_MESH_TRANSMIC_SIZE_SMALL;
-
-  APP_ERROR_CHECK(generic_onoff_client_init(&onoff_client, 0));
-  LOG_INFO("OnOff client initialized.");
 
   bl_server.settings.force_segmented = false;
   bl_server.settings.transmic_size = NRF_MESH_TRANSMIC_SIZE_SMALL;
@@ -387,21 +360,6 @@ void selftest_check_friend_status(health_server_t *server, uint16_t company_id,
   health_server_fault_register(server, 1);
 }
 
-bool onoff_value = false;
-
-void send_onoff_request(bool value) {
-  static uint8_t tid = 0;
-  generic_onoff_set_params_t params;
-
-  params.tid = tid++;
-  params.on_off = (value ? 1 : 0);
-
-  onoff_value = value;
-
-  APP_ERROR_CHECK(
-      generic_onoff_client_set_unack(&onoff_client, &params, NULL, 2));
-}
-
 void button_handler(uint8_t pin_no, uint8_t button_action) {
 
   switch (pin_no) {
@@ -412,7 +370,7 @@ void button_handler(uint8_t pin_no, uint8_t button_action) {
     }
 
     LOG_INFO("User button pressed.");
-    send_onoff_request(!onoff_value);
+    set_onoff_status(!onoff_value);
     break;
   }
 
@@ -424,7 +382,7 @@ void button_handler(uint8_t pin_no, uint8_t button_action) {
       LOG_INFO("Hall sensor is off.");
     }
 
-    send_onoff_request(!button_action);
+    set_onoff_status(!button_action);
     nrf_gpio_pin_write(APP_PIN_LED_INDICATION, !button_action);
 
     break;

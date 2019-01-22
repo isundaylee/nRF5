@@ -248,11 +248,23 @@ generic_onoff_client_publish_interval_cb(access_model_handle_t handle,
   // TODO:
 }
 static void
-generic_onoff_client_status_cb(const generic_onoff_client_t *p_self,
-                               const access_message_rx_meta_t *p_meta,
-                               const generic_onoff_status_params_t *p_in) {
-  LOG_INFO("LED on node 0x%04x is: %s.", p_meta->src.value,
-           (p_in->present_on_off ? "ON" : "OFF"));
+generic_onoff_client_status_cb(const generic_onoff_client_t *self,
+                               const access_message_rx_meta_t *meta,
+                               const generic_onoff_status_params_t *in) {
+  LOG_INFO("OnOff server on 0x%04x is: %s.", meta->src.value,
+           (in->present_on_off ? "ON" : "OFF"));
+
+  nrf_mesh_rx_metadata_t const *core_metadata = meta->p_core_metadata;
+
+  if (core_metadata->source != NRF_MESH_RX_SOURCE_SCANNER) {
+    return;
+  }
+
+  nrf_mesh_rx_metadata_scanner_t const *scanner_metadata =
+      &core_metadata->params.scanner;
+
+  protocol_send("onoff %d %d %d %d", meta->src.value, meta->ttl,
+                scanner_metadata->rssi, in->present_on_off);
 }
 
 static void
@@ -522,10 +534,11 @@ conf_step_builder(uint16_t addr,
       cursor->params.model_publication_set.model_id.company_id =
           ACCESS_COMPANY_ID_NONE;
       cursor->params.model_publication_set.model_id.model_id =
-          0x1000, // Generic OnOff Server
-          cursor->params.model_publication_set.publish_address.type =
-              NRF_MESH_ADDRESS_TYPE_GROUP;
-      cursor->params.model_publication_set.publish_address.value = APP_LED_ADDR;
+          0x1000; // Generic OnOff Server
+      cursor->params.model_publication_set.publish_address.type =
+          NRF_MESH_ADDRESS_TYPE_UNICAST;
+      cursor->params.model_publication_set.publish_address.value =
+          APP_GATEWAY_ADDR;
       cursor->params.model_publication_set.appkey_index = APP_APPKEY_IDX;
       cursor->params.model_publication_set.publish_ttl = 7;
       cursor->params.model_publication_set.publish_period.step_num = 0;
@@ -538,10 +551,10 @@ conf_step_builder(uint16_t addr,
       cursor->params.model_subscription_add.model_id.company_id =
           ACCESS_COMPANY_ID_NONE;
       cursor->params.model_subscription_add.model_id.model_id =
-          0x1000, // Generic OnOff Server
-          cursor->params.model_subscription_add.address.type =
-              NRF_MESH_ADDRESS_TYPE_GROUP;
-      cursor->params.model_subscription_add.address.value = APP_LED_ADDR;
+          0x1000; // Generic OnOff Server
+      cursor->params.model_subscription_add.address.type =
+          NRF_MESH_ADDRESS_TYPE_GROUP;
+      cursor->params.model_subscription_add.address.value = APP_PROXIMITY_ADDR;
       cursor++;
 
       break;
@@ -550,6 +563,15 @@ conf_step_builder(uint16_t addr,
     case GENERIC_ONOFF_CLIENT_MODEL_ID: //
     {
       LOG_INFO("Adding steps for Generic OnOff Client...");
+
+      cursor->type = CONF_STEP_TYPE_MODEL_APP_BIND;
+      cursor->params.model_app_bind.element_addr = addr;
+      cursor->params.model_app_bind.model_id.company_id =
+          ACCESS_COMPANY_ID_NONE;
+      cursor->params.model_app_bind.model_id.model_id =
+          GENERIC_ONOFF_CLIENT_MODEL_ID;
+      cursor->params.model_app_bind.appkey_index = APP_APPKEY_IDX;
+      cursor++;
 
       cursor->type = CONF_STEP_TYPE_MODEL_PUBLICATION_SET;
       cursor->params.model_publication_set.element_addr = addr;
