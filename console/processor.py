@@ -2,13 +2,16 @@ import asyncio
 
 from status_processor import StatusProcessor
 from command_processor import CommandProcessor, COMMAND_LIST
+from checker import Checker
 
 
 class Processor:
-    def __init__(self, protocol_tx_queue, protocol_rx_queue):
+    def __init__(self, protocol_tx_queue, protocol_rx_queue, checks):
         self.nodes = {}
         self.status_processor = StatusProcessor(self.nodes)
         self.command_processor = CommandProcessor(self.nodes)
+        self.checker = Checker(checks)
+
         self.protocol_tx_queue = protocol_tx_queue
         self.protocol_rx_queue = protocol_rx_queue
 
@@ -19,10 +22,13 @@ class Processor:
 
     async def process_protocol_rx(self):
         while True:
-            timestamp, message = await self.protocol_rx_queue.get()
+            timestamp, is_replay, message = await self.protocol_rx_queue.get()
 
             if message.startswith('sta '):
                 self.status_processor.process_status(timestamp, message[4:])
+
+                if not is_replay:
+                    self.checker.check(self.nodes)
             elif message.startswith('rep '):
                 reply = message[4:]
 

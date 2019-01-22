@@ -8,6 +8,7 @@ import os
 from display import render
 from processor import Processor
 from command_processor import COMMAND_LIST
+from checker import create_messenger_open_close_checks
 
 
 OUTPUT_DIR = 'output'
@@ -17,6 +18,12 @@ OUTPUT_PROTOCOL_TRANSCRIPT_PATH = os.path.join(
     OUTPUT_DIR, 'protocol_transcript')
 OUTPUT_CONSOLE_TRANSCRIPT_PATH = os.path.join(
     OUTPUT_DIR, 'console_transcript')
+
+CHECKS = \
+    create_messenger_open_close_checks(
+        'Main', 'Main door', os.environ['FB_OWNER_ID']) + \
+    create_messenger_open_close_checks(
+        'Bathroom', 'Bathroom door', os.environ['FB_OWNER_ID'])
 
 LEFT_MARGIN = 38
 
@@ -50,7 +57,7 @@ class ConsoleSerial(asyncio.Protocol):
             with open(OUTPUT_PROTOCOL_TRANSCRIPT_PATH, 'a') as f:
                 f.write('{} {}\n'.format(str(timestamp), message))
 
-            self.rx_queue.put_nowait((timestamp, message))
+            self.rx_queue.put_nowait((timestamp, False, message))
 
             self.buffer = self.buffer[found + 2:]
 
@@ -112,7 +119,8 @@ async def replay(processor):
     for timestamp, source, message in sorted(entries):
         if source == 'protocol':
             if message.startswith("sta "):
-                await processor.protocol_rx_queue.put((timestamp, message))
+                await processor.protocol_rx_queue.put(
+                    (timestamp, True, message))
                 await processor.protocol_rx_queue.join()
         elif source == 'console':
             op = message.split()[0]
@@ -128,7 +136,7 @@ async def main():
     tx_queue = asyncio.Queue()
     rx_queue = asyncio.Queue()
 
-    processor = Processor(tx_queue, rx_queue)
+    processor = Processor(tx_queue, rx_queue, CHECKS)
     processor.start()
 
     if REPLAY:
