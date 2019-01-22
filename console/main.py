@@ -7,6 +7,9 @@ import os
 import pickle
 
 
+from display import render
+
+
 OUTPUT_DIR = 'output'
 OUTPUT_DASHBOARD_PATH = os.path.join(OUTPUT_DIR, 'dashboard')
 OUTPUT_NODES_PATH = os.path.join(OUTPUT_DIR, 'nodes')
@@ -15,10 +18,6 @@ OUTPUT_TRANSCRIPT_PATH = os.path.join(OUTPUT_DIR, 'transcript')
 PRUNE_TIMEOUT = 30
 
 LEFT_MARGIN = 38
-
-FAULT_MAP = {
-    0x0001: "Friendless"
-}
 
 REPLAY = True
 
@@ -146,83 +145,10 @@ def process_status(line):
     save_nodes()
 
 
-def format_faults(data):
-    if len(data['faults']) == 0:
-        return 'Healthy'
-
-    return ', '.join(map(lambda n: FAULT_MAP[n], data['faults']))
-
-
-def format_last_seen(data):
-    seconds = int(time.time() - data['last_seen'])
-
-    if seconds < 11:
-        return ""
-    else:
-        return "%d seconds ago" % seconds
-
-
-def format_ttl(ttl):
-    if ttl is None:
-        return 'N/A'
-    else:
-        return "%.1f hops" % ttl
-
-
-def format_rssi(rssi):
-    if rssi is None:
-        return 'N/A'
-    else:
-        return "%3.1f dB" % rssi
-
-
-def format_onoff_status(status):
-    if status is None:
-        return 'N/A'
-    else:
-        return ('On' if status else '')
-
-
-def format_battery(battery):
-    if battery is None:
-        return 'N/A'
-    else:
-        return "%.5f V" % battery
-
-
-def format_percentage(ratio):
-    return "%.1f %%" % (100.0 * ratio)
-
-
 async def display():
     while True:
         with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
-            for addr, data in nodes.items():
-                f.write(('-' * 110) + '\n')
-
-                f.write("%-15s | %-30s %9s %10s %10s %7s | %-3s | %-20s\n" % (
-                    data['name'],
-                    format_faults(data),
-                    format_battery(data['battery']),
-                    format_ttl(data['avg_ttl']),
-                    format_rssi(data['avg_rssi']),
-                    '',
-                    format_onoff_status(data['onoff_status']),
-                    format_last_seen(data)))
-
-                for ttl in sorted(data['avg_rssi_by_ttl'].keys(), reverse=True):
-                    f.write("%-15s | %-30s %9s %10s %10s %7s | %-3s | %-20s\n" %(
-                            '',
-                            '',
-                            '',
-                            format_ttl(ttl),
-                            format_rssi(data['avg_rssi_by_ttl'][ttl]),
-                            format_percentage(1.0 * data['msg_count_by_ttl'][ttl] / data['msg_count']),
-                            '',
-                            '',
-                        ))
-
-            f.write(('-' * 110) + '\n')
+            f.write(render(nodes))
 
         await asyncio.sleep(1.0)
 
