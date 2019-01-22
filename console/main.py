@@ -48,10 +48,11 @@ class ConsoleSerial(asyncio.Protocol):
 
             message = self.buffer[:found].decode()
 
+            timestamp = time.time()
             with open(OUTPUT_PROTOCOL_TRANSCRIPT_PATH, 'a') as f:
-                f.write('{} {}\n'.format(str(time.time()), message))
+                f.write('{} {}\n'.format(str(timestamp), message))
 
-            self.rx_queue.put_nowait(message)
+            self.rx_queue.put_nowait((timestamp, message))
 
             self.buffer = self.buffer[found + 2:]
 
@@ -70,10 +71,11 @@ async def interact(processor):
                                 .run_in_executor(None, sys.stdin.readline))
         message = message[:-1]
 
+        timestamp = time.time()
         with open(OUTPUT_CONSOLE_TRANSCRIPT_PATH, 'a') as f:
-            f.write('{} {}\n'.format(str(time.time()), message))
+            f.write('{} {}\n'.format(str(timestamp), message))
 
-        await processor.process_console_message(message)
+        await processor.process_console_message(timestamp, message)
 
         print()
 
@@ -112,10 +114,10 @@ async def replay(processor):
     for timestamp, source, message in sorted(entries):
         if source == 'protocol':
             if message.startswith("sta "):
-                await processor.protocol_rx_queue.put(message)
+                await processor.protocol_rx_queue.put((timestamp, message))
                 await processor.protocol_rx_queue.join()
         elif source == 'console':
-            await processor.process_console_message(message)
+            await processor.process_console_message(timestamp, message)
 
     print('Replayed {} entries in {:.1f} seconds.\n'.format(
         len(entries),

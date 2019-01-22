@@ -10,7 +10,7 @@ class StatusProcessor:
     def __init__(self, nodes):
         self.nodes = nodes
 
-    def process_status(self, status):
+    def process_status(self, timestamp, status):
         op, *params = status.split(' ')
 
         if op == 'health':
@@ -20,9 +20,9 @@ class StatusProcessor:
             ttl = int(ttl)
             rssi = float(rssi)
 
-            self.add_node(addr)
-            self.update_faults(addr, faults)
-            self.update_packet_metadata(addr, ttl, rssi)
+            self.add_node(timestamp, addr)
+            self.update_faults(timestamp, addr, faults)
+            self.update_packet_metadata(timestamp, addr, ttl, rssi)
         elif op == 'battery':
             addr, ttl, rssi, battery = params
 
@@ -31,9 +31,9 @@ class StatusProcessor:
             rssi = float(rssi)
             battery = (float(battery) * 6.0 * 0.6) / float(1 << 14)
 
-            self.add_node(addr)
-            self.update_packet_metadata(addr, ttl, rssi)
-            self.update_battery(addr, battery)
+            self.add_node(timestamp, addr)
+            self.update_packet_metadata(timestamp, addr, ttl, rssi)
+            self.update_battery(timestamp, addr, battery)
         elif op == 'onoff':
             addr, ttl, rssi, onoff = params
 
@@ -42,18 +42,18 @@ class StatusProcessor:
             rssi = float(rssi)
             onoff = bool(int(onoff))
 
-            self.add_node(addr)
-            self.update_packet_metadata(addr, ttl, rssi)
-            self.update_onoff(addr, onoff)
+            self.add_node(timestamp, addr)
+            self.update_packet_metadata(timestamp, addr, ttl, rssi)
+            self.update_onoff(timestamp, addr, onoff)
         else:
             raise RuntimeError("Unknown op: " + op)
 
-    def add_node(self, addr):
+    def add_node(self, timestamp, addr):
         if addr in self.nodes:
             return
 
         self.nodes[addr] = {
-            'last_seen': time.time(),
+            'last_seen': timestamp,
             'faults': [],
             'avg_rssi': None,
             'avg_ttl': None,
@@ -64,16 +64,16 @@ class StatusProcessor:
             'name': 'Node 0x{:04X}'.format(addr),
             'onoff_status': None}
 
-    def touch(self, addr):
-        self.nodes[addr]['last_seen'] = time.time()
+    def touch(self, timestamp, addr):
+        self.nodes[addr]['last_seen'] = timestamp
 
-    def update_faults(self, addr, faults):
+    def update_faults(self, timestamp, addr, faults):
         self.nodes[addr]['faults'] = list(map(
             lambda h: int(h, 16),
             textwrap.wrap(faults[1:-1], 2)))
-        self.touch(addr)
+        self.touch(timestamp, addr)
 
-    def update_packet_metadata(self, addr, ttl, rssi):
+    def update_packet_metadata(self, timestamp, addr, ttl, rssi):
         # Average TTL
         if self.nodes[addr]['avg_ttl'] is None:
             self.nodes[addr]['avg_ttl'] = ttl
@@ -105,16 +105,16 @@ class StatusProcessor:
         else:
             self.nodes[addr]['msg_count_by_ttl'][ttl] += 1
 
-        self.touch(addr)
+        self.touch(timestamp, addr)
 
-    def update_battery(self, addr, battery):
+    def update_battery(self, timestamp, addr, battery):
         if self.nodes[addr]['battery'] is None:
             self.nodes[addr]['battery'] = battery
         else:
             self.nodes[addr]['battery'] = BATTERY_AVG_ALPHA * \
                 self.nodes[addr]['battery'] + (1 - BATTERY_AVG_ALPHA) * battery
-        self.touch(addr)
+        self.touch(timestamp, addr)
 
-    def update_onoff(self, addr, onoff):
+    def update_onoff(self, timestamp, addr, onoff):
         self.nodes[addr]['onoff_status'] = onoff
-        self.touch(addr)
+        self.touch(timestamp, addr)

@@ -11,13 +11,13 @@ class CommandProcessor:
     def __init__(self, nodes):
         self.nodes = nodes
 
-    def process_command(self, command):
+    def process_command(self, timestamp, command):
         if command.startswith("name "):
-            self.process_name(command[5:])
+            self.process_name(timestamp, command[5:])
         elif command.startswith("prune"):
-            self.process_prune(command[5:])
+            self.process_prune(timestamp, command[5:])
 
-    def process_name(self, command):
+    def process_name(self, timestamp, command):
         addr, *rest = command.split()
 
         addr = int(addr, 16)
@@ -31,8 +31,8 @@ class CommandProcessor:
 
         print('Set the name of node 0x{:04X} to "{}"'.format(addr, name))
 
-    def process_prune(self, command):
+    def process_prune(self, timestamp, command):
         for addr in list(self.nodes.keys()):
-            if self.nodes[addr]['last_seen'] <= time.time() - PRUNE_TIMEOUT:
+            if self.nodes[addr]['last_seen'] <= timestamp - PRUNE_TIMEOUT:
                 del(self.nodes[addr])
                 print('Pruned node 0x{:04X}.'.format(addr))

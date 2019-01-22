@@ -19,10 +19,10 @@ class Processor:
 
     async def process_protocol_rx(self):
         while True:
-            message = await self.protocol_rx_queue.get()
+            timestamp, message = await self.protocol_rx_queue.get()
 
             if message.startswith('sta '):
-                self.status_processor.process_status(message[4:])
+                self.status_processor.process_status(timestamp, message[4:])
             elif message.startswith('rep '):
                 reply = message[4:]
 
@@ -36,11 +36,11 @@ class Processor:
 
             self.protocol_rx_queue.task_done()
 
-    async def process_console_message(self, message):
+    async def process_console_message(self, timestamp, message):
         op, *rest = message.split()
 
         if op in COMMAND_LIST:
-            self.command_processor.process_command(message)
+            self.command_processor.process_command(timestamp, message)
         else:
             await self.protocol_tx_queue.put('req ' + message)
 
