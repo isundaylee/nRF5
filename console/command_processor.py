@@ -1,6 +1,12 @@
 PRUNE_TIMEOUT = 30
 
 
+COMMAND_LIST = (
+    'name',
+    'prune'
+)
+
+
 class CommandProcessor:
     def __init__(self, nodes):
         self.nodes = nodes
@@ -23,12 +29,10 @@ class CommandProcessor:
 
         self.nodes[addr]['name'] = name
 
-        print('Set the name of node 0x{:04X} to "{}"\n'.format(addr, name))
+        print('Set the name of node 0x{:04X} to "{}"'.format(addr, name))
 
     def process_prune(self, command):
         for addr in list(self.nodes.keys()):
             if self.nodes[addr]['last_seen'] <= time.time() - PRUNE_TIMEOUT:
                 del(self.nodes[addr])
                 print('Pruned node 0x{:04X}.'.format(addr))
-
-        print()

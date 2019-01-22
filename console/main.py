@@ -9,12 +9,16 @@ import pickle
 
 from display import render
 from processor import Processor
+from command_processor import COMMAND_LIST
 
 
 OUTPUT_DIR = 'output'
 OUTPUT_DASHBOARD_PATH = os.path.join(OUTPUT_DIR, 'dashboard')
 OUTPUT_NODES_PATH = os.path.join(OUTPUT_DIR, 'nodes')
-OUTPUT_TRANSCRIPT_PATH = os.path.join(OUTPUT_DIR, 'transcript')
+OUTPUT_PROTOCOL_TRANSCRIPT_PATH = os.path.join(
+    OUTPUT_DIR, 'protocol_transcript')
+OUTPUT_CONSOLE_TRANSCRIPT_PATH = os.path.join(
+    OUTPUT_DIR, 'console_transcript')
 
 LEFT_MARGIN = 38
 
@@ -44,7 +48,7 @@ class ConsoleSerial(asyncio.Protocol):
 
             message = self.buffer[:found].decode()
 
-            with open(OUTPUT_TRANSCRIPT_PATH, 'a') as f:
+            with open(OUTPUT_PROTOCOL_TRANSCRIPT_PATH, 'a') as f:
                 f.write('{} {}\n'.format(str(time.time()), message))
 
             self.rx_queue.put_nowait(message)
@@ -66,7 +70,12 @@ async def interact(processor):
                                 .run_in_executor(None, sys.stdin.readline))
         message = message[:-1]
 
+        with open(OUTPUT_CONSOLE_TRANSCRIPT_PATH, 'a') as f:
+            f.write('{} {}\n'.format(str(time.time()), message))
+
         await processor.process_console_message(message)
+
+        print()
 
 
 async def display(processor):
@@ -78,22 +87,39 @@ async def display(processor):
 
 
 async def replay(processor):
-    if not os.path.exists(OUTPUT_TRANSCRIPT_PATH):
+    if not os.path.exists(OUTPUT_PROTOCOL_TRANSCRIPT_PATH):
         return
 
     print("Replaying transcript...")
 
-    with open(OUTPUT_TRANSCRIPT_PATH, 'r') as f:
+    time_begin = time.time()
+    entries = []
+
+    with open(OUTPUT_PROTOCOL_TRANSCRIPT_PATH, 'r') as f:
         for line in f:
             timestamp, *rest = line.split()
             timestamp = float(timestamp)
-
             message = ' '.join(rest)
+            entries.append((timestamp, 'protocol', message))
 
+    with open(OUTPUT_CONSOLE_TRANSCRIPT_PATH, 'r') as f:
+        for line in f:
+            timestamp, *rest = line.split()
+            timestamp = float(timestamp)
+            message = ' '.join(rest)
+            entries.append((timestamp, 'console', message))
+
+    for timestamp, source, message in sorted(entries):
+        if source == 'protocol':
             if message.startswith("sta "):
                 await processor.protocol_rx_queue.put(message)
+                await processor.protocol_rx_queue.join()
+        elif source == 'console':
+            await processor.process_console_message(message)
 
-    print()
+    print('Replayed {} entries in {:.1f} seconds.\n'.format(
+        len(entries),
+        time.time() - time_begin))
 
 
 async def main():

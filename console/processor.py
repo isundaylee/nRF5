@@ -1,7 +1,7 @@
 import asyncio
 
 from status_processor import StatusProcessor
-from command_processor import CommandProcessor
+from command_processor import CommandProcessor, COMMAND_LIST
 
 
 class Processor:
@@ -34,10 +34,12 @@ class Processor:
             else:
                 print('Unexpected message from protocol: {}'.format(message))
 
+            self.protocol_rx_queue.task_done()
+
     async def process_console_message(self, message):
         op, *rest = message.split()
 
-        if op in ('name', 'prune'):
+        if op in COMMAND_LIST:
             self.command_processor.process_command(message)
         else:
             await self.protocol_tx_queue.put('req ' + message)
