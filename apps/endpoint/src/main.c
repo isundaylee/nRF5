@@ -262,7 +262,13 @@ void set_onoff_status(bool value) {
   params.target_on_off = params.present_on_off;
   params.remaining_time_ms = 0;
 
-  APP_ERROR_CHECK(generic_onoff_server_status_publish(&onoff_server, &params));
+  uint32_t err = generic_onoff_server_status_publish(&onoff_server, &params);
+  if (err == NRF_ERROR_INVALID_PARAM) {
+    // OnOff server publication not set up yet
+    return;
+  }
+
+  APP_ERROR_CHECK(err);
 }
 
 battery_level_server_t bl_server;

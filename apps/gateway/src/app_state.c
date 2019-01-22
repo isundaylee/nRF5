@@ -44,18 +44,18 @@ void app_state_init(void) {
 bool app_state_load(void) {
   flash_manager_wait();
 
-  fm_entry_t const *entry = flash_manager_entry_get(
-      &app_state_flash_manager, APP_STATE_FLASH_ENTRY_HANDLE);
+  uint32_t read_size = sizeof(app_state.persistent);
+  uint32_t err = flash_manager_entry_read(&app_state_flash_manager,
+                                          APP_STATE_FLASH_ENTRY_HANDLE,
+                                          &app_state.persistent, &read_size);
 
-  if (entry == NULL) {
+  if (err == NRF_ERROR_NOT_FOUND) {
     LOG_INFO("App State: App flash did not find previous state. ");
     memset(&app_state.persistent, 0, sizeof(app_persistent_state_t));
     memset(&app_state_last_persisted, 0, sizeof(app_persistent_state_t));
     return false;
   } else {
-    memcpy(&app_state.persistent, entry->data, sizeof(app_persistent_state_t));
-    memcpy(&app_state_last_persisted, &app_state.persistent,
-           sizeof(app_persistent_state_t));
+    APP_ERROR_CHECK(err);
     LOG_INFO("App State: App flash finished reading previous data. ");
     return true;
   }
