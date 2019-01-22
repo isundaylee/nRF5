@@ -27,6 +27,7 @@ except FileNotFoundError:
     nodes = {}
 
 RSSI_AVG_ALPHA = 0.95
+TTL_AVG_ALPHA = 0.95
 BATTERY_AVG_ALPHA = 0.95
 
 
@@ -53,6 +54,15 @@ def update_faults(addr, faults):
     touch(addr)
 
 
+def update_ttl(addr, ttl):
+    if nodes[addr]['avg_ttl'] is None:
+        nodes[addr]['avg_ttl'] = ttl
+    else:
+        nodes[addr]['avg_ttl'] = TTL_AVG_ALPHA * nodes[addr]['avg_ttl'] + \
+            (1 - TTL_AVG_ALPHA) * ttl
+    touch(addr)
+
+
 def update_rssi(addr, rssi):
     if nodes[addr]['avg_rssi'] is None:
         nodes[addr]['avg_rssi'] = rssi
@@ -75,22 +85,26 @@ def process(line):
     op, *params = line.split(' ')
 
     if op == 'health':
-        addr, rssi, faults = params
+        addr, ttl, rssi, faults = params
 
         addr = int(addr)
+        ttl = int(ttl)
         rssi = float(rssi)
 
         add_node(addr)
         update_faults(addr, faults)
+        update_ttl(addr, ttl)
         update_rssi(addr, rssi)
     elif op == 'battery':
-        addr, rssi, battery = params
+        addr, ttl, rssi, battery = params
 
         addr = int(addr)
+        ttl = int(ttl)
         rssi = float(rssi)
         battery = (float(battery) * 6.0 * 0.6) / float(1 << 14)
 
         add_node(addr)
+        update_rssi(addr, ttl)
         update_rssi(addr, rssi)
         update_battery(addr, battery)
     else:
@@ -115,6 +129,13 @@ def format_last_seen(data):
         return "%d seconds ago" % seconds
 
 
+def format_ttl(data):
+    if data['avg_ttl'] is None:
+        return 'N/A'
+    else:
+        return "%.1f hops" % data['avg_ttl']
+
+
 def format_rssi(data):
     if data['avg_rssi'] is None:
         return 'N/A'
@@ -133,9 +154,10 @@ async def display():
     while True:
         with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
             for addr, data in nodes.items():
-                f.write("%-15s | %-30s %-10s %-9s | %-20s\n" % (
+                f.write("%-15s | %-30s %-10s %-10s %-9s | %-20s\n" % (
                     data['name'],
                     format_faults(data),
+                    format_ttl(data),
                     format_rssi(data),
                     format_battery(data),
                     format_last_seen(data)))

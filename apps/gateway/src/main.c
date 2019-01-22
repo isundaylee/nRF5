@@ -312,8 +312,8 @@ static void health_client_event_handler(health_client_t const *client,
     nrf_mesh_rx_metadata_scanner_t const *scanner_metadata =
         &core_metadata->params.scanner;
 
-    protocol_send("health %d %d %s", event->p_meta_data->src.value,
-                  scanner_metadata->rssi,
+    protocol_send("health %d %d %d %s", event->p_meta_data->src.value,
+                  event->p_meta_data->ttl, scanner_metadata->rssi,
                   to_hex(event->data.fault_status.p_fault_array,
                          event->data.fault_status.fault_array_length));
 
@@ -366,8 +366,8 @@ void battery_level_client_status_handler(
   nrf_mesh_rx_metadata_scanner_t const *scanner_metadata =
       &core_metadata->params.scanner;
 
-  protocol_send("battery %d %d %d", meta->src.value, scanner_metadata->rssi,
-                in->level);
+  protocol_send("battery %d %d %d %d", meta->src.value, meta->ttl,
+                scanner_metadata->rssi, in->level);
 }
 
 battery_level_client_t bl_client;
