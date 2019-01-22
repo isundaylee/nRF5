@@ -9,6 +9,7 @@ import pickle
 
 from display import render
 from status_processor import StatusProcessor
+from command_processor import CommandProcessor
 
 
 OUTPUT_DIR = 'output'
@@ -16,13 +17,12 @@ OUTPUT_DASHBOARD_PATH = os.path.join(OUTPUT_DIR, 'dashboard')
 OUTPUT_NODES_PATH = os.path.join(OUTPUT_DIR, 'nodes')
 OUTPUT_TRANSCRIPT_PATH = os.path.join(OUTPUT_DIR, 'transcript')
 
-PRUNE_TIMEOUT = 30
-
 LEFT_MARGIN = 38
 
 REPLAY = True
 
 status_processor = StatusProcessor()
+command_processor = CommandProcessor(status_processor.nodes)
 
 
 async def display():
@@ -85,33 +85,6 @@ def save_nodes():
         pickle.dump(nodes, f)
 
 
-def handle_name(request):
-    addr, *rest = request.split()
-
-    addr = int(addr, 16)
-    name = ' '.join(rest)
-
-    if addr not in nodes:
-        print('Error: unknown address 0x{:04x}.'.format(addr))
-        return
-
-    nodes[addr]['name'] = name
-    save_nodes()
-
-    print('Set the name of node 0x{:04X} to "{}"\n'.format(addr, name))
-
-
-def handle_prune(request):
-    for addr in list(nodes.keys()):
-        if nodes[addr]['last_seen'] <= time.time() - PRUNE_TIMEOUT:
-            del(nodes[addr])
-            print('Pruned node 0x{:04X}.'.format(addr))
-
-    save_nodes()
-
-    print()
-
-
 async def interact(tx_queue, rx_queue):
     while True:
         sys.stdout.write('> ')
@@ -121,11 +94,9 @@ async def interact(tx_queue, rx_queue):
                                 .run_in_executor(None, sys.stdin.readline))
         request = request[:-1]
 
-        if request.startswith("name "):
-            handle_name(request[5:])
-            continue
-        elif request.startswith("prune"):
-            handle_prune(request[5:])
+        op = request.split()[0]
+        if op in ('name', 'prune'):
+            command_processor.process_command(request)
             continue
 
         await tx_queue.put('req ' + request)
