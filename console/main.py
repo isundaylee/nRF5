@@ -1,10 +1,8 @@
 import asyncio
 import time
-import textwrap
 import serial_asyncio
 import sys
 import os
-import pickle
 
 
 from display import render
