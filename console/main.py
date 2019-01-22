@@ -180,7 +180,7 @@ async def display():
     while True:
         with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
             for addr, data in nodes.items():
-                f.write("%-15s | %-30s %-10s %-10s %-9s | %-2s | %-20s\n" % (
+                f.write("%-15s | %-30s %-10s %-10s %-9s | %-3s | %-20s\n" % (
                     data['name'],
                     format_faults(data),
                     format_ttl(data),
