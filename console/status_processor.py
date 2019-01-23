@@ -77,9 +77,11 @@ class StatusProcessor:
             lambda h: int(h, 16),
             textwrap.wrap(faults[1:-1], 2)))
         if self.nodes[addr]['last_health_status_seen'] is not None:
-            self.nodes[addr]['health_status_loss_count'] += round(
-                (timestamp - self.nodes[addr]['last_health_status_seen'])
-                / HEALTH_STATUS_PERIOD) - 1
+            self.nodes[addr]['health_status_loss_count'] += max(
+                0,
+                round((timestamp - self.nodes[addr]['last_health_status_seen'])
+                      / HEALTH_STATUS_PERIOD) - 1
+            )
         self.nodes[addr]['health_status_count'] += 1
         self.nodes[addr]['last_health_status_seen'] = timestamp
 
