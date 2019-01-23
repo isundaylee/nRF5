@@ -92,6 +92,8 @@ conf_check_result_t conf_check_status(uint32_t opcode,
   case CONFIG_OPCODE_APPKEY_STATUS:
     status = msg->appkey_status.status;
     break;
+  case CONFIG_OPCODE_NODE_RESET_STATUS:
+    break;
 
   default:
     LOG_ERROR("Configurator: Unknown opcode: %d", opcode);
@@ -122,6 +124,7 @@ void conf_bind(uint16_t node_addr) {
   addr.type = NRF_MESH_ADDRESS_TYPE_UNICAST;
   addr.value = node_addr;
 
+  // TODO: This should be allowed to error out for protocol request case
   APP_ERROR_CHECK(dsm_address_handle_get(&addr, &addr_handle));
   APP_ERROR_CHECK(dsm_devkey_handle_get(addr.value, &devkey_handle));
 
@@ -229,6 +232,15 @@ void conf_execute_step() {
     static const uint8_t expected_statuses[] = {ACCESS_STATUS_SUCCESS};
     conf_set_expected_status(CONFIG_OPCODE_MODEL_SUBSCRIPTION_STATUS,
                              sizeof(expected_statuses), expected_statuses);
+    break;
+  }
+
+  case CONF_STEP_TYPE_NODE_RESET: //
+  {
+    LOG_INFO("Configurator: Resetting node. ");
+    APP_ERROR_CHECK(config_client_node_reset());
+    conf_set_expected_status(CONFIG_OPCODE_NODE_RESET_STATUS, 0, NULL);
+
     break;
   }
 

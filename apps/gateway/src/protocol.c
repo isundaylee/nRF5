@@ -96,8 +96,7 @@ uint32_t protocol_init(uint32_t tx_pin, uint32_t rx_pin,
                                               NRF_UART_BAUDRATE_115200};
 
   uint32_t err_code;
-  APP_UART_FIFO_INIT(&comm_params, 512, 512, uart_error_handler,
-                     APP_IRQ_PRIORITY_LOWEST, err_code);
+  APP_UART_FIFO_INIT(&comm_params, 512, 512, uart_error_handler, 6, err_code);
 
   return err_code;
 }

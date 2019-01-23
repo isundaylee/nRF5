@@ -56,8 +56,13 @@ typedef struct {
   int addr;
 } protocol_id_request_t;
 
+typedef struct {
+  int addr;
+} protocol_reset_request_t;
+
 typedef enum {
   PROTOCOL_ID_REQUEST = 0,
+  PROTOCOL_RESET_REQUEST = 1,
 
   PROTOCOL_NO_REQUEST = 100,
 } protocol_request_type_t;
@@ -66,6 +71,7 @@ typedef struct {
   protocol_request_type_t type;
   union {
     protocol_id_request_t id_request;
+    protocol_reset_request_t reset_request;
   } request;
 } protocol_request_t;
 
@@ -190,6 +196,22 @@ static void health_client_bind_step_builder(
   cursor->type = CONF_STEP_TYPE_DONE;
 }
 
+static void conf_client_protocol_request_step_builder(
+    uint16_t addr, config_msg_composition_data_status_t const *composition_data,
+    conf_step_t *steps_out) {
+  conf_step_t *cursor = steps_out;
+
+  if (pending_request.type == PROTOCOL_RESET_REQUEST) {
+    cursor->type = CONF_STEP_TYPE_NODE_RESET;
+    cursor++;
+  } else {
+    LOG_ERROR(
+        "Unexpected invocation of conf_client_protocol_request_step_builder.");
+  }
+
+  cursor->type = CONF_STEP_TYPE_DONE;
+}
+
 static void protocol_request_handler(char const *op, char const *params) {
   if (strcmp(op, "ping") == 0) {
     if (strlen(params) == 0) {
@@ -213,6 +235,16 @@ static void protocol_request_handler(char const *op, char const *params) {
     } else {
       pending_request.type = PROTOCOL_ID_REQUEST;
       pending_request.request.id_request.addr = addr;
+    }
+  } else if (strcmp(op, "reset") == 0) {
+    uint32_t addr = strtol(params, NULL, 16);
+    uint32_t err = conf_start(addr, conf_client_protocol_request_step_builder);
+
+    if (err != NRF_SUCCESS) {
+      protocol_reply(err, "failed to start configuration");
+    } else {
+      pending_request.type = PROTOCOL_RESET_REQUEST;
+      pending_request.request.reset_request.addr = addr;
     }
   } else {
     protocol_reply(NRF_ERROR_NOT_FOUND, "invalid op '%s'", op);
@@ -685,9 +717,17 @@ static void conf_success_cb(uint16_t addr) {
 
     if (err != NRF_SUCCESS) {
       protocol_reply(err, "failed to set attention timer");
+      pending_request.type = PROTOCOL_NO_REQUEST;
       return;
     }
 
+    return;
+  }
+
+  case PROTOCOL_RESET_REQUEST: //
+  {
+    protocol_reply(NRF_SUCCESS, "node successfully reset");
+    pending_request.type = PROTOCOL_NO_REQUEST;
     return;
   }
 
@@ -704,6 +744,14 @@ static void conf_failure_cb(uint16_t addr, uint32_t err) {
   case PROTOCOL_ID_REQUEST: //
   {
     protocol_reply(err, "failed to config health client");
+    pending_request.type = PROTOCOL_NO_REQUEST;
+    return;
+  }
+
+  case PROTOCOL_RESET_REQUEST: //
+  {
+    protocol_reply(err, "failed to reset node");
+    pending_request.type = PROTOCOL_NO_REQUEST;
     return;
   }
 

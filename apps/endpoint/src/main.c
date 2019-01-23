@@ -437,6 +437,13 @@ static void config_server_event_handler(config_server_evt_t const *event) {
     break;
   }
 
+  case CONFIG_SERVER_EVT_NODE_RESET: //
+  {
+    LOG_INFO("Resetting...");
+    mesh_stack_device_reset();
+    break;
+  }
+
   default:
     break;
   }
