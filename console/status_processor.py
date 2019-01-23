@@ -5,6 +5,8 @@ RSSI_AVG_ALPHA = 0.95
 TTL_AVG_ALPHA = 0.95
 BATTERY_AVG_ALPHA = 0.95
 
+HEALTH_STATUS_PERIOD = 10.0
+
 
 class StatusProcessor:
     def __init__(self, nodes):
@@ -54,6 +56,9 @@ class StatusProcessor:
 
         self.nodes[addr] = {
             'last_seen': timestamp,
+            'last_health_status_seen': None,
+            'health_status_loss_count': 0,
+            'health_status_count': 0,
             'faults': [],
             'avg_rssi': None,
             'avg_ttl': None,
@@ -71,6 +76,13 @@ class StatusProcessor:
         self.nodes[addr]['faults'] = list(map(
             lambda h: int(h, 16),
             textwrap.wrap(faults[1:-1], 2)))
+        if self.nodes[addr]['last_health_status_seen'] is not None:
+            self.nodes[addr]['health_status_loss_count'] += round(
+                (timestamp - self.nodes[addr]['last_health_status_seen'])
+                / HEALTH_STATUS_PERIOD) - 1
+        self.nodes[addr]['health_status_count'] += 1
+        self.nodes[addr]['last_health_status_seen'] = timestamp
+
         self.touch(timestamp, addr)
 
     def update_packet_metadata(self, timestamp, addr, ttl, rssi):

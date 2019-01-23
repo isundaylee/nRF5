@@ -66,7 +66,9 @@ def render(nodes):
             format_battery(data['battery']),
             format_ttl(data['avg_ttl']),
             format_rssi(data['avg_rssi']),
-            '',
+            format_percentage(data['health_status_count']
+                              / (data['health_status_count']
+                                 + data['health_status_loss_count'])),
             format_onoff_status(data['onoff_status']),
             format_last_seen(data)))
 
