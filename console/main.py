@@ -25,6 +25,8 @@ CHECKS = \
     create_messenger_open_close_checks(
         'Bathroom', 'Bathroom door', os.environ['FB_OWNER_ID'])
 
+SESSION_GAP_THRESHOLD = 10.0
+
 LEFT_MARGIN = 38
 
 REPLAY = True
@@ -67,8 +69,19 @@ class ConsoleSerial(asyncio.Protocol):
             self.transport.write((request + '\n').encode())
 
 
+async def transcribe_and_process_console_message(processor, message):
+    timestamp = time.time()
+    with open(OUTPUT_CONSOLE_TRANSCRIPT_PATH, 'a') as f:
+        f.write('{} {}\n'.format(str(timestamp), message))
+
+    await processor.process_console_message(timestamp, message)
+
+
 async def interact(processor):
+    await transcribe_and_process_console_message(processor, 'session_reset')
+
     while True:
+        sys.stdout.write('\n')
         sys.stdout.write('> ')
         sys.stdout.flush()
 
@@ -76,13 +89,7 @@ async def interact(processor):
                                 .run_in_executor(None, sys.stdin.readline))
         message = message[:-1]
 
-        timestamp = time.time()
-        with open(OUTPUT_CONSOLE_TRANSCRIPT_PATH, 'a') as f:
-            f.write('{} {}\n'.format(str(timestamp), message))
-
-        await processor.process_console_message(timestamp, message)
-
-        print()
+        await transcribe_and_process_console_message(processor, message)
 
 
 async def display(processor):
@@ -116,7 +123,14 @@ async def replay(processor):
             message = ' '.join(rest)
             entries.append((timestamp, 'console', message))
 
+    last_timestamp = None
+
     for timestamp, source, message in sorted(entries):
+        if (last_timestamp is not None) and \
+           (timestamp >= last_timestamp + SESSION_GAP_THRESHOLD):
+            await processor.process_console_message(timestamp, 'session_reset')
+        last_timestamp = timestamp
+
         if source == 'protocol':
             if message.startswith("sta "):
                 await processor.protocol_rx_queue.put(
@@ -127,7 +141,7 @@ async def replay(processor):
             if op in COMMAND_LIST:
                 await processor.process_console_message(timestamp, message)
 
-    print('Replayed {} entries in {:.1f} seconds.\n'.format(
+    print('Replayed {} entries in {:.1f} seconds.'.format(
         len(entries),
         time.time() - time_begin))
 

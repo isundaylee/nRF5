@@ -3,7 +3,8 @@ PRUNE_TIMEOUT = 30
 
 COMMAND_LIST = (
     'name',
-    'prune'
+    'prune',
+    'session_reset',
 )
 
 
@@ -16,6 +17,8 @@ class CommandProcessor:
             self.process_name(timestamp, command[5:])
         elif command.startswith("prune"):
             self.process_prune(timestamp, command[5:])
+        elif command.startswith("session_reset"):
+            self.process_session_reset(timestamp, command[13:])
 
     def process_name(self, timestamp, command):
         addr, *rest = command.split()
@@ -36,3 +39,8 @@ class CommandProcessor:
             if self.nodes[addr]['last_seen'] <= timestamp - PRUNE_TIMEOUT:
                 del(self.nodes[addr])
                 print('Pruned node 0x{:04X}.'.format(addr))
+
+    def process_session_reset(self, timestamp, command):
+        for addr in self.nodes:
+            self.nodes[addr]['last_health_status_seen'] = None
+        print('Session state reset.')
