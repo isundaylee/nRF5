@@ -251,11 +251,11 @@ static void protocol_request_handler(char const *op, char const *params) {
   }
 }
 
-static void init_uart() {
+static void init_protocol() {
   APP_ERROR_CHECK(protocol_init(APP_PIN_UART_TX, APP_PIN_UART_RX,
                                 protocol_request_handler));
 
-  LOG_INFO("UART initialized.");
+  LOG_INFO("Protocol initialized.");
 }
 
 static void init_leds() {
@@ -777,6 +777,9 @@ static void self_config_timer_handler(void *context) {
 }
 
 static void start() {
+  APP_ERROR_CHECK(protocol_start());
+  LOG_INFO("Protocol started.");
+
   rtt_input_enable(rtt_input_handler, 100);
 
   APP_ERROR_CHECK(mesh_stack_start());
@@ -790,7 +793,8 @@ static void start() {
     LOG_ERROR("We have already been provisioned. ");
 
     nrf_gpio_cfg_input(8, NRF_GPIO_PIN_PULLDOWN);
-    bool should_reset = (nrf_gpio_pin_read(8) != 0);
+    // bool should_reset = (nrf_gpio_pin_read(8) != 0);
+    bool should_reset = false;
 
     if (should_reset) {
       LOG_ERROR("Will clear all config and reset in 1s. ");
@@ -854,15 +858,17 @@ int main(void) {
   DEBUG_PINS_INIT();
 
   init_regout();
-  init_leds();
   init_logging();
+  init_protocol();
+  init_leds();
   init_mesh();
   init_buttons();
-  init_uart();
 
   start();
 
   while (true) {
-    (void)sd_app_evt_wait();
+    protocol_process();
+
+    // (void)sd_app_evt_wait();
   }
 }

@@ -154,4 +154,8 @@ void protocol_reply(uint32_t err, char const *fmt, ...) {
   request_pending = false;
 }
 
+void protocol_process() {}
+
+uint32_t protocol_start() { return NRF_SUCCESS; }
+
 #endif

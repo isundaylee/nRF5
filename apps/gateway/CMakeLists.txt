@@ -31,11 +31,25 @@ add_executable(${target}
     "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_gpiote.c"
     "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_uart.c"
     "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_uarte.c"
+    "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_clock.c"
+    "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_power.c"
+    "${SDK_ROOT}/modules/nrfx/drivers/src/nrfx_power_clock.c"
     "${SDK_ROOT}/modules/nrfx/drivers/src/prs/nrfx_prs.c"
+    "${SDK_ROOT}/integration/nrfx/legacy/nrf_drv_clock.c"
+    "${SDK_ROOT}/integration/nrfx/legacy/nrf_drv_power.c"
     "${SDK_ROOT}/integration/nrfx/legacy/nrf_drv_uart.c"
     "${SDK_ROOT}/components/libraries/button/app_button.c"
     "${SDK_ROOT}/components/libraries/uart/app_uart_fifo.c"
     "${SDK_ROOT}/components/libraries/fifo/app_fifo.c"
+    "${SDK_ROOT}/components/libraries/usbd/app_usbd.c"
+    "${SDK_ROOT}/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c"
+    "${SDK_ROOT}/components/libraries/usbd/app_usbd_core.c"
+    "${SDK_ROOT}/components/libraries/usbd/app_usbd_serial_num.c"
+    "${SDK_ROOT}/components/libraries/usbd/app_usbd_string_desc.c"
+    "${SDK_ROOT}/components/drivers_nrf/usbd/nrf_drv_usbd.c"
+    "${SDK_ROOT}/components/libraries/atomic_fifo/nrf_atfifo.c"
+    "${SDK_ROOT}/components/libraries/atomic/nrf_atomic.c"
+    "${SDK_ROOT}/external/utf_converter/utf.c"
     )
 
 target_include_directories(${target} PUBLIC
@@ -57,8 +71,14 @@ target_include_directories(${target} PUBLIC
     "${SDK_ROOT}/components/libraries/button"
     "${SDK_ROOT}/components/libraries/uart"
     "${SDK_ROOT}/components/libraries/fifo"
+    "${SDK_ROOT}/components/libraries/atomic_fifo"
+    "${SDK_ROOT}/components/libraries/usbd"
+    "${SDK_ROOT}/components/libraries/usbd/class/cdc"
+    "${SDK_ROOT}/components/libraries/usbd/class/cdc/acm"
+    "${SDK_ROOT}/components/drivers_nrf/usbd"
     "${SDK_ROOT}/integration/nrfx/legacy"
     "${SDK_ROOT}/modules/nrfx/drivers/include"
+    "${SDK_ROOT}/external/utf_converter"
     )
 
 set_target_link_options(${target}
