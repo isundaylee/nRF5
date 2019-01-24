@@ -139,7 +139,7 @@ async def handle_tcp_dashboard(reader, writer, dashboard_queue):
     while True:
         dashboard = await dashboard_queue.get()
         writer.write(b"\x1b[2J\x1b[H")
-        writer.write(dashboard.encode())
+        writer.write(dashboard.replace('\n', '\r\n').encode())
 
         try:
             await writer.drain()
