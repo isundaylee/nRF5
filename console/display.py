@@ -63,7 +63,7 @@ def render(nodes):
     for addr, data in nodes.items():
         result += (('-' * 110) + '\n')
 
-        result += ("%-15s | %-30s %7s %10s %10s %7s | %-3s | %-20s\n" % (
+        result += ("%-15s | %-30s  %7s  %8s  %8s  %7s | %-3s | %-20s\n" % (
             data['name'],
             format_faults(data),
             format_battery(data['battery']),
@@ -76,7 +76,7 @@ def render(nodes):
             format_last_seen(data)))
 
         for ttl in sorted(data['avg_rssi_by_ttl'].keys(), reverse=True):
-            result += ("%-15s | %-30s %7s %10s %10s %7s | %-3s | %-20s\n" %(
+            result += ("%-15s | %-30s  %7s  %8s  %8s  %7s | %-3s | %-20s\n" %(
                     '',
                     '',
                     '',
