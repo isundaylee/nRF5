@@ -25,8 +25,6 @@ CHECKS = \
     create_messenger_open_close_checks(
         'Bathroom', 'Bathroom door', os.environ['FB_OWNER_ID'])
 
-LEFT_MARGIN = 38
-
 
 class ConsoleSerial(asyncio.Protocol):
     def __init__(self, tx_queue, rx_queue, processor):
