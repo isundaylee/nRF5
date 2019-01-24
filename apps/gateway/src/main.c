@@ -869,6 +869,6 @@ int main(void) {
   start();
 
   while (true) {
-    // (void)sd_app_evt_wait();
+    (void)sd_app_evt_wait();
   }
 }
