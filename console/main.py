@@ -11,6 +11,8 @@ from command_processor import COMMAND_LIST
 from checker import create_messenger_open_close_checks
 
 
+TCP_DASHBOARD_PORT = 9798
+
 OUTPUT_DIR = 'output'
 OUTPUT_DASHBOARD_PATH = os.path.join(OUTPUT_DIR, 'dashboard')
 OUTPUT_NODES_PATH = os.path.join(OUTPUT_DIR, 'nodes')
@@ -92,10 +94,15 @@ async def interact(processor):
         await transcribe_and_process_console_message(processor, message)
 
 
-async def display(processor):
+async def display(processor, dashboard_queues):
     while True:
+        dashboard = render(processor.nodes)
+
         with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
             f.write(render(processor.nodes))
+
+        for queue in dashboard_queues:
+            queue.put_nowait(dashboard)
 
         await asyncio.sleep(1.0)
 
@@ -146,9 +153,23 @@ async def replay(processor):
         time.time() - time_begin))
 
 
+async def handle_tcp_dashboard(reader, writer, dashboard_queue):
+    while True:
+        dashboard = await dashboard_queue.get()
+        writer.write(b"\x1b[2J\x1b[H")
+        writer.write(dashboard.encode())
+
+        try:
+            await writer.drain()
+        except ConnectionResetError:
+            return
+
+
 async def main():
     tx_queue = asyncio.Queue()
     rx_queue = asyncio.Queue()
+
+    dashboard_queues = []
 
     processor = Processor(tx_queue, rx_queue, CHECKS)
     processor.start()
@@ -158,13 +179,23 @@ async def main():
 
     os.makedirs(OUTPUT_DIR, 0o777, True)
 
+    async def tcp_dashboard_handler(reader, writer):
+        dashboard_queue = asyncio.Queue()
+        dashboard_queues.append(dashboard_queue)
+        return await handle_tcp_dashboard(reader, writer, dashboard_queue)
+
     await asyncio.gather(
+        asyncio.start_server(
+            tcp_dashboard_handler,
+            '0.0.0.0',
+            TCP_DASHBOARD_PORT,
+            loop=asyncio.get_event_loop()),
         serial_asyncio.create_serial_connection(
             loop,
             lambda: ConsoleSerial(tx_queue, rx_queue, processor),
             '/dev/cu.usbmodem401111',
             baudrate=115200),
-        display(processor),
+        display(processor, dashboard_queues),
         interact(processor))
 
 
