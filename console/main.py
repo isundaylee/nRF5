@@ -14,7 +14,6 @@ from checker import create_messenger_open_close_checks
 TCP_DASHBOARD_PORT = 9798
 
 OUTPUT_DIR = 'output'
-OUTPUT_DASHBOARD_PATH = os.path.join(OUTPUT_DIR, 'dashboard')
 OUTPUT_NODES_PATH = os.path.join(OUTPUT_DIR, 'nodes')
 OUTPUT_PROTOCOL_TRANSCRIPT_PATH = os.path.join(
     OUTPUT_DIR, 'protocol_transcript')
@@ -97,9 +96,6 @@ async def interact(processor):
 async def display(processor, dashboard_queues):
     while True:
         dashboard = render(processor.nodes)
-
-        with open(OUTPUT_DASHBOARD_PATH, 'w') as f:
-            f.write(render(processor.nodes))
 
         for queue in dashboard_queues:
             queue.put_nowait(dashboard)
