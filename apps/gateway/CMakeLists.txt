@@ -8,6 +8,7 @@ add_executable(${target}
     "${CMAKE_CURRENT_SOURCE_DIR}/src/provisioner.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/protocol.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/protocol_usb.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/protocol_common.c"
     "${CMAKE_SOURCE_DIR}/../lib/custom_log/src/custom_log.c"
     "${CMAKE_SOURCE_DIR}/mesh/stack/src/mesh_stack.c"
     "${CMAKE_SOURCE_DIR}/examples/nrf_mesh_weak.c"

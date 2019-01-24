@@ -162,7 +162,7 @@ async def main():
         serial_asyncio.create_serial_connection(
             loop,
             lambda: ConsoleSerial(tx_queue, rx_queue, processor),
-            '/dev/cu.usbserial-A9M9DV3R',
+            '/dev/cu.usbmodem401111',
             baudrate=115200),
         display(processor),
         interact(processor))
