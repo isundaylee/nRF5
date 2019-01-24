@@ -14,7 +14,6 @@ from checker import create_messenger_open_close_checks
 TCP_DASHBOARD_PORT = 9798
 
 OUTPUT_DIR = 'output'
-OUTPUT_NODES_PATH = os.path.join(OUTPUT_DIR, 'nodes')
 OUTPUT_PROTOCOL_TRANSCRIPT_PATH = os.path.join(
     OUTPUT_DIR, 'protocol_transcript')
 OUTPUT_CONSOLE_TRANSCRIPT_PATH = os.path.join(
@@ -29,8 +28,6 @@ CHECKS = \
 SESSION_GAP_THRESHOLD = 10.0
 
 LEFT_MARGIN = 38
-
-REPLAY = True
 
 
 class ConsoleSerial(asyncio.Protocol):
@@ -170,8 +167,7 @@ async def main():
     processor = Processor(tx_queue, rx_queue, CHECKS)
     processor.start()
 
-    if REPLAY:
-        await replay(processor)
+    await replay(processor)
 
     os.makedirs(OUTPUT_DIR, 0o777, True)
 
