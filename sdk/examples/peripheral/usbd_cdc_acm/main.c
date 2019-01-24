@@ -61,7 +61,7 @@
 #include "bsp.h"
 #include "bsp_cli.h"
 #include "nrf_cli.h"
-#include "nrf_cli_uart.h"
+#include "nrf_cli_rtt.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -70,11 +70,11 @@
 /**
  * @brief CLI interface over UART
  */
-NRF_CLI_UART_DEF(m_cli_uart_transport, 0, 64, 16);
-NRF_CLI_DEF(m_cli_uart,
-            "uart_cli:~$ ",
-            &m_cli_uart_transport.transport,
-            '\r',
+NRF_CLI_RTT_DEF(m_cli_rtt_transport);
+NRF_CLI_DEF(m_cli_rtt,
+            "rtt_cli:~$ ",
+            &m_cli_rtt_transport.transport,
+            '\n',
             4);
 
 /**@file
@@ -233,7 +233,7 @@ static void bsp_event_callback(bsp_event_t ev)
             m_send_flag = 1;
             break;
         }
-        
+
         case BTN_CDC_DATA_KEY_RELEASE :
         {
             m_send_flag = 0;
@@ -259,11 +259,11 @@ static void init_bsp(void)
     ret_code_t ret;
     ret = bsp_init(BSP_INIT_BUTTONS, bsp_event_callback);
     APP_ERROR_CHECK(ret);
-    
+
     UNUSED_RETURN_VALUE(bsp_event_to_button_action_assign(BTN_CDC_DATA_SEND,
                                                           BSP_BUTTON_ACTION_RELEASE,
                                                           BTN_CDC_DATA_KEY_RELEASE));
-    
+
     /* Configure LEDs */
     bsp_board_init(BSP_INIT_LEDS);
 }
@@ -273,13 +273,9 @@ static void init_cli(void)
     ret_code_t ret;
     ret = bsp_cli_init(bsp_event_callback);
     APP_ERROR_CHECK(ret);
-    nrf_drv_uart_config_t uart_config = NRF_DRV_UART_DEFAULT_CONFIG;
-    uart_config.pseltxd = TX_PIN_NUMBER;
-    uart_config.pselrxd = RX_PIN_NUMBER;
-    uart_config.hwfc    = NRF_UART_HWFC_DISABLED;
-    ret = nrf_cli_init(&m_cli_uart, &uart_config, true, true, NRF_LOG_SEVERITY_INFO);
+    ret = nrf_cli_init(&m_cli_rtt, NULL, true, true, NRF_LOG_SEVERITY_INFO);
     APP_ERROR_CHECK(ret);
-    ret = nrf_cli_start(&m_cli_uart);
+    ret = nrf_cli_start(&m_cli_rtt);
     APP_ERROR_CHECK(ret);
 }
 
@@ -295,7 +291,7 @@ int main(void)
 
     ret = nrf_drv_clock_init();
     APP_ERROR_CHECK(ret);
-    
+
     nrf_drv_clock_lfclk_request(NULL);
 
     while(!nrf_drv_clock_lfclk_is_running())
@@ -338,7 +334,7 @@ int main(void)
         {
             /* Nothing to do */
         }
-        
+
         if(m_send_flag)
         {
             static int  frame_counter;
@@ -351,8 +347,8 @@ int main(void)
                 ++frame_counter;
             }
         }
-        
-        nrf_cli_process(&m_cli_uart);
+
+        nrf_cli_process(&m_cli_rtt);
 
         UNUSED_RETURN_VALUE(NRF_LOG_PROCESS());
         /* Sleep CPU only if there was no interrupt since last loop processing */
