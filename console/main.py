@@ -174,7 +174,8 @@ async def main():
     async def tcp_dashboard_handler(reader, writer):
         dashboard_queue = asyncio.Queue()
         dashboard_queues.append(dashboard_queue)
-        return await handle_tcp_dashboard(reader, writer, dashboard_queue)
+        await handle_tcp_dashboard(reader, writer, dashboard_queue)
+        dashboard_queues.remove(dashboard_queue)
 
     await asyncio.gather(
         asyncio.start_server(
