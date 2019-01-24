@@ -149,12 +149,6 @@ uint32_t protocol_start() {
   return NRF_SUCCESS;
 }
 
-void protocol_process() {
-  while (app_usbd_event_queue_process()) {
-    // Live life
-  }
-}
-
 void protocol_send_raw(char const *data, size_t len) {
   if (len > sizeof(tx_buffers[0])) {
     LOG_ERROR("Protocol: Dropped message due to TX buffer size limit.");

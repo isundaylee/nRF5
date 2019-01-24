@@ -60,8 +60,6 @@ void protocol_send_raw(char const *buf, size_t len) {
   }
 }
 
-void protocol_process() {}
-
 uint32_t protocol_start() { return NRF_SUCCESS; }
 
 #endif

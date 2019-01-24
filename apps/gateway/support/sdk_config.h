@@ -1349,7 +1349,7 @@
 // <7=> 7
 
 #ifndef CLOCK_CONFIG_IRQ_PRIORITY
-#define CLOCK_CONFIG_IRQ_PRIORITY 7
+#define CLOCK_CONFIG_IRQ_PRIORITY 6
 #endif
 
 // </e>
@@ -1784,7 +1784,7 @@
 // <7=> 7
 
 #ifndef NRFX_CLOCK_CONFIG_IRQ_PRIORITY
-#define NRFX_CLOCK_CONFIG_IRQ_PRIORITY 7
+#define NRFX_CLOCK_CONFIG_IRQ_PRIORITY 6
 #endif
 
 // <e> NRFX_CLOCK_CONFIG_LOG_ENABLED - Enables logging in the module.
@@ -2499,7 +2499,7 @@
 // <7=> 7
 
 #ifndef NRFX_POWER_CONFIG_IRQ_PRIORITY
-#define NRFX_POWER_CONFIG_IRQ_PRIORITY 7
+#define NRFX_POWER_CONFIG_IRQ_PRIORITY 6
 #endif
 
 // <q> NRFX_POWER_CONFIG_DEFAULT_DCDCEN  - The default configuration of main DCDC regulator
@@ -4680,7 +4680,7 @@
 // <7=> 7
 
 #ifndef POWER_CONFIG_IRQ_PRIORITY
-#define POWER_CONFIG_IRQ_PRIORITY 7
+#define POWER_CONFIG_IRQ_PRIORITY 6
 #endif
 
 // <q> POWER_CONFIG_DEFAULT_DCDCEN  - The default configuration of main DCDC regulator
@@ -6205,7 +6205,7 @@
 // <i> Functions that modify USBD state are functions for sleep, wakeup, start, stop, enable and disable.
 //==========================================================
 #ifndef APP_USBD_CONFIG_EVENT_QUEUE_ENABLE
-#define APP_USBD_CONFIG_EVENT_QUEUE_ENABLE 1
+#define APP_USBD_CONFIG_EVENT_QUEUE_ENABLE 0
 #endif
 // <o> APP_USBD_CONFIG_EVENT_QUEUE_SIZE - The size of event queue  <16-64>
 
@@ -6228,7 +6228,7 @@
 // <2=> Interrupt
 
 #ifndef APP_USBD_CONFIG_SOF_HANDLING_MODE
-#define APP_USBD_CONFIG_SOF_HANDLING_MODE 1
+#define APP_USBD_CONFIG_SOF_HANDLING_MODE 0
 #endif
 
 // </e>

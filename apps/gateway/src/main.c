@@ -869,8 +869,6 @@ int main(void) {
   start();
 
   while (true) {
-    protocol_process();
-
     // (void)sd_app_evt_wait();
   }
 }

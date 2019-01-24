@@ -11,5 +11,3 @@ uint32_t protocol_start();
 
 void protocol_send(char const *fmt, ...);
 void protocol_reply(uint32_t err, char const *fmt, ...);
-
-void protocol_process();
