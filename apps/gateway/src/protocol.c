@@ -1,3 +1,5 @@
+#ifndef NRF52840_XXAA
+
 #include "protocol.h"
 
 #include <stdarg.h>
@@ -151,3 +153,5 @@ void protocol_reply(uint32_t err, char const *fmt, ...) {
 
   request_pending = false;
 }
+
+#endif
