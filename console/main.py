@@ -25,8 +25,6 @@ CHECKS = \
     create_messenger_open_close_checks(
         'Bathroom', 'Bathroom door', os.environ['FB_OWNER_ID'])
 
-SESSION_GAP_THRESHOLD = 10.0
-
 LEFT_MARGIN = 38
 
 
@@ -123,14 +121,7 @@ async def replay(processor):
             message = ' '.join(rest)
             entries.append((timestamp, 'console', message))
 
-    last_timestamp = None
-
     for timestamp, source, message in sorted(entries):
-        if (last_timestamp is not None) and \
-           (timestamp >= last_timestamp + SESSION_GAP_THRESHOLD):
-            await processor.process_console_message(timestamp, 'session_reset')
-        last_timestamp = timestamp
-
         if source == 'protocol':
             if message.startswith("sta "):
                 await processor.protocol_rx_queue.put(
