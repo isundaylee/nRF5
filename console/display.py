@@ -50,8 +50,11 @@ def format_battery(battery):
         return "%.5f V" % battery
 
 
-def format_percentage(ratio):
-    return "%.1f %%" % (100.0 * ratio)
+def format_ratio(a, b):
+    if b == 0:
+        return 'N/A'
+    else:
+        return "%.1f %%" % (100.0 * a / b)
 
 
 def render(nodes):
@@ -66,9 +69,9 @@ def render(nodes):
             format_battery(data['battery']),
             format_ttl(data['avg_ttl']),
             format_rssi(data['avg_rssi']),
-            format_percentage(data['health_status_count']
-                              / (data['health_status_count']
-                                 + data['health_status_loss_count'])),
+            format_ratio(data['health_status_count'],
+                         (data['health_status_count']
+                          + data['health_status_loss_count'])),
             format_onoff_status(data['onoff_status']),
             format_last_seen(data)))
 
@@ -79,7 +82,8 @@ def render(nodes):
                     '',
                     format_ttl(ttl),
                     format_rssi(data['avg_rssi_by_ttl'][ttl]),
-                    format_percentage(1.0 * data['msg_count_by_ttl'][ttl] / data['msg_count']),
+                    format_ratio(data['msg_count_by_ttl'][ttl],
+                                 data['msg_count']),
                     '',
                     '',
                 ))
