@@ -107,17 +107,17 @@ async def replay(processor):
 
     with open(OUTPUT_PROTOCOL_TRANSCRIPT_PATH, 'r') as f:
         for line in f:
-            timestamp, *rest = line.split()
-            timestamp = float(timestamp)
-            message = ' '.join(rest)
-            entries.append((timestamp, 'protocol', message))
+            str_timestamp, *rest = line.split()
+            timestamp = float(str_timestamp)
+            entries.append((timestamp, 'protocol',
+                            line[len(str_timestamp)+1:-1]))
 
     with open(OUTPUT_CONSOLE_TRANSCRIPT_PATH, 'r') as f:
         for line in f:
-            timestamp, *rest = line.split()
-            timestamp = float(timestamp)
-            message = ' '.join(rest)
-            entries.append((timestamp, 'console', message))
+            str_timestamp, *rest = line.split()
+            timestamp = float(str_timestamp)
+            entries.append((timestamp, 'console',
+                            line[len(str_timestamp)+1:-1]))
 
     for timestamp, source, message in sorted(entries):
         if source == 'protocol':
