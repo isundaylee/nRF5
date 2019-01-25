@@ -157,7 +157,7 @@ void protocol_send_raw(char const *data, size_t len) {
 
   size_t new_tx_queue_tail = (tx_queue_tail + 1) % TX_QUEUE_SIZE;
   if (new_tx_queue_tail == tx_queue_head) {
-    LOG_ERROR("Protocol: Dropped message due to TX queue overflow.");
+    LOG_ERROR("noproto\0Protocol: Dropped message due to TX queue overflow.");
     return;
   }
 

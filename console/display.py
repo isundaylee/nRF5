@@ -5,6 +5,8 @@ FAULT_MAP = {
     0x0001: "Friendless"
 }
 
+LOG_ENTRY_COUNT = 25
+
 
 def format_faults(data):
     if len(data['faults']) == 0:
@@ -57,7 +59,7 @@ def format_ratio(a, b):
         return "%.1f %%" % (100.0 * a / b)
 
 
-def render(nodes):
+def render(nodes, gateway):
     result = ''
 
     for addr, data in nodes.items():
@@ -89,5 +91,9 @@ def render(nodes):
                 ))
 
     result += (('-' * 110) + '\n')
+    result += '\n'
+
+    for log in gateway['logs'][-LOG_ENTRY_COUNT:]:
+        result += log + '\n'
 
     return result

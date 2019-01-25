@@ -88,7 +88,7 @@ async def interact(processor):
 
 async def display(processor, dashboard_queues):
     while True:
-        dashboard = render(processor.nodes)
+        dashboard = render(processor.nodes, processor.gateway)
 
         for queue in dashboard_queues:
             queue.put_nowait(dashboard)

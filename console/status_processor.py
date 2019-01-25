@@ -9,8 +9,9 @@ HEALTH_STATUS_PERIOD = 10.0
 
 
 class StatusProcessor:
-    def __init__(self, nodes):
+    def __init__(self, nodes, gateway):
         self.nodes = nodes
+        self.gateway = gateway
 
     def process_status(self, timestamp, status):
         op, *params = status.split(' ')
@@ -47,6 +48,8 @@ class StatusProcessor:
             self.add_node(timestamp, addr)
             self.update_packet_metadata(timestamp, addr, ttl, rssi)
             self.update_onoff(timestamp, addr, onoff)
+        elif op == 'log':
+            self.gateway['logs'].append(status[4:])
         else:
             raise RuntimeError("Unknown op: " + op)
 

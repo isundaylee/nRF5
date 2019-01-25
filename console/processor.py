@@ -8,7 +8,10 @@ from checker import Checker
 class Processor:
     def __init__(self, protocol_tx_queue, protocol_rx_queue, checks):
         self.nodes = {}
-        self.status_processor = StatusProcessor(self.nodes)
+        self.gateway = {
+            'logs': []
+        }
+        self.status_processor = StatusProcessor(self.nodes, self.gateway)
         self.command_processor = CommandProcessor(self.nodes)
         self.checker = Checker(checks)
 
