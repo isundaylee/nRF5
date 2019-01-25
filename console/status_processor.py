@@ -51,7 +51,7 @@ class StatusProcessor:
         elif op == 'log':
             self.gateway['logs'].append(status[4:])
         else:
-            raise RuntimeError("Unknown op: " + op)
+            print("Unknown op: " + op)
 
     def add_node(self, timestamp, addr):
         if addr in self.nodes:
