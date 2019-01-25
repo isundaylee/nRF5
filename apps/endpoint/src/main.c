@@ -34,11 +34,11 @@
 
 #define APP_PIN_LED_ERROR 23
 #define APP_PIN_LED_INDICATION 24
-#define APP_PIN_CLEAR_CONFIG 20
+#define APP_PIN_CLEAR_CONFIG 13
 #define APP_PIN_VIRTUAL_GROUND 15
-#define APP_PIN_HALL_SENSOR 16
+#define APP_PIN_HALL_SENSOR 22
 
-#define APP_PIN_USER_BUTTON 20
+#define APP_PIN_USER_BUTTON 13
 
 #define APP_LED_BLINK_PERIOD_MS 3000
 #define APP_LED_BLINK_ON_MS 5
@@ -517,6 +517,7 @@ static void initialize(void) {
   __asm__ volatile("nop");
   __asm__ volatile("nop");
   should_reset = (!nrf_gpio_pin_read(APP_PIN_CLEAR_CONFIG));
+  LOG_INFO("Reset button value: %d.", should_reset);
 
   // Initialize buttons
   static app_button_cfg_t buttons[] = {
