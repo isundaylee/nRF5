@@ -146,6 +146,9 @@
 /** @} end of DSM_CONFIG */
 
 
+#define FLASH_MANAGER_POOL_SIZE                         512
+#define FLASH_MANAGER_ENTRY_MAX_SIZE                    512
+
 /** @} */
 
 #endif /* NRF_MESH_CONFIG_APP_H__ */
