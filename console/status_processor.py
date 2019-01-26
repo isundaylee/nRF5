@@ -49,7 +49,8 @@ class StatusProcessor:
             self.update_packet_metadata(timestamp, addr, ttl, rssi)
             self.update_onoff(timestamp, addr, onoff)
         elif op == 'log':
-            self.gateway['logs'].append(status[4:])
+            if 'RX: [' not in status:
+                self.gateway['logs'].append(status[4:])
         else:
             print("Unknown op: " + op)
 
