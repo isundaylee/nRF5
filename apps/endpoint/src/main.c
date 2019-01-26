@@ -49,7 +49,7 @@
 #define APP_ATTENTION_LED_BLINK_OFF_MS                                         \
   (APP_ATTENTION_LED_BLINK_PERIOD_MS - APP_ATTENTION_LED_BLINK_ON_MS)
 
-#define APP_LED_OFF_DELAY_MS 3000
+#define APP_LED_OFF_DELAY_MS 50
 
 APP_TIMER_DEF(reset_timer);
 APP_TIMER_DEF(led_blink_timer);
