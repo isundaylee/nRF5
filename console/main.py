@@ -143,7 +143,7 @@ async def handle_tcp_dashboard(reader, writer, dashboard_queue):
 
         try:
             await writer.drain()
-        except ConnectionResetError:
+        except (ConnectionResetError, BrokenPipeError):
             return
 
 
