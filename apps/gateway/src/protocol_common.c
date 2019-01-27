@@ -3,50 +3,58 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#include "nrf_mesh_assert.h"
+
 #include "custom_log.h"
 
 static bool request_pending = false;
 
 protocol_request_handler_t protocol_request_handler;
 
-static void send_vararg(char const *fmt, va_list args) {
+static bool send_vararg(bool guaranteed, char const *fmt, va_list args) {
   static char buf[128];
 
   int len = vsnprintf(buf, sizeof(buf) - 2, fmt, args);
   if ((len < 0) || (len >= sizeof(buf) - 2)) {
-    return;
+    return false;
   }
 
   buf[len++] = '\r';
   buf[len++] = '\n';
 
-  protocol_send_raw(buf, len);
+  return protocol_send_raw(buf, len, guaranteed);
 }
 
-void protocol_send(char const *fmt, ...) {
-  protocol_send_raw("sta ", 4);
+bool protocol_send(char const *fmt, ...) {
+  bool success = protocol_send_raw("sta ", 4, false);
 
   va_list args;
   va_start(args, fmt);
-  send_vararg(fmt, args);
+  success &= send_vararg(false, fmt, args);
   va_end(args);
+
+  return success;
 }
 
 void protocol_reply(uint32_t err, char const *fmt, ...) {
   static char buf[10];
 
-  protocol_send_raw("rep ", 4);
+  bool success = true;
+
+  success &= protocol_send_raw("rep ", 4, true);
 
   itoa(err, buf, 10);
-  protocol_send_raw(buf, strlen(buf));
-  protocol_send_raw(" ", 1);
+  success &= protocol_send_raw(buf, strlen(buf), true);
+  success &= protocol_send_raw(" ", 1, true);
 
   va_list args;
   va_start(args, fmt);
-  send_vararg(fmt, args);
+  success &= send_vararg(true, fmt, args);
   va_end(args);
 
   request_pending = false;
+
+  NRF_MESH_ASSERT(success);
 }
 
 void protocol_post_rx_char(char c) {

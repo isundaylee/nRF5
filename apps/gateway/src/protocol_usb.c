@@ -16,7 +16,8 @@
 
 #include "custom_log.h"
 
-#define TX_QUEUE_SIZE 8
+#define TX_QUEUE_SIZE 16
+#define TX_QUEUE_GUARANTEED_RESERVE_SIZE 4
 
 static bool tx_pending = false;
 static size_t tx_queue_head = 0;
@@ -149,16 +150,22 @@ uint32_t protocol_start() {
   return NRF_SUCCESS;
 }
 
-void protocol_send_raw(char const *data, size_t len) {
+bool protocol_send_raw(char const *data, size_t len, bool guaranteed) {
   if (len > sizeof(tx_buffers[0])) {
     LOG_ERROR("Protocol: Dropped message due to TX buffer size limit.");
-    return;
+    return false;
   }
 
   size_t new_tx_queue_tail = (tx_queue_tail + 1) % TX_QUEUE_SIZE;
+  if (!guaranteed && (((new_tx_queue_tail + TX_QUEUE_GUARANTEED_RESERVE_SIZE) %
+                       TX_QUEUE_SIZE) == tx_queue_head)) {
+    LOG_ERROR("noproto\0Protocol: Dropped message due to TX queue overflow "
+              "(without reserve).");
+    return false;
+  }
   if (new_tx_queue_tail == tx_queue_head) {
     LOG_ERROR("noproto\0Protocol: Dropped message due to TX queue overflow.");
-    return;
+    return false;
   }
 
   memcpy(tx_buffers[tx_queue_tail], data, len);
@@ -169,6 +176,8 @@ void protocol_send_raw(char const *data, size_t len) {
   if (!tx_pending) {
     drain_tx_queue();
   }
+
+  return true;
 }
 
 #endif
