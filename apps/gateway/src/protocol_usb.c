@@ -14,16 +14,19 @@
 #include <app_usbd_serial_num.h>
 #include <app_usbd_string_desc.h>
 
+#include "ring_packet_queue.h"
+
 #include "custom_log.h"
 
-#define TX_QUEUE_SIZE 16
-#define TX_QUEUE_GUARANTEED_RESERVE_SIZE 4
+////////////////////////////////////////////////////////////////////////////////
 
-static bool tx_pending = false;
-static size_t tx_queue_head = 0;
-static size_t tx_queue_tail = 0;
-static char tx_buffers[TX_QUEUE_SIZE][256];
-static size_t tx_lengths[TX_QUEUE_SIZE];
+#define TX_QUEUE_SIZE 4096
+#define TX_PRIORITY_QUEUE_SIZE 1024
+
+RING_PACKET_QUEUE_DEFINE(tx_queue, TX_QUEUE_SIZE);
+RING_PACKET_QUEUE_DEFINE(tx_prio_queue, TX_PRIORITY_QUEUE_SIZE);
+
+ring_packet_queue_t *pending_tx_queue = NULL;
 
 static void cdc_acm_user_event_handler(app_usbd_class_inst_t const *inst,
                                        app_usbd_cdc_acm_user_event_t event);
@@ -62,21 +65,28 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event) {
 }
 
 static void drain_tx_queue() {
-  if (tx_queue_head == tx_queue_tail) {
+  ring_packet_queue_packet_t *packet;
+  ring_packet_queue_t *chosen_queue;
+
+  if (!ring_packet_queue_is_empty(&tx_prio_queue)) {
+    packet = ring_packet_queue_get_head(&tx_prio_queue);
+    chosen_queue = &tx_prio_queue;
+  } else if (!ring_packet_queue_is_empty(&tx_queue)) {
+    packet = ring_packet_queue_get_head(&tx_queue);
+    chosen_queue = &tx_queue;
+  } else {
     return;
   }
 
-  uint32_t err = app_usbd_cdc_acm_write(&app_cdc_acm, tx_buffers[tx_queue_head],
-                                        tx_lengths[tx_queue_head]);
+  uint32_t err =
+      app_usbd_cdc_acm_write(&app_cdc_acm, packet->data, packet->len);
   if (err == NRF_SUCCESS) {
-    tx_pending = true;
+    pending_tx_queue = chosen_queue;
   } else {
     if (err != NRF_ERROR_INVALID_STATE) {
-      LOG_INFO("Protocol: TX error %d.", err);
+      LOG_ERROR("Protocol: TX error %d.", err);
     }
   }
-
-  tx_queue_head = (tx_queue_head + 1) % TX_QUEUE_SIZE;
 }
 
 static void cdc_acm_user_event_handler(app_usbd_class_inst_t const *inst,
@@ -100,7 +110,10 @@ static void cdc_acm_user_event_handler(app_usbd_class_inst_t const *inst,
 
   case APP_USBD_CDC_ACM_USER_EVT_TX_DONE: //
   {
-    tx_pending = false;
+    ASSERT(pending_tx_queue != NULL);
+    ring_packet_queue_free_packet(pending_tx_queue,
+                                  ring_packet_queue_get_head(pending_tx_queue));
+    pending_tx_queue = NULL;
     drain_tx_queue();
     break;
   }
@@ -150,34 +163,27 @@ uint32_t protocol_start() {
   return NRF_SUCCESS;
 }
 
-bool protocol_send_raw(char const *data, size_t len, bool guaranteed) {
-  if (len > sizeof(tx_buffers[0])) {
-    LOG_ERROR("Protocol: Dropped message due to TX buffer size limit.");
-    return false;
+bool protocol_send_raw(char const *data, size_t len, bool prio) {
+  bool success = true;
+
+  ring_packet_queue_t *queue_to_use = (prio ? &tx_prio_queue : &tx_queue);
+  ring_packet_queue_packet_t *packet =
+      ring_packet_queue_alloc_packet(queue_to_use, len);
+
+  if (packet != NULL) {
+    memcpy(packet->data, data, len);
+  } else {
+    LOG_ERROR("noproto\0Protocol: Dropped message due to TX queue overflow. "
+              "Prio: %d.",
+              prio);
+    success = false;
   }
 
-  size_t new_tx_queue_tail = (tx_queue_tail + 1) % TX_QUEUE_SIZE;
-  if (!guaranteed && (((new_tx_queue_tail + TX_QUEUE_GUARANTEED_RESERVE_SIZE) %
-                       TX_QUEUE_SIZE) == tx_queue_head)) {
-    LOG_ERROR("noproto\0Protocol: Dropped message due to TX queue overflow "
-              "(without reserve).");
-    return false;
-  }
-  if (new_tx_queue_tail == tx_queue_head) {
-    LOG_ERROR("noproto\0Protocol: Dropped message due to TX queue overflow.");
-    return false;
-  }
-
-  memcpy(tx_buffers[tx_queue_tail], data, len);
-  tx_lengths[tx_queue_tail] = len;
-
-  tx_queue_tail = new_tx_queue_tail;
-
-  if (!tx_pending) {
+  if (pending_tx_queue == NULL) {
     drain_tx_queue();
   }
 
-  return true;
+  return success;
 }
 
 #endif
