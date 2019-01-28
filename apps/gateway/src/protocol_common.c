@@ -7,53 +7,108 @@
 
 #include "custom_log.h"
 
+#define MESSAGE_BUFFER_SIZE 256
+
 static bool request_pending = false;
 
 protocol_request_handler_t protocol_request_handler;
 
-static bool send_vararg(bool guaranteed, char const *fmt, va_list args) {
-  static char buf[128];
+static char message_buffer[MESSAGE_BUFFER_SIZE];
+char *message_buffer_cursor;
 
-  int len = vsnprintf(buf, sizeof(buf) - 2, fmt, args);
-  if ((len < 0) || (len >= sizeof(buf) - 2)) {
+void buffer_reset() { message_buffer_cursor = message_buffer; }
+
+size_t buffer_space_left() {
+  return (message_buffer + MESSAGE_BUFFER_SIZE - message_buffer_cursor - 1);
+}
+
+bool buffer_append_string(char const *string) {
+  size_t len = strlen(string);
+
+  if (len > buffer_space_left()) {
     return false;
   }
 
-  buf[len++] = '\r';
-  buf[len++] = '\n';
+  strcpy(message_buffer_cursor, string);
+  message_buffer_cursor += len;
 
-  return protocol_send_raw(buf, len, guaranteed);
+  return true;
+}
+
+bool buffer_append_vararg(char const *fmt, va_list args) {
+  int limit = buffer_space_left() + 1;
+
+  int len = vsnprintf(message_buffer_cursor, limit, fmt, args);
+  if ((len < 0) || (len >= limit)) {
+    return false;
+  }
+
+  message_buffer_cursor += len;
+
+  return true;
 }
 
 bool protocol_send(char const *fmt, ...) {
-  bool success = protocol_send_raw("sta ", 4, false);
+  buffer_reset();
+
+  if (!buffer_append_string("sta ")) {
+    return false;
+  }
 
   va_list args;
   va_start(args, fmt);
-  success &= send_vararg(false, fmt, args);
+  if (!buffer_append_vararg(fmt, args)) {
+    va_end(args);
+    return false;
+  }
   va_end(args);
 
-  return success;
+  if (!buffer_append_string("\r\n")) {
+    return false;
+  }
+
+  return protocol_send_raw(message_buffer,
+                           message_buffer_cursor - message_buffer, false);
 }
 
 void protocol_reply(uint32_t err, char const *fmt, ...) {
-  static char buf[10];
+  request_pending = false;
 
-  bool success = true;
+  buffer_reset();
 
-  success &= protocol_send_raw("rep ", 4, true);
+  if (!buffer_append_string("rep ")) {
+    NRF_MESH_ASSERT(false);
+    return;
+  }
 
-  itoa(err, buf, 10);
-  success &= protocol_send_raw(buf, strlen(buf), true);
-  success &= protocol_send_raw(" ", 1, true);
+  static char err_buf[10];
+  itoa(err, err_buf, sizeof(err_buf));
+  if (!buffer_append_string(err_buf)) {
+    NRF_MESH_ASSERT(false);
+    return;
+  }
+
+  if (!buffer_append_string(" ")) {
+    NRF_MESH_ASSERT(false);
+    return;
+  }
 
   va_list args;
   va_start(args, fmt);
-  success &= send_vararg(true, fmt, args);
+  if (!buffer_append_vararg(fmt, args)) {
+    va_end(args);
+    NRF_MESH_ASSERT(false);
+    return;
+  }
   va_end(args);
 
-  request_pending = false;
+  if (!buffer_append_string("\r\n")) {
+    NRF_MESH_ASSERT(false);
+    return;
+  }
 
+  bool success = protocol_send_raw(
+      message_buffer, message_buffer_cursor - message_buffer, true);
   NRF_MESH_ASSERT(success);
 }
 

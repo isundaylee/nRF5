@@ -42,24 +42,24 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event) {
 
   switch (event) {
   case APP_USBD_EVT_POWER_DETECTED:
-    LOG_INFO("Protocol: Power detected.");
+    LOG_INFO("noproto\0Protocol: Power detected.");
     if (!nrf_drv_usbd_is_enabled()) {
       app_usbd_enable();
     }
     break;
 
   case APP_USBD_EVT_POWER_REMOVED:
-    LOG_INFO("Protocol: Power removed.");
+    LOG_INFO("noproto\0Protocol: Power removed.");
     app_usbd_stop();
     break;
 
   case APP_USBD_EVT_POWER_READY:
-    LOG_INFO("Protocol: Ready.");
+    LOG_INFO("noproto\0Protocol: Ready.");
     app_usbd_start();
     break;
 
   default:
-    LOG_INFO("Protocol: Event %d", event);
+    LOG_INFO("noproto\0Protocol: Event %d", event);
     break;
   }
 }
@@ -77,6 +77,10 @@ static void drain_tx_queue() {
   } else {
     return;
   }
+
+  // TODO: Plz investigate this further...
+  for (int i = 0; i < 10000; i++)
+    __asm__ volatile("nop");
 
   uint32_t err =
       app_usbd_cdc_acm_write(&app_cdc_acm, packet->data, packet->len);
