@@ -3,6 +3,7 @@ import asyncio
 from status_processor import StatusProcessor
 from command_processor import CommandProcessor, COMMAND_LIST
 from checker import Checker
+from request_transformers.basic import BasicRequestTransformer
 
 
 class Processor:
@@ -19,6 +20,12 @@ class Processor:
         self.protocol_rx_queue = protocol_rx_queue
 
         self.pending_reply = None
+
+        self.request_transformers = {
+            'ping': BasicRequestTransformer(),
+            'id': BasicRequestTransformer(),
+            'reset': BasicRequestTransformer(),
+        }
 
     def start(self):
         asyncio.get_event_loop().create_task(self.process_protocol_rx())
@@ -51,16 +58,19 @@ class Processor:
         if op in COMMAND_LIST:
             self.command_processor.process_command(timestamp, message)
         else:
-            await self.protocol_tx_queue.put('req ' + message)
+            op, *rest = message.split()
+
+            if op not in self.request_transformers:
+                print('Unknown request: {}'.format(op))
+                return
+
+            transformer = self.request_transformers[op]
+
+            await self.protocol_tx_queue.put(
+                'req ' + transformer.transform_request(message))
 
             reply_queue = asyncio.Queue()
             self.pending_reply = reply_queue
             reply = await self.pending_reply.get()
 
-            err, *rest = reply.split()
-            err = int(err)
-
-            if err == 0:
-                print('Success: {}\n'.format(' '.join(rest)))
-            else:
-                print('Error {}: {}\n'.format(err, ' '.join(rest)))
+            print(transformer.transform_reply(reply))
