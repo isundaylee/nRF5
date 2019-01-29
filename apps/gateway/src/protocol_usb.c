@@ -78,10 +78,6 @@ static void drain_tx_queue() {
     return;
   }
 
-  // TODO: Plz investigate this further...
-  for (int i = 0; i < 10000; i++)
-    __asm__ volatile("nop");
-
   uint32_t err =
       app_usbd_cdc_acm_write(&app_cdc_acm, packet->data, packet->len);
   if (err == NRF_SUCCESS) {
