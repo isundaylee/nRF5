@@ -51,6 +51,14 @@ class StatusProcessor:
         elif op == 'log':
             if 'RX: [' not in status:
                 self.gateway['logs'].append(status[4:])
+        elif op == 'address_book_capacity':
+            free, total = params
+
+            free = int(free)
+            total = int(total)
+
+            self.gateway['address_book_free_slots'] = free
+            self.gateway['address_book_total_slots'] = total
         else:
             print("Unknown op: " + op)
 

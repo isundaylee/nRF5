@@ -59,6 +59,16 @@ def format_ratio(a, b):
         return "%.1f %%" % (100.0 * a / b)
 
 
+def format_address_book_free_slots(gateway):
+    if gateway['address_book_free_slots'] is None:
+        return 'N/A'
+    else:
+        return '%d / %d' % (
+            gateway['address_book_free_slots'],
+            gateway['address_book_total_slots'],
+        )
+
+
 def render(nodes, gateway):
     result = ''
 
@@ -89,6 +99,11 @@ def render(nodes, gateway):
                     '',
                     '',
                 ))
+
+    result += (('-' * 110) + '\n')
+
+    result += 'Address Book Free Slots: %5s\n' % (
+          format_address_book_free_slots(gateway))
 
     result += (('-' * 110) + '\n')
     result += '\n'
