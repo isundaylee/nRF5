@@ -1,5 +1,6 @@
 #include "protocol_config_client.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "configurator.h"
@@ -17,13 +18,10 @@ typedef enum {
 } protocol_config_client_request_type_t;
 
 typedef struct {
-  int addr;
-} protocol_config_client_reset_request_t;
-
-typedef struct {
+  uint32_t addr;
   protocol_config_client_request_type_t type;
+
   union {
-    protocol_config_client_reset_request_t reset_request;
   } request;
 } protocol_config_client_request_t;
 
@@ -48,26 +46,71 @@ static void conf_client_step_builder(
   cursor->type = CONF_STEP_TYPE_DONE;
 }
 
+static bool parse_uint32(char *str, uint32_t *out, int base) {
+  char *tok = strtok(str, " ");
+  if (tok == NULL) {
+    return false;
+  }
+
+  LOG_INFO("TOK: %s", tok);
+
+  *out = strtol(tok, NULL, base);
+
+  return true;
+}
+
+static bool parse_string(char *str, char **out) {
+  char *tok = strtok(str, " ");
+  if (tok == NULL) {
+    return false;
+  }
+
+  LOG_INFO("TOK: %s", tok);
+  *out = tok;
+
+  return true;
+}
+
+// Returns whether PARSING is successful
+bool parse_and_start_request(char const *op, char *params) {
+  if (!parse_uint32(params, &pending_request.addr, 16)) {
+    return false;
+  }
+
+  char *config_op;
+  if (!parse_string(NULL, &config_op)) {
+    return false;
+  }
+
+  if (strcmp(config_op, "reset") == 0) {
+    pending_request.type = PROTOCOL_CONFIG_CLIENT_RESET_REQUEST;
+  } else {
+    return false;
+  }
+
+  uint32_t err = conf_start(pending_request.addr, conf_client_step_builder);
+  if (err != NRF_SUCCESS) {
+    pending_request.type = PROTOCOL_CONFIG_CLIENT_NO_REQUEST;
+    protocol_reply(err, "failed to start configuration");
+  }
+
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 uint32_t protocol_config_client_init() { return NRF_SUCCESS; }
 
-bool protocol_config_client_handle_request(char const *op, char const *params) {
-  if (strcmp(op, "reset") == 0) {
-    uint32_t addr = strtol(params, NULL, 16);
-    uint32_t err = conf_start(addr, conf_client_step_builder);
-
-    if (err != NRF_SUCCESS) {
-      protocol_reply(err, "failed to start configuration");
-    } else {
-      pending_request.type = PROTOCOL_CONFIG_CLIENT_RESET_REQUEST;
-      pending_request.request.reset_request.addr = addr;
-    }
-
-    return true;
+bool protocol_config_client_handle_request(char const *op, char *params) {
+  if (strcmp(op, "config") != 0) {
+    return false;
   }
 
-  return false;
+  if (!parse_and_start_request(op, params)) {
+    protocol_reply(NRF_ERROR_INVALID_PARAM, "cannot parse request");
+  }
+
+  return true;
 }
 
 bool protocol_config_client_handle_conf_success(uint16_t addr) {
@@ -86,6 +129,7 @@ bool protocol_config_client_handle_conf_success(uint16_t addr) {
   }
 
   NRF_MESH_ASSERT(false);
+  return true;
 }
 
 bool protocol_config_client_handle_conf_failure(uint16_t addr, uint32_t err) {
@@ -104,4 +148,5 @@ bool protocol_config_client_handle_conf_failure(uint16_t addr, uint32_t err) {
   }
 
   NRF_MESH_ASSERT(false);
+  return true;
 }

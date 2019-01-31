@@ -191,7 +191,7 @@ static void health_client_bind_step_builder(
   cursor->type = CONF_STEP_TYPE_DONE;
 }
 
-static void protocol_request_handler(char const *op, char const *params) {
+static void protocol_request_handler(char const *op, char *params) {
   ASSERT(pending_request.type == PROTOCOL_NO_REQUEST);
 
   if (protocol_config_client_handle_request(op, params)) {

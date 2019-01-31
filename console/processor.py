@@ -4,6 +4,7 @@ from status_processor import StatusProcessor
 from command_processor import CommandProcessor, COMMAND_LIST
 from checker import Checker
 from request_transformers.basic import BasicRequestTransformer
+from request_transformers.config_client import ConfigClientRequestTransformer
 
 
 class Processor:
@@ -26,7 +27,7 @@ class Processor:
         self.request_transformers = {
             'ping': BasicRequestTransformer(),
             'id': BasicRequestTransformer(),
-            'reset': BasicRequestTransformer(),
+            'config': ConfigClientRequestTransformer(),
         }
 
     def start(self):
@@ -68,8 +69,12 @@ class Processor:
 
             transformer = self.request_transformers[op]
 
-            await self.protocol_tx_queue.put(
-                'req ' + transformer.transform_request(message))
+            try:
+                await self.protocol_tx_queue.put(
+                    'req ' + transformer.transform_request(message))
+            except (ValueError) as e:
+                print('Cannot transform request: {}'.format(e))
+                return
 
             reply_queue = asyncio.Queue()
             self.pending_reply = reply_queue
