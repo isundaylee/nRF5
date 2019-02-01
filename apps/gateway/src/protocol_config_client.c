@@ -129,8 +129,6 @@ static bool parse_uint32(char *str, uint32_t *out, int base) {
     return false;
   }
 
-  LOG_INFO("TOK: %s", tok);
-
   *out = strtol(tok, NULL, base);
 
   return true;
@@ -142,7 +140,6 @@ static bool parse_string(char *str, char **out) {
     return false;
   }
 
-  LOG_INFO("TOK: %s", tok);
   *out = tok;
 
   return true;
