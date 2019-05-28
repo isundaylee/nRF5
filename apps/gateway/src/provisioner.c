@@ -46,6 +46,9 @@ prov_t prov;
 void prov_reset_state() {
   prov.device_addr = 0;
   prov.state = PROV_STATE_IDLE;
+
+  nrf_mesh_prov_scan_stop();
+  LOG_INFO("Provisioner: Provisioning stopped scanning.");
 }
 
 void prov_evt_handler(nrf_mesh_prov_evt_t const *evt) {
@@ -287,9 +290,16 @@ void prov_init(app_state_t *app_state, prov_start_cb_t start_cb,
   LOG_INFO("Provisioner: Provisioning initialized. ");
 }
 
-void prov_start_scan() {
+uint32_t prov_start_scan() {
+  if (prov.state != PROV_STATE_IDLE) {
+    LOG_ERROR("Provisioner: Scan requested during an on-going scan.");
+    return NRF_ERROR_INVALID_STATE;
+  }
+
   prov.state = PROV_STATE_SCANNING;
 
   APP_ERROR_CHECK(nrf_mesh_prov_scan_start(prov_evt_handler));
   LOG_INFO("Provisioner: Provisioning started scanning.");
+
+  return NRF_SUCCESS;
 }

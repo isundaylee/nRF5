@@ -221,6 +221,14 @@ static void protocol_request_handler(char const *op, char *params) {
       pending_request.type = PROTOCOL_ID_REQUEST;
       pending_request.request.id_request.addr = addr;
     }
+  } else if (strcmp(op, "add_device") == 0) {
+    uint32_t err = prov_start_scan();
+
+    if (err == NRF_SUCCESS) {
+      protocol_reply(NRF_SUCCESS, "started scanning for a new device");
+    } else {
+      protocol_reply(err, "started scanning failed");
+    }
   } else {
     protocol_reply(NRF_ERROR_NOT_FOUND, "invalid op '%s'", op);
   }
@@ -680,11 +688,7 @@ static void prov_success_cb(uint16_t addr) {
   APP_ERROR_CHECK(conf_start(addr, conf_step_builder));
 }
 
-static void prov_failure_cb() {
-  nrf_gpio_pin_clear(PIN_LED_INDICATION);
-
-  prov_start_scan();
-}
+static void prov_failure_cb() { nrf_gpio_pin_clear(PIN_LED_INDICATION); }
 
 static void conf_success_cb(uint16_t addr) {
   if (protocol_config_client_handle_conf_success(addr)) {
@@ -709,8 +713,6 @@ static void conf_success_cb(uint16_t addr) {
   default:
     break;
   }
-
-  prov_start_scan();
 }
 
 static void conf_failure_cb(uint16_t addr, uint32_t err) {
@@ -730,8 +732,6 @@ static void conf_failure_cb(uint16_t addr, uint32_t err) {
   default:
     break;
   }
-
-  prov_start_scan();
 }
 
 static void onoff_client_toggle_timer_handler(void *context) {
@@ -800,8 +800,6 @@ static void start() {
   if (!is_provisioned) {
     APP_ERROR_CHECK(
         app_timer_start(self_config_timer, APP_TIMER_TICKS(1000), NULL));
-  } else {
-    prov_start_scan();
   }
 }
 

@@ -28,6 +28,7 @@ class Processor:
             'ping': BasicRequestTransformer(),
             'id': BasicRequestTransformer(),
             'config': ConfigClientRequestTransformer(),
+            'add_device': BasicRequestTransformer(),
         }
 
     def start(self):
