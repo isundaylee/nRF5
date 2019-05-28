@@ -179,7 +179,7 @@ static void mesh_core_event_handler(nrf_mesh_evt_t const *event) {
   case NRF_MESH_EVT_LPN_FRIEND_REQUEST_TIMEOUT: {
     // TODO: Prove that we'll be in S_IDLE
     ASSERT(!friendship_established);
-    schedule_friend_request(1000);
+    schedule_friend_request(30000);
     LOG_ERROR("Friend request timed out.");
     break;
   }
