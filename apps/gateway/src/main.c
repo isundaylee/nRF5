@@ -39,7 +39,7 @@
 
 #include "debug_pins.h"
 
-#define PIN_LED_ERROR 8
+#define PIN_LED_ERROR 30
 #define PIN_LED_INDICATION 6
 
 #define APP_PIN_USER_BUTTON 7
@@ -75,7 +75,7 @@ protocol_request_t pending_request = {.type = PROTOCOL_NO_REQUEST};
 __attribute__((optimize(0))) void
 app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
   nrf_gpio_cfg_output(PIN_LED_ERROR);
-  nrf_gpio_pin_clear(PIN_LED_ERROR);
+  nrf_gpio_pin_set(PIN_LED_ERROR);
 
   error_info_t *error_info = (error_info_t *)info;
   assert_info_t *assert_info = (assert_info_t *)info;
@@ -236,8 +236,8 @@ static void init_protocol() {
 static void init_leds() {
   nrf_gpio_cfg_output(PIN_LED_ERROR);
   nrf_gpio_cfg_output(PIN_LED_INDICATION);
-  nrf_gpio_pin_set(PIN_LED_ERROR);
-  nrf_gpio_pin_set(PIN_LED_INDICATION);
+  nrf_gpio_pin_clear(PIN_LED_ERROR);
+  nrf_gpio_pin_clear(PIN_LED_INDICATION);
 }
 
 static void init_logging() {
@@ -460,7 +460,7 @@ static void init_mesh() {
 }
 
 static void prov_start_cb(uint16_t addr) {
-  nrf_gpio_pin_clear(PIN_LED_INDICATION);
+  nrf_gpio_pin_set(PIN_LED_INDICATION);
 }
 
 static void
@@ -675,13 +675,13 @@ conf_step_builder(uint16_t addr,
 }
 
 static void prov_success_cb(uint16_t addr) {
-  nrf_gpio_pin_set(PIN_LED_INDICATION);
+  nrf_gpio_pin_clear(PIN_LED_INDICATION);
 
   APP_ERROR_CHECK(conf_start(addr, conf_step_builder));
 }
 
 static void prov_failure_cb() {
-  nrf_gpio_pin_set(PIN_LED_INDICATION);
+  nrf_gpio_pin_clear(PIN_LED_INDICATION);
 
   prov_start_scan();
 }
