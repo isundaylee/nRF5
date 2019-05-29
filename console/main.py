@@ -149,6 +149,12 @@ async def handle_tcp_dashboard(reader, writer, dashboard_queue):
 
 
 async def main():
+    if len(sys.argv) < 2:
+        print('Usage: main.py /path/to/dev')
+        exit(1)
+
+    device = sys.argv[1]
+
     tx_queue = asyncio.Queue()
     rx_queue = asyncio.Queue()
 
@@ -176,7 +182,7 @@ async def main():
         serial_asyncio.create_serial_connection(
             loop,
             lambda: ConsoleSerial(tx_queue, rx_queue, processor),
-            '/dev/cu.usbmodem401111',
+            device,
             baudrate=115200),
         display(processor, dashboard_queues),
         interact(processor))
