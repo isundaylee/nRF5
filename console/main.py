@@ -51,7 +51,8 @@ class ConsoleSerial(asyncio.Protocol):
 
             timestamp = time.time()
             with open(OUTPUT_PROTOCOL_TRANSCRIPT_PATH, 'a') as f:
-                f.write('{} {}\n'.format(str(timestamp), message))
+                escaped_message = '\\n'.join(message.split('\n'))
+                f.write('{} {}\n'.format(str(timestamp), escaped_message))
 
             self.rx_queue.put_nowait((timestamp, False, message))
 
@@ -110,7 +111,7 @@ async def replay(processor):
             str_timestamp, *rest = line.split()
             timestamp = float(str_timestamp)
             entries.append((timestamp, 'protocol',
-                            line[len(str_timestamp)+1:-1]))
+                            '\n'.join(line[len(str_timestamp)+1:-1].split('\\n'))))
 
     with open(OUTPUT_CONSOLE_TRANSCRIPT_PATH, 'r') as f:
         for line in f:
