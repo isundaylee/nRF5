@@ -21,6 +21,9 @@ battery_values = []
 friendless_ts = []
 friendless_values = []
 
+onoff_ts = []
+onoff_values = []
+
 with open(os.path.join(output_path, "protocol_transcript")) as f:
     for line in f:
         tokens = line.strip().split(" ")
@@ -28,7 +31,7 @@ with open(os.path.join(output_path, "protocol_transcript")) as f:
         if len(tokens) < 2:
             continue
 
-        if tokens[1] != "sta" or (tokens[2] not in ("health", "battery")):
+        if tokens[1] != "sta" or (tokens[2] not in ("health", "battery", "onoff")):
             continue
 
         if int(tokens[3]) != node_addr:
@@ -43,12 +46,21 @@ with open(os.path.join(output_path, "protocol_transcript")) as f:
         elif op == "health":
             friendless_ts.append(ts)
             friendless_values.append(1 if "01" in tokens[6] else 0)
+        elif op == "onoff":
+            if int(tokens[6]) == 1:
+                onoff_ts.append(ts)
+                onoff_values.append(0)
+                onoff_ts.append(ts)
+                onoff_values.append(1)
+                onoff_ts.append(ts)
+                onoff_values.append(0)
 
 # Create DataFrames
 df_battery = pd.DataFrame({"timestamp": battery_ts, "voltage": battery_values})
 df_friendless = pd.DataFrame(
     {"timestamp": friendless_ts, "friendless": friendless_values}
 )
+df_onoff = pd.DataFrame({"timestamp": onoff_ts, "onoff": onoff_values})
 
 # Plot only the last PLOT_LIMIT seconds
 datetime_cutoff = df_battery.iloc[-1]["timestamp"] - datetime.timedelta(
@@ -56,8 +68,10 @@ datetime_cutoff = df_battery.iloc[-1]["timestamp"] - datetime.timedelta(
 )
 df_battery = df_battery[df_battery["timestamp"] > datetime_cutoff]
 df_friendless = df_friendless[df_friendless["timestamp"] > datetime_cutoff]
+df_onoff = df_onoff[df_onoff["timestamp"] > datetime_cutoff]
 
 # Finally, let's plot it :)
-plt.plot(df_battery["timestamp"], df_battery["voltage"].rolling(10).mean())
-plt.plot(df_friendless["timestamp"], df_friendless["friendless"] + 2)
+plt.plot(df_battery["timestamp"], df_battery["voltage"].rolling(10).mean(), 'b')
+plt.plot(df_friendless["timestamp"], df_friendless["friendless"] + 2, 'r')
+plt.plot(df_onoff["timestamp"], df_onoff["onoff"] + 2, 'g')
 plt.show()
