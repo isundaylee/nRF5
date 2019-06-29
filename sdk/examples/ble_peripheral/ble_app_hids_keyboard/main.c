@@ -59,6 +59,7 @@
 #include "nrf.h"
 #include "nrf_assert.h"
 #include "app_error.h"
+#include "app_uart.h"
 #include "ble.h"
 #include "ble_err.h"
 #include "ble_hci.h"
@@ -75,6 +76,7 @@
 #include "nrf_sdh.h"
 #include "nrf_sdh_soc.h"
 #include "nrf_sdh_ble.h"
+#include "nrf_uarte.h"
 #include "app_timer.h"
 #include "peer_manager.h"
 #include "fds.h"
@@ -1415,6 +1417,7 @@ static void bsp_event_handler(bsp_event_t event)
             break;
 
         case BSP_EVENT_KEY_0:
+            NRF_LOG_INFO("Button is pressed!");
             if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
             {
                 keys_send(1, p_key);
@@ -1560,11 +1563,113 @@ static void idle_state_handle(void)
     }
 }
 
+static void set_uicr_3v3(void)
+{
+    if (NRF_UICR->REGOUT0 != UICR_REGOUT0_VOUT_3V3) 
+    {
+        NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos;
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy){}
+        NRF_UICR->REGOUT0 = UICR_REGOUT0_VOUT_3V3;
+
+        NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos;
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy){}
+    }
+}
+
+void uart_error_handle(app_uart_evt_t *p_event)
+{
+
+}
+
+void send_report(ble_hids_t * p_hids, uint8_t *data)
+{
+    uint32_t err_code; 
+
+    if (!m_in_boot_mode)
+    {
+        err_code = ble_hids_inp_rep_send(p_hids,
+                                         INPUT_REPORT_KEYS_INDEX,
+                                         INPUT_REPORT_KEYS_MAX_LEN,
+                                         data,
+                                         m_conn_handle);
+    }
+    else
+    {
+        err_code = ble_hids_boot_kb_inp_rep_send(p_hids,
+                                                 INPUT_REPORT_KEYS_MAX_LEN,
+                                                 data,
+                                                 m_conn_handle);
+    }
+
+    NRF_LOG_INFO("report send result: %d", err_code);
+}
+
+static void uart_init(void)
+{
+    uint32_t err_code;
+    
+    static const app_uart_comm_params_t comm_params = 
+    {
+        24,
+        UART_PIN_DISCONNECTED,
+        0,
+        0,
+        APP_UART_FLOW_CONTROL_DISABLED,
+        false,
+        NRF_UARTE_BAUDRATE_19200,
+    };
+
+
+    APP_UART_FIFO_INIT(&comm_params, 256, 256, uart_error_handle, 
+                       APP_IRQ_PRIORITY_LOWEST, err_code);
+    APP_ERROR_CHECK(err_code);
+}
+
+void app_uart_process(void)
+{
+    uint8_t byte;
+    uint32_t err_code;
+    static bool pending = false;
+    static uint8_t buf[8];
+    static size_t idx = 0;
+
+    err_code = app_uart_get(&byte);
+    if (err_code != NRF_SUCCESS) {
+        if (err_code != NRF_ERROR_NOT_FOUND) {
+            APP_ERROR_CHECK(err_code);
+        }
+
+        // No char available yet.
+        return;
+    }
+
+    if (pending) {
+        buf[idx++] = byte;
+
+        if (idx == sizeof(buf)) {
+            NRF_LOG_HEXDUMP_INFO(buf, 8);
+            pending = false;
+
+            send_report(&m_hids, buf);
+        }
+    } else {
+        if (byte != 0xFD) {
+            NRF_LOG_WARNING("uart: unexpected byte 0x%02x", byte);
+            return;
+        }
+
+        pending = true;
+        idx = 0;
+    }
+}
+
 
 /**@brief Function for application main entry.
  */
 int main(void)
 {
+    set_uicr_3v3();
+
     bool erase_bonds;
 
     // Initialize.
@@ -1582,6 +1687,7 @@ int main(void)
     conn_params_init();
     buffer_init();
     peer_manager_init();
+    uart_init();
 
     // Start execution.
     NRF_LOG_INFO("HID Keyboard example started.");
@@ -1591,6 +1697,7 @@ int main(void)
     // Enter main loop.
     for (;;)
     {
+        app_uart_process();
         idle_state_handle();
     }
 }
