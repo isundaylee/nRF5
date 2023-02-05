@@ -72,6 +72,6 @@ df_onoff = df_onoff[df_onoff["timestamp"] > datetime_cutoff]
 
 # Finally, let's plot it :)
 plt.plot(df_battery["timestamp"], df_battery["voltage"].rolling(10).mean(), 'b')
-plt.plot(df_friendless["timestamp"], df_friendless["friendless"] + 2, 'r')
-plt.plot(df_onoff["timestamp"], df_onoff["onoff"] + 2, 'g')
+plt.plot(df_friendless["timestamp"], 0.5 * df_friendless["friendless"] + 2, 'r')
+plt.plot(df_onoff["timestamp"], 0.5 * df_onoff["onoff"] + 2.5, 'g')
 plt.show()

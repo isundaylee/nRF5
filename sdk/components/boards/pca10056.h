@@ -69,7 +69,7 @@ extern "C" {
 
 #define BUTTONS_NUMBER 4
 
-#define BUTTON_1       11
+#define BUTTON_1       1
 #define BUTTON_2       12
 #define BUTTON_3       24
 #define BUTTON_4       25

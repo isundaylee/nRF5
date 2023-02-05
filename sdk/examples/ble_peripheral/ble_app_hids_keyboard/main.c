@@ -93,8 +93,8 @@
 
 #define SHIFT_BUTTON_ID                     1                                          /**< Button used as 'SHIFT' Key. */
 
-#define DEVICE_NAME                         "Nordic_Keyboard"                          /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME                   "NordicSemiconductor"                      /**< Manufacturer. Will be passed to Device Information Service. */
+#define DEVICE_NAME                         "Ergodox EZ BLE"                           /**< Name of device. Will be included in the advertising data. */
+#define MANUFACTURER_NAME                   "Jiahao Li"                                /**< Manufacturer. Will be passed to Device Information Service. */
 
 #define APP_BLE_OBSERVER_PRIO               3                                          /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 #define APP_BLE_CONN_CFG_TAG                1                                          /**< A tag identifying the SoftDevice BLE configuration. */
